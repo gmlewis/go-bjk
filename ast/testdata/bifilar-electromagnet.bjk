@@ -1,0 +1,765 @@
+// BLACKJACK_VERSION_HEADER 0 1 0
+(
+    nodes: [
+        (
+            op_name: "MakeQuad",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "center",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "normal",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "right",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "size",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "Helix",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "pos",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "size",
+                    data_type: "BJK_VECTOR",
+                    kind: Conection(
+                        node_idx: 12,
+                        param_name: "out",
+                    ),
+                ),
+                (
+                    name: "start_angle",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "turns",
+                    data_type: "BJK_SCALAR",
+                    kind: Conection(
+                        node_idx: 7,
+                        param_name: "x",
+                    ),
+                ),
+                (
+                    name: "segments",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "direction",
+                    data_type: "BJK_STRING",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "Helix",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "pos",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "size",
+                    data_type: "BJK_VECTOR",
+                    kind: Conection(
+                        node_idx: 11,
+                        param_name: "out",
+                    ),
+                ),
+                (
+                    name: "start_angle",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "turns",
+                    data_type: "BJK_SCALAR",
+                    kind: Conection(
+                        node_idx: 7,
+                        param_name: "x",
+                    ),
+                ),
+                (
+                    name: "segments",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "direction",
+                    data_type: "BJK_STRING",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "ExtrudeAlongCurve",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "backbone",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 2,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "cross_section",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 0,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "flip",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "Helix",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "pos",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "size",
+                    data_type: "BJK_VECTOR",
+                    kind: Conection(
+                        node_idx: 11,
+                        param_name: "out",
+                    ),
+                ),
+                (
+                    name: "start_angle",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "turns",
+                    data_type: "BJK_SCALAR",
+                    kind: Conection(
+                        node_idx: 7,
+                        param_name: "x",
+                    ),
+                ),
+                (
+                    name: "segments",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "direction",
+                    data_type: "BJK_STRING",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "ExtrudeAlongCurve",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "backbone",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 4,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "cross_section",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 0,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "flip",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "MergeMeshes",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "mesh_a",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 3,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "mesh_b",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 5,
+                        param_name: "out_mesh",
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "MakeScalar",
+            return_value: None,
+            inputs: [
+                (
+                    name: "x",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "x",
+                    data_type: "BJK_SCALAR",
+                ),
+            ],
+        ),
+        (
+            op_name: "ExtrudeAlongCurve",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "backbone",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 1,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "cross_section",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 0,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "flip",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "MergeMeshes",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "mesh_a",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 6,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "mesh_b",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 8,
+                        param_name: "out_mesh",
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "Point",
+            return_value: None,
+            inputs: [
+                (
+                    name: "point",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "point",
+                    data_type: "BJK_VECTOR",
+                ),
+            ],
+        ),
+        (
+            op_name: "VectorMath",
+            return_value: None,
+            inputs: [
+                (
+                    name: "op",
+                    data_type: "BJK_STRING",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "vec_a",
+                    data_type: "BJK_VECTOR",
+                    kind: Conection(
+                        node_idx: 10,
+                        param_name: "point",
+                    ),
+                ),
+                (
+                    name: "vec_b",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out",
+                    data_type: "BJK_VECTOR",
+                ),
+            ],
+        ),
+        (
+            op_name: "VectorMath",
+            return_value: None,
+            inputs: [
+                (
+                    name: "op",
+                    data_type: "BJK_STRING",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "vec_a",
+                    data_type: "BJK_VECTOR",
+                    kind: Conection(
+                        node_idx: 11,
+                        param_name: "out",
+                    ),
+                ),
+                (
+                    name: "vec_b",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out",
+                    data_type: "BJK_VECTOR",
+                ),
+            ],
+        ),
+        (
+            op_name: "Helix",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "pos",
+                    data_type: "BJK_VECTOR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "size",
+                    data_type: "BJK_VECTOR",
+                    kind: Conection(
+                        node_idx: 12,
+                        param_name: "out",
+                    ),
+                ),
+                (
+                    name: "start_angle",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "turns",
+                    data_type: "BJK_SCALAR",
+                    kind: Conection(
+                        node_idx: 7,
+                        param_name: "x",
+                    ),
+                ),
+                (
+                    name: "segments",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+                (
+                    name: "direction",
+                    data_type: "BJK_STRING",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "ExtrudeAlongCurve",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "backbone",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 13,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "cross_section",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 0,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "flip",
+                    data_type: "BJK_SCALAR",
+                    kind: External(
+                        promoted: None,
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+        (
+            op_name: "MergeMeshes",
+            return_value: Some("out_mesh"),
+            inputs: [
+                (
+                    name: "mesh_a",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 9,
+                        param_name: "out_mesh",
+                    ),
+                ),
+                (
+                    name: "mesh_b",
+                    data_type: "BJK_MESH",
+                    kind: Conection(
+                        node_idx: 14,
+                        param_name: "out_mesh",
+                    ),
+                ),
+            ],
+            outputs: [
+                (
+                    name: "out_mesh",
+                    data_type: "BJK_MESH",
+                ),
+            ],
+        ),
+    ],
+    default_node: Some(15),
+    ui_data: Some((
+        node_positions: [
+            (1072.3687, 232.1065),
+            (1070.6208, 990.6514),
+            (1075.0774, 478.61154),
+            (1625.3439, 371.60907),
+            (1073.4645, 734.81415),
+            (1618.6683, 734.70935),
+            (1941.8724, 571.3904),
+            (689.5807, 813.1497),
+            (1620.0642, 1022.223),
+            (2180.4314, 699.56116),
+            (-261.1836, 290.5234),
+            (83.387024, 306.02115),
+            (558.4893, 1026.147),
+            (1076.6501, 1242.5769),
+            (1618.2654, 1269.7031),
+            (2386.4956, 821.07043),
+        ],
+        node_order: [
+            2,
+            3,
+            4,
+            5,
+            0,
+            1,
+            8,
+            9,
+            6,
+            7,
+            11,
+            10,
+            12,
+            13,
+            14,
+            15,
+        ],
+        pan: (-0.6252365, -565.1915),
+        zoom: 1.342995,
+        locked_gizmo_nodes: [],
+    )),
+    external_parameters: Some((
+        param_values: {
+            (
+                node_idx: 10,
+                param_name: "point",
+            ): Vector((3.0, 2.0, 3.0)),
+            (
+                node_idx: 0,
+                param_name: "center",
+            ): Vector((0.0, 0.0, 0.0)),
+            (
+                node_idx: 4,
+                param_name: "segments",
+            ): Scalar(36.0),
+            (
+                node_idx: 0,
+                param_name: "size",
+            ): Vector((1.0, 1.0, 1.0)),
+            (
+                node_idx: 1,
+                param_name: "direction",
+            ): String("Clockwise"),
+            (
+                node_idx: 14,
+                param_name: "flip",
+            ): Scalar(1.0),
+            (
+                node_idx: 4,
+                param_name: "pos",
+            ): Vector((0.0, 0.0, 0.0)),
+            (
+                node_idx: 11,
+                param_name: "op",
+            ): String("Add"),
+            (
+                node_idx: 4,
+                param_name: "direction",
+            ): String("Clockwise"),
+            (
+                node_idx: 13,
+                param_name: "direction",
+            ): String("Clockwise"),
+            (
+                node_idx: 2,
+                param_name: "segments",
+            ): Scalar(36.0),
+            (
+                node_idx: 13,
+                param_name: "pos",
+            ): Vector((0.0, 0.0, 0.0)),
+            (
+                node_idx: 1,
+                param_name: "segments",
+            ): Scalar(36.0),
+            (
+                node_idx: 5,
+                param_name: "flip",
+            ): Scalar(1.0),
+            (
+                node_idx: 4,
+                param_name: "start_angle",
+            ): Scalar(0.0),
+            (
+                node_idx: 7,
+                param_name: "x",
+            ): Scalar(2.0),
+            (
+                node_idx: 12,
+                param_name: "op",
+            ): String("Add"),
+            (
+                node_idx: 13,
+                param_name: "segments",
+            ): Scalar(36.0),
+            (
+                node_idx: 11,
+                param_name: "vec_b",
+            ): Vector((0.0, 0.5, 0.0)),
+            (
+                node_idx: 0,
+                param_name: "right",
+            ): Vector((1.0, 0.0, 0.0)),
+            (
+                node_idx: 2,
+                param_name: "pos",
+            ): Vector((0.0, 0.0, 0.0)),
+            (
+                node_idx: 13,
+                param_name: "start_angle",
+            ): Scalar(0.0),
+            (
+                node_idx: 2,
+                param_name: "direction",
+            ): String("Clockwise"),
+            (
+                node_idx: 8,
+                param_name: "flip",
+            ): Scalar(1.0),
+            (
+                node_idx: 3,
+                param_name: "flip",
+            ): Scalar(1.0),
+            (
+                node_idx: 1,
+                param_name: "start_angle",
+            ): Scalar(180.0),
+            (
+                node_idx: 12,
+                param_name: "vec_b",
+            ): Vector((1.5, 0.0, 1.5)),
+            (
+                node_idx: 2,
+                param_name: "start_angle",
+            ): Scalar(180.0),
+            (
+                node_idx: 1,
+                param_name: "pos",
+            ): Vector((0.0, 0.0, 0.0)),
+            (
+                node_idx: 0,
+                param_name: "normal",
+            ): Vector((0.0, 0.0, 1.0)),
+        },
+    )),
+)
