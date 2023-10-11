@@ -11,11 +11,11 @@ type BJK struct {
 
 // Graph represents the content of the Blackjack file.
 type Graph struct {
-	Nodes []*Node `"nodes" ":" "[" ( "(" @@* ")" ","* )* "]" ","*`
+	Nodes []*Node `"nodes" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
 
-	DefaultNode *uint64 `( "default_node:" "Some(" @Int ")" ","* )*`
+	DefaultNode *uint64 `( "default_node" ":" "Some(" @Int ")" ","? )*`
 
-	UIData *UIData `( "ui_data:" )*`
+	UIData *UIData `( "ui_data" ":" )*`
 
 	ExternalParameters *ExternalParameters
 }
@@ -29,10 +29,10 @@ type Version struct {
 
 // Node represents a node in Blackjack.
 type Node struct {
-	OpName      string    `"op_name:" "\"" @Ident "\"" ","*`
-	ReturnValue *string   `"return_value:" "Some(" @Ident ")" ","?`
-	Inputs      []*Input  `"inputs:" "[" ( "(" @@* ")" )* "]" ","?`
-	Outputs     []*Output `"outputs:" "[" ( "(" @@* ")" )* "]" ","?`
+	OpName      string    `"op_name" ":" @String ","?`
+	ReturnValue *string   `"return_value" ":" "Some" "(" @String ")" ","?`
+	Inputs      []*Input  `"inputs" ":" "[" ( "(" @@* ")" )* "]" ","?`
+	Outputs     []*Output `"outputs" ":" "[" ( "(" @@* ")" )* "]" ","?`
 }
 
 // Input represents a node's input.

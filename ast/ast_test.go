@@ -32,21 +32,30 @@ func TestParse(t *testing.T) {
 			input: header + "( nodes: [ ] )",
 			want:  &BJK{Graph: &Graph{}},
 		},
+		{
+			name:  "one node",
+			input: header + `( nodes: [ ( op_name: "MakeQuad", return_value: Some("out_mesh"), inputs: [ ], outputs: [ ], ) ] )`,
+			want: &BJK{Graph: &Graph{
+				Nodes: []*Node{{OpName: "MakeQuad", ReturnValue: String("out_mesh")}},
+			}},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			simpleLexer := lexer.MustSimple([]lexer.SimpleRule{
-				{"Header", `(?:#|// BLACKJACK_VERSION_HEADER)[ ]*`},
+				{"Header", `(?:// BLACKJACK_VERSION_HEADER)[ ]*`},
 				{"Ident", `[a-zA-Z]\w*`},
 				{"Int", `(?:\d*)?\d+`},
 				{"Number", `(?:\d*\.)?\d+`},
+				{"String", `(?:\")[^\"]*(?:\")`},
 				{"Punct", `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|]`},
 				{"Whitespace", `[ \t\n\r]+`},
 			})
 			parser := participle.MustBuild[BJK](
 				participle.Lexer(simpleLexer),
 				participle.Elide("Whitespace"),
+				participle.Unquote("String"),
 				// participle.UseLookahead(200),
 			)
 
@@ -62,3 +71,5 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func String(s string) *string { return &s }
