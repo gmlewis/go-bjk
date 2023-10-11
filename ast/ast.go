@@ -30,7 +30,7 @@ type Version struct {
 // Node represents a node in Blackjack.
 type Node struct {
 	OpName      string    `"op_name" ":" @String ","?`
-	ReturnValue *string   `"return_value" ":" "Some" "(" @String ")" ","?`
+	ReturnValue *string   `"return_value" ":" ( "Some" "(" @String ")" | "None" ) ","?`
 	Inputs      []*Input  `"inputs" ":" "[" ( "(" @@* ")" )* "]" ","?`
 	Outputs     []*Output `"outputs" ":" "[" ( "(" @@* ")" )* "]" ","?`
 }

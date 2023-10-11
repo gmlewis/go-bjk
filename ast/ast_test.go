@@ -33,7 +33,14 @@ func TestParse(t *testing.T) {
 			want:  &BJK{Graph: &Graph{}},
 		},
 		{
-			name:  "one node",
+			name:  "one node no return value",
+			input: header + `( nodes: [ ( op_name: "MakeQuad", return_value: None, inputs: [ ], outputs: [ ], ) ] )`,
+			want: &BJK{Graph: &Graph{
+				Nodes: []*Node{{OpName: "MakeQuad"}},
+			}},
+		},
+		{
+			name:  "one node no inputs no outputs",
 			input: header + `( nodes: [ ( op_name: "MakeQuad", return_value: Some("out_mesh"), inputs: [ ], outputs: [ ], ) ] )`,
 			want: &BJK{Graph: &Graph{
 				Nodes: []*Node{{OpName: "MakeQuad", ReturnValue: String("out_mesh")}},
@@ -48,7 +55,7 @@ func TestParse(t *testing.T) {
 				{"Ident", `[a-zA-Z]\w*`},
 				{"Int", `(?:\d*)?\d+`},
 				{"Number", `(?:\d*\.)?\d+`},
-				{"String", `(?:\")[^\"]*(?:\")`},
+				{"String", `\"[^\"]*\"`},
 				{"Punct", `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|]`},
 				{"Whitespace", `[ \t\n\r]+`},
 			})
