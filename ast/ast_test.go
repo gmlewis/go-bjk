@@ -108,6 +108,21 @@ func TestParse(t *testing.T) {
 			input: header + "( nodes: [ ], default_node: None, )",
 			want:  &BJK{Graph: &Graph{}},
 		},
+		{
+			name:  "ui_data",
+			input: header + "( nodes: [ ], default_node: Some(15), ui_data: Some(( node_positions: [ (1072.3687, 232.1065), (1070.6208, 990.6514), ], node_order: [ 2, 3, ], pan: (-0.6252365, -565.1915), zoom: 1.342995, locked_gizmo_nodes: [], )), )",
+			want: &BJK{
+				Graph: &Graph{
+					DefaultNode: Uint(15),
+					UIData: &UIData{
+						NodePositions: []*Vec2{{X: 1072.3687, Y: 232.1065}, {X: 1070.6208, Y: 990.6514}},
+						NodeOrder:     []uint64{2, 3},
+						Pan:           Vec2{X: -0.6252365, Y: -565.1915},
+						Zoom:          1.342995,
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -115,8 +130,8 @@ func TestParse(t *testing.T) {
 			simpleLexer := lexer.MustSimple([]lexer.SimpleRule{
 				{"Header", `(?:// BLACKJACK_VERSION_HEADER)[ ]*`},
 				{"Ident", `[a-zA-Z]\w*`},
-				{"Int", `(?:\d*)?\d+`},
-				{"Number", `(?:\d*\.)?\d+`},
+				{"Float", `\-?(?:\d*)?\.\d+`},
+				{"Int", `\-?(?:\d*)?\d+`},
 				{"String", `\"[^\"]*\"`},
 				{"Punct", `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|]`},
 				{"Whitespace", `[ \t\n\r]+`},
@@ -130,6 +145,7 @@ func TestParse(t *testing.T) {
 
 			got, err := parser.ParseString("", tt.input, participle.Trace(os.Stderr))
 			if err != nil {
+				t.Logf("%v\n", tt.input)
 				t.Fatal(err)
 			}
 

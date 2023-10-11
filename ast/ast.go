@@ -15,7 +15,7 @@ type Graph struct {
 
 	DefaultNode *uint64 `( "default_node" ":" ( "Some" "(" @Int ")" | "None" ) ","? )?`
 
-	UIData *UIData `( "ui_data" ":" )?`
+	UIData *UIData `( "ui_data" ":" ( "Some" "(" @@ ")" | "None" ) ","? )?`
 
 	ExternalParameters *ExternalParameters
 }
@@ -68,17 +68,17 @@ type Output struct {
 
 // UIData represents data to drive the user interface.
 type UIData struct {
-	NodePositions    []*Vec2
-	NodeOrder        []uint64
-	Pan              Vec2
-	Zoom             float64
-	LockedGizmoNodes []uint64
+	NodePositions    []*Vec2  `"(" "node_positions" ":" "[" @@* "]" ","?`
+	NodeOrder        []uint64 `"node_order" ":" "[" ( @Int ","? )* "]" ","?`
+	Pan              Vec2     `"pan" ":" @@ ","?`
+	Zoom             float64  `"zoom" ":" @Float ","?`
+	LockedGizmoNodes []uint64 `"locked_gizmo_nodes" ":" "["  ( @Int ","? )* "]" ","? ")" ","?`
 }
 
 // Vec2 represents a 2D vector (or point).
 type Vec2 struct {
-	X float64
-	Y float64
+	X float64 `"(" @Float ","`
+	Y float64 `@Float ")" ","?`
 }
 
 // ExternalParameters represents external parameters.
