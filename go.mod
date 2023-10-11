@@ -3,6 +3,7 @@ module github.com/gmlewis/go-bjk
 go 1.21.3
 
 require (
+	github.com/Shopify/go-lua v0.0.0-20221004153744-91867de107cf
 	github.com/alecthomas/participle/v2 v2.1.0
 	github.com/google/go-cmp v0.6.0
 	github.com/hexops/valast v1.4.4
