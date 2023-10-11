@@ -45,8 +45,8 @@ type Input struct {
 // DependencyKind is an enum that represents an input's dependency.
 // It is either an External or a Connection, but not both.
 type DependencyKind struct {
-	External   *External   `( "External" "(" @@ ")" ","* )*`
-	Connection *Connection `| ("Connection" "(" @@ ")" ","* )*`
+	External   *External   `  "External" "(" @@* ")" ","?`
+	Connection *Connection `| "Conection" "(" @@* ")" ","?`
 }
 
 // External represents an external dependency kind.
@@ -56,8 +56,8 @@ type External struct {
 
 // Connection represents a DependencyKind's connection.
 type Connection struct {
-	NodeIdx   uint64 `"node_idx:" @Int ","*`
-	ParamName string `"param_name:" @Ident ","*`
+	NodeIdx   uint64 `"node_idx" ":" @Int ","?`
+	ParamName string `"param_name" ":" @String ","?`
 }
 
 // Output represents a node's output.

@@ -77,6 +77,27 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "one node one input with kind connection",
+			input: header + `( nodes: [ ( op_name: "MakeQuad", return_value: None, inputs: [ ( name: "center", data_type: "BJK_VECTOR", kind: Conection( node_idx: 3, param_name: "out_mesh", ), ), ], outputs: [ ], ) ] )`,
+			want: &BJK{
+				Graph: &Graph{
+					Nodes: []*Node{{
+						OpName: "MakeQuad",
+						Inputs: []*Input{{
+							Name:     "center",
+							DataType: "BJK_VECTOR",
+							Kind: DependencyKind{
+								Connection: &Connection{
+									NodeIdx:   3,
+									ParamName: "out_mesh",
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -94,7 +115,7 @@ func TestParse(t *testing.T) {
 				participle.Lexer(simpleLexer),
 				participle.Elide("Whitespace"),
 				participle.Unquote("String"),
-				// participle.UseLookahead(200),
+				// participle.UseLookahead(20),
 			)
 
 			got, err := parser.ParseString("", tt.input, participle.Trace(os.Stderr))
