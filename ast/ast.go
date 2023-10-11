@@ -17,7 +17,7 @@ type Graph struct {
 
 	UIData *UIData `( "ui_data" ":" ( "Some" "(" @@ ")" | "None" ) ","? )?`
 
-	ExternalParameters *ExternalParameters
+	ExternalParameters *ExternalParameters `( "external_parameters" ":"  ( "Some" "(" @@ ")" | "None" ) ","? )?`
 }
 
 // Version represents the version of the Blackjack file.
@@ -51,7 +51,7 @@ type DependencyKind struct {
 
 // External represents an external dependency kind.
 type External struct {
-	Promoted *string `"promoted" ":" ( "Some(" @String ")" | "None" ) ","?`
+	Promoted *string `"promoted" ":" ( "Some" "(" @String ")" | "None" ) ","?`
 }
 
 // Connection represents a DependencyKind's connection.
@@ -83,40 +83,44 @@ type Vec2 struct {
 
 // ExternalParameters represents external parameters.
 type ExternalParameters struct {
-	ParamValues []*ParamValue
+	ParamValues []*ParamValue `"(" "param_values" ":" "{" @@* "}" ","? ")" ","?`
 }
 
 // ParamValue is an enum that represents a parameter value.
 // It is exactly one of the values.
 type ParamValue struct {
-	NodeIdx   uint64
-	ParamName string
+	NodeIdx   uint64 `"(" "node_idx" ":" @Int ","?`
+	ParamName string `"param_name" ":" @String ","? ")" ":"`
 
-	// Enum with exactly one of the following values:
-	Vector    *VectorValue
-	Scalar    *ScalarValue
-	String    *StringValue
-	Selection *SelectionValue
+	ValueEnum ValueEnum `@@`
+}
+
+// ValueEnum represents an enum for a ParamValue.
+type ValueEnum struct {
+	Scalar    *ScalarValue    `  @@`
+	Selection *SelectionValue `| @@`
+	String    *StringValue    `| @@`
+	Vector    *VectorValue    `| @@`
 }
 
 // VectorValue is one type of ParamValue.
 type VectorValue struct {
-	X float64
-	Y float64
-	Z float64
+	X float64 `"Vector" "(" "(" @Float ","`
+	Y float64 `@Float ","`
+	Z float64 `@Float ")" ")" ","?`
 }
 
 // ScalarValue is one type of ParamValue.
 type ScalarValue struct {
-	X float64
+	X float64 `"Scalar" "(" @Float ")" ","?`
 }
 
 // StringValue is one type of ParamValue.
 type StringValue struct {
-	S string
+	S string `"String" "(" @String ")" ","?`
 }
 
 // SelectionValue is one type of ParamValue.
 type SelectionValue struct {
-	Selection string
+	Selection string `"String" "(" @String ")" ","?`
 }
