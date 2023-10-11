@@ -62,8 +62,8 @@ type Connection struct {
 
 // Output represents a node's output.
 type Output struct {
-	Name     string `"name:" @Ident ","*`
-	DataType string `"data_type:" @Ident ","*`
+	Name     string `"name" ":" @String ","*`
+	DataType string `"data_type" ":" @String ","*`
 }
 
 // UIData represents data to drive the user interface.

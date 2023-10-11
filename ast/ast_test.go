@@ -62,6 +62,21 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "one node one output",
+			input: header + `( nodes: [ ( op_name: "MakeQuad", return_value: None, inputs: [ ], outputs: [ ( name: "out_mesh", data_type: "BJK_MESH", ), ], ), ], )`,
+			want: &BJK{
+				Graph: &Graph{
+					Nodes: []*Node{{
+						OpName: "MakeQuad",
+						Outputs: []*Output{{
+							Name:     "out_mesh",
+							DataType: "BJK_MESH",
+						}},
+					}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
