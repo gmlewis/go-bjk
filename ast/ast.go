@@ -1,8 +1,31 @@
 // Package ast defines the AST grammar for BJK files.
+// See: https://github.com/setzer22/blackjack
 package ast
 
+import (
+	"github.com/alecthomas/participle/v2"
+	"github.com/alecthomas/participle/v2/lexer"
+)
+
+// Lexer represents a lexer for the BJK grammar.
+var Lexer = lexer.MustSimple([]lexer.SimpleRule{
+	{"Header", `(?:// BLACKJACK_VERSION_HEADER)[ ]*`},
+	{"Ident", `[a-zA-Z]\w*`},
+	{"Float", `\-?(?:\d*)?\.\d+`},
+	{"Int", `\-?(?:\d*)?\d+`},
+	{"String", `\"[^\"]*\"`},
+	{"Punct", `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|]`},
+	{"Whitespace", `[ \t\n\r]+`},
+})
+
+// Parser represents a participle parser for the BJK grammar.
+var Parser = participle.MustBuild[BJK](
+	participle.Lexer(Lexer),
+	participle.Elide("Whitespace"),
+	participle.Unquote("String"),
+)
+
 // BJK is the root of a Blackjack file.
-// See: https://github.com/setzer22/blackjack
 type BJK struct {
 	Version Version `Header @@`
 
