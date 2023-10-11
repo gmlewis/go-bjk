@@ -98,6 +98,16 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "default node",
+			input: header + "( nodes: [ ], default_node: Some(15), )",
+			want:  &BJK{Graph: &Graph{DefaultNode: Uint(15)}},
+		},
+		{
+			name:  "no default node",
+			input: header + "( nodes: [ ], default_node: None, )",
+			want:  &BJK{Graph: &Graph{}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -132,3 +142,4 @@ func TestParse(t *testing.T) {
 }
 
 func String(s string) *string { return &s }
+func Uint(v uint64) *uint64   { return &v }

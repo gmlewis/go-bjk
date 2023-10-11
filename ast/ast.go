@@ -13,9 +13,9 @@ type BJK struct {
 type Graph struct {
 	Nodes []*Node `"nodes" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
 
-	DefaultNode *uint64 `( "default_node" ":" "Some(" @Int ")" ","? )*`
+	DefaultNode *uint64 `( "default_node" ":" ( "Some" "(" @Int ")" | "None" ) ","? )?`
 
-	UIData *UIData `( "ui_data" ":" )*`
+	UIData *UIData `( "ui_data" ":" )?`
 
 	ExternalParameters *ExternalParameters
 }
