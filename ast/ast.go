@@ -31,27 +31,27 @@ type Version struct {
 type Node struct {
 	OpName      string    `"op_name" ":" @String ","?`
 	ReturnValue *string   `"return_value" ":" ( "Some" "(" @String ")" | "None" ) ","?`
-	Inputs      []*Input  `"inputs" ":" "[" ( "(" @@* ")" )* "]" ","?`
-	Outputs     []*Output `"outputs" ":" "[" ( "(" @@* ")" )* "]" ","?`
+	Inputs      []*Input  `"inputs" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
+	Outputs     []*Output `"outputs" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
 }
 
 // Input represents a node's input.
 type Input struct {
-	Name     string         `"name:" @Ident ","*`
-	DataType string         `"data_type:" @Ident ","*`
-	Kind     DependencyKind `"kind:" @@ ","*`
+	Name     string         `"name" ":" @String ","*`
+	DataType string         `"data_type" ":" @String ","*`
+	Kind     DependencyKind `"kind" ":" @@ ","*`
 }
 
 // DependencyKind is an enum that represents an input's dependency.
 // It is either an External or a Connection, but not both.
 type DependencyKind struct {
-	External   *External   `"External(" @@ ")" ","*`
-	Connection *Connection `"Connection(" @@ ")" ","*`
+	External   *External   `( "External" "(" @@ ")" ","* )*`
+	Connection *Connection `| ("Connection" "(" @@ ")" ","* )*`
 }
 
 // External represents an external dependency kind.
 type External struct {
-	Promoted *string `"Some(" @Ident ")"`
+	Promoted *string `"promoted" ":" ( "Some(" @String ")" | "None" ) ","?`
 }
 
 // Connection represents a DependencyKind's connection.

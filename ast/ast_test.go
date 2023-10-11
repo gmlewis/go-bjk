@@ -46,6 +46,22 @@ func TestParse(t *testing.T) {
 				Nodes: []*Node{{OpName: "MakeQuad", ReturnValue: String("out_mesh")}},
 			}},
 		},
+		{
+			name:  "one node one input",
+			input: header + `( nodes: [ ( op_name: "MakeQuad", return_value: None, inputs: [ ( name: "center", data_type: "BJK_VECTOR", kind: External( promoted: None, ), ), ], outputs: [ ], ) ] )`,
+			want: &BJK{
+				Graph: &Graph{
+					Nodes: []*Node{{
+						OpName: "MakeQuad",
+						Inputs: []*Input{{
+							Name:     "center",
+							DataType: "BJK_VECTOR",
+							Kind:     DependencyKind{External: &External{}},
+						}},
+					}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
