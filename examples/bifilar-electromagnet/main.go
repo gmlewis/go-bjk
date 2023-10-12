@@ -19,11 +19,11 @@ var (
 func main() {
 	flag.Parse()
 
-	c, err := nodes.New(*repoDir)
+	_, err := nodes.New(*repoDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer c.Close()
+	// defer c.Close()
 }
 
 func must(err error) {
