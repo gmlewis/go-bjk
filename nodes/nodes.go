@@ -37,10 +37,15 @@ func New(blackjackRepoPath string) (*Client, error) {
 		}
 
 		if preload.name != "" {
+			loaders, ok := ls.GetField(ls.Get(lua.RegistryIndex), "_LOADERS").(*lua.LTable)
+			// loaded := ls.GetGlobal("_LOADED")
+			log.Printf("loaders=%#v, ok=%v", loaders, ok)
+
 			log.Printf("fn.Env=%#v", fn.Env)
 			log.Printf("fn.Proto=%v", valast.String(fn.Proto))
 			f := func(L *lua.LState) int { L.Push(fn); return 1 }
 			ls.PreloadModule(preload.name, f)
+			// loaders.RawSetString(preload.name, fn)
 		}
 	}
 
