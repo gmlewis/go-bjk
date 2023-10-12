@@ -4,6 +4,7 @@
 package nodes
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -23,73 +24,102 @@ type Client struct {
 }
 
 func showTop(ls *lua.State) {
-	log.Printf("top of stack IsBoolean: %v", ls.IsBoolean(-1))
-	log.Printf("IsFunction: %v", ls.IsFunction(-1))
-	log.Printf("IsGoFunction: %v", ls.IsGoFunction(-1))
-	log.Printf("IsLightUserData: %v", ls.IsLightUserData(-1))
-	log.Printf("IsNil: %v", ls.IsNil(-1))
-	log.Printf("IsNone: %v", ls.IsNone(-1))
-	log.Printf("IsNoneOrNil: %v", ls.IsNoneOrNil(-1))
-	log.Printf("IsNumber: %v", ls.IsNumber(-1))
-	log.Printf("IsString: %v", ls.IsString(-1))
-	log.Printf("IsTable: %v", ls.IsTable(-1))
-	log.Printf("IsThread: %v", ls.IsThread(-1))
-	log.Printf("IsUserData: %v", ls.IsUserData(-1))
+	var results []string
+	f := func(n string, v bool) {
+		if v {
+			results = append(results, n)
+		}
+	}
+	f("IsBoolean", ls.IsBoolean(-1))
+	f("IsFunction", ls.IsFunction(-1))
+	f("IsGoFunction", ls.IsGoFunction(-1))
+	f("IsLightUserData", ls.IsLightUserData(-1))
+	f("IsNil", ls.IsNil(-1))
+	f("IsNone", ls.IsNone(-1))
+	f("IsNoneOrNil", ls.IsNoneOrNil(-1))
+	f("IsNumber", ls.IsNumber(-1))
+	f("IsString", ls.IsString(-1))
+	f("IsTable", ls.IsTable(-1))
+	f("IsThread", ls.IsThread(-1))
+	f("IsUserData", ls.IsUserData(-1))
+	log.Printf("\n\nshowTop: Top=%v - %v", ls.Top(), strings.Join(results, " - "))
 }
 
 // New creates a new instance of nodes.Client.
 func New(blackjackRepoPath string) (*Client, error) {
 	ls := lua.NewState()
-	// lua.OpenLibraries(ls)
+	lua.OpenLibraries(ls)
+	log.Printf("At start: Top=%v", ls.Top())
 
-	// First, process the files in the correct bootstrap order:
-	var preloaded []lua.RegistryFunction
-	for _, preload := range bootstrapOrder {
-		fullPath := filepath.Join(blackjackRepoPath, preload.fn)
-		log.Printf("Preloading file: %v", fullPath)
-		if err := lua.LoadFile(ls, fullPath, ""); err != nil {
-			return nil, err
-		}
-		// showTop(ls)
-
-		// ls.Global("Params")
-
-		if preload.name == "" {
-			log.Fatalf("missing preload name: %v", preload.fn)
-		}
-
-		// ls.Register(preload.name,
-		fn := ls.ToGoFunction(-1)
-		preloaded = append(preloaded, lua.RegistryFunction{
-			Name:     preload.name,
-			Function: fn,
-		})
-
-		// 		// loaders, ok := ls.GetField(ls.Get(lua.RegistryIndex), "_LOADERS").(*lua.LTable)
-		// 		// // loaded := ls.GetGlobal("_LOADED")
-		// 		// log.Printf("loaders=%#v, ok=%v", loaders, ok)
-		//
-		// 		// log.Printf("fn.Env=%#v", fn.Env)
-		// 		// log.Printf("fn.Proto=%v", valast.String(fn.Proto))
-		// 		f := func(L *lua.State) int {
-		// 			// // From: baselib.go
-		// 			// // src := L.ToString(1)
-		// 			// top := L.GetTop()
-		// 			// fn, err := L.LoadFile(fullPath) // src)
-		// 			// if err != nil {
-		// 			// 	L.Push(lua.LString(err.Error()))
-		// 			// 	L.Panic(L)
-		// 			// }
-		// 			// L.Push(fn)
-		// 			// L.Call(0, lua.MultRet)
-		// 			// return L.GetTop() - top
-		// 			L.Push(fn)
-		// 			return 1
-		// 		}
-		// 		ls.PreloadModule(preload.name, f)
-		// 		// loaders.RawSetString(preload.name, fn)
-		// 		// }
+	ls.Global("package")
+	showTop(ls)
+	ls.Field(-1, "path")
+	showTop(ls)
+	packagePath, ok := ls.ToString(-1)
+	log.Printf("packagePath='%v', ok=%v", packagePath, ok)
+	ls.Pop(1)
+	showTop(ls)
+	for _, s := range packagePaths {
+		packagePath = fmt.Sprintf("%v;%v/?.lua", packagePath, filepath.Join(blackjackRepoPath, s))
 	}
+	log.Printf("packagePath='%v'", packagePath)
+	ls.PushString(packagePath)
+	showTop(ls)
+	ls.SetField(-2, "path")
+	showTop(ls)
+	ls.Pop(1)
+	showTop(ls)
+
+	/*
+		// First, process the files in the correct bootstrap order:
+		var preloaded []lua.RegistryFunction
+		for _, preload := range bootstrapOrder {
+			fullPath := filepath.Join(blackjackRepoPath, preload.fn)
+			log.Printf("Preloading file: %v", fullPath)
+			if err := lua.LoadFile(ls, fullPath, ""); err != nil {
+				return nil, err
+			}
+			// showTop(ls)
+
+			// ls.Global("Params")
+
+			if preload.name == "" {
+				log.Fatalf("missing preload name: %v", preload.fn)
+			}
+
+			// ls.Register(preload.name,
+			fn := ls.ToGoFunction(-1)
+			preloaded = append(preloaded, lua.RegistryFunction{
+				Name:     preload.name,
+				Function: fn,
+			})
+
+			// 		// loaders, ok := ls.GetField(ls.Get(lua.RegistryIndex), "_LOADERS").(*lua.LTable)
+			// 		// // loaded := ls.GetGlobal("_LOADED")
+			// 		// log.Printf("loaders=%#v, ok=%v", loaders, ok)
+			//
+			// 		// log.Printf("fn.Env=%#v", fn.Env)
+			// 		// log.Printf("fn.Proto=%v", valast.String(fn.Proto))
+			// 		f := func(L *lua.State) int {
+			// 			// // From: baselib.go
+			// 			// // src := L.ToString(1)
+			// 			// top := L.GetTop()
+			// 			// fn, err := L.LoadFile(fullPath) // src)
+			// 			// if err != nil {
+			// 			// 	L.Push(lua.LString(err.Error()))
+			// 			// 	L.Panic(L)
+			// 			// }
+			// 			// L.Push(fn)
+			// 			// L.Call(0, lua.MultRet)
+			// 			// return L.GetTop() - top
+			// 			L.Push(fn)
+			// 			return 1
+			// 		}
+			// 		ls.PreloadModule(preload.name, f)
+			// 		// loaders.RawSetString(preload.name, fn)
+			// 		// }
+		}
+	*/
 
 	// Now, process all *.lua files found in the blackjackSubdirs:
 	for _, subdir := range blackjackSubdirs {
