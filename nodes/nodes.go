@@ -60,7 +60,8 @@ func New(blackjackRepoPath string) (*Client, error) {
 	ls.Pop(1)
 	showTop(ls)
 	for _, s := range packagePaths {
-		packagePath = fmt.Sprintf("%v;%v/?.lua", packagePath, filepath.Join(blackjackRepoPath, s))
+		// cannot use filepath.Join here because it strips the final '/'
+		packagePath = fmt.Sprintf("%v;%v/%v?.lua", packagePath, blackjackRepoPath, s)
 	}
 	log.Printf("packagePath='%v'", packagePath)
 	ls.PushString(packagePath)
@@ -173,6 +174,8 @@ var blackjackSubdirs = []string{
 }
 
 var packagePaths = []string{
-	"blackjack_engine/src/lua_engine",
-	"blackjack_lua/lib",
+	"blackjack_engine/src/lua_engine/",
+	"blackjack_engine/src/lua_engine/node_",
+	"blackjack_engine/src/lua_engine/blackjack_",
+	"blackjack_lua/lib/",
 }

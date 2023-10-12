@@ -23,7 +23,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// defer c.Close()
 }
 
 func must(err error) {
