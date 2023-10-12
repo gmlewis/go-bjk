@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hexops/valast"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -31,22 +30,39 @@ func New(blackjackRepoPath string) (*Client, error) {
 	for _, preload := range bootstrapOrder {
 		fullPath := filepath.Join(blackjackRepoPath, preload.fn)
 		log.Printf("Processing file: %v", fullPath)
-		fn, err := ls.LoadFile(fullPath)
-		if err != nil {
-			return nil, err
+		// fn, err := ls.LoadFile(fullPath)
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		if preload.name == "" {
+			log.Fatalf("missing preload name: %v", preload.fn)
 		}
 
-		if preload.name != "" {
-			loaders, ok := ls.GetField(ls.Get(lua.RegistryIndex), "_LOADERS").(*lua.LTable)
-			// loaded := ls.GetGlobal("_LOADED")
-			log.Printf("loaders=%#v, ok=%v", loaders, ok)
+		// loaders, ok := ls.GetField(ls.Get(lua.RegistryIndex), "_LOADERS").(*lua.LTable)
+		// // loaded := ls.GetGlobal("_LOADED")
+		// log.Printf("loaders=%#v, ok=%v", loaders, ok)
 
-			log.Printf("fn.Env=%#v", fn.Env)
-			log.Printf("fn.Proto=%v", valast.String(fn.Proto))
-			f := func(L *lua.LState) int { L.Push(fn); return 1 }
-			ls.PreloadModule(preload.name, f)
-			// loaders.RawSetString(preload.name, fn)
+		// log.Printf("fn.Env=%#v", fn.Env)
+		// log.Printf("fn.Proto=%v", valast.String(fn.Proto))
+		f := func(L *lua.LState) int {
+			// From: baselib.go
+			// src := L.ToString(1)
+			top := L.GetTop()
+			fn, err := L.LoadFile(fullPath) // src)
+			if err != nil {
+				L.Push(lua.LString(err.Error()))
+				L.Panic(L)
+			}
+			L.Push(fn)
+			L.Call(0, lua.MultRet)
+			return L.GetTop() - top
+			// L.Push(fn)
+			// return 1
 		}
+		ls.PreloadModule(preload.name, f)
+		// loaders.RawSetString(preload.name, fn)
+		// }
 	}
 
 	// Now, process all *.lua files found in the blackjackSubdirs:
