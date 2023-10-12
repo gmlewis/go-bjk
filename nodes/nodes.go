@@ -10,29 +10,37 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Shopify/go-lua"
+	"github.com/hexops/valast"
+	lua "github.com/yuin/gopher-lua"
+)
+
+const (
+	luaEngineDir = "blackjack_engine/src/lua_engine"
 )
 
 // Client represents all the known nodes in Blackjack from its Luau bindings.
 type Client struct {
-	ls *lua.State
+	ls *lua.LState
 }
 
 // New creates a new instance of nodes.Client.
-func New() *Client {
+func New(blackjackRepoPath string) (*Client, error) {
 	ls := lua.NewState()
-	lua.OpenLibraries(ls)
-	return &Client{ls: ls}
-}
 
-// Bootstrap parses all the initialization scripts used by Blackjack.
-func (c *Client) Bootstrap(blackjackRepoPath string) error {
 	// First, process the files in the correct bootstrap order:
-	for _, path := range bootstrapOrder {
-		fullPath := filepath.Join(blackjackRepoPath, path)
+	for _, preload := range bootstrapOrder {
+		fullPath := filepath.Join(blackjackRepoPath, preload.fn)
 		log.Printf("Processing file: %v", fullPath)
-		if err := lua.DoFile(c.ls, fullPath); err != nil {
-			return err
+		fn, err := ls.LoadFile(fullPath)
+		if err != nil {
+			return nil, err
+		}
+
+		if preload.name != "" {
+			log.Printf("fn.Env=%#v", fn.Env)
+			log.Printf("fn.Proto=%v", valast.String(fn.Proto))
+			f := func(L *lua.LState) int { L.Push(fn); return 1 }
+			ls.PreloadModule(preload.name, f)
 		}
 	}
 
@@ -52,23 +60,33 @@ func (c *Client) Bootstrap(blackjackRepoPath string) error {
 			}
 			fullPath := filepath.Join(root, path)
 			log.Printf("Processing file: %v", fullPath)
-			return lua.DoFile(c.ls, fullPath)
+			return ls.DoFile(fullPath)
 		}); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return &Client{ls: ls}, nil
 }
 
-var bootstrapOrder = []string{
-	"blackjack_engine/src/lua_engine/node_params.lua",
-	"blackjack_engine/src/lua_engine/node_library.lua",
-	"blackjack_engine/src/lua_engine/blackjack_utils.lua",
-	"blackjack_lua/lib/priority_queue.lua",
-	"blackjack_lua/lib/table_helpers.lua",
-	"blackjack_lua/lib/vector_math.lua",
-	"blackjack_lua/lib/gizmo_helpers.lua",
+// Close closes the current client.
+func (c *Client) Close() {
+	c.ls.Close()
+}
+
+type preloads struct {
+	fn   string
+	name string
+}
+
+var bootstrapOrder = []preloads{
+	{fn: "blackjack_engine/src/lua_engine/node_params.lua", name: "params"},
+	{fn: "blackjack_engine/src/lua_engine/node_library.lua", name: "node_library"},
+	{fn: "blackjack_engine/src/lua_engine/blackjack_utils.lua", name: "utils"},
+	{fn: "blackjack_lua/lib/priority_queue.lua", name: "priority_queue"},
+	{fn: "blackjack_lua/lib/table_helpers.lua", name: "table_helpers"},
+	{fn: "blackjack_lua/lib/vector_math.lua", name: "vector_math"},
+	{fn: "blackjack_lua/lib/gizmo_helpers.lua", name: "gizmo_helpers"},
 }
 
 var blackjackSubdirs = []string{
