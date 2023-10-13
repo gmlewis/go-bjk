@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	debug     = flag.Bool("debug", false, "Turn on debugging info")
 	innerDiam = flag.Float64("id", 3.0, "Inner diameter of first coil in millimeters")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	repoDir   = flag.String("repo", "/Users/glenn/src/github.com/gmlewis/blackjack", "Path to Blackjack repo")
@@ -25,7 +26,7 @@ var (
 func main() {
 	flag.Parse()
 
-	c, err := nodes.New(*repoDir)
+	c, err := nodes.New(*repoDir, *debug)
 	must(err)
 	defer c.Close()
 

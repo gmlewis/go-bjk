@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gmlewis/go-bjk/ast"
 	lua "github.com/yuin/gopher-lua"
@@ -24,7 +25,10 @@ return nodes
 	lv := c.ls.Get(-1) // get the value at the top of the stack
 	if tbl, ok := lv.(*lua.LTable); ok {
 		tbl.ForEach(func(k, v lua.LValue) {
-			node, err := c.luaToNode(v)
+			if c.debug {
+				log.Printf("list: k=%v,v=%v, k=%v,v=%#v", k.Type(), v.Type(), k, v)
+			}
+			node, err := c.luaToNode(k.String(), v)
 			if err != nil {
 				return
 			}
@@ -35,7 +39,7 @@ return nodes
 	return result, nil
 }
 
-func (c *Client) luaToNode(lv lua.LValue) (*ast.Node, error) {
+func (c *Client) luaToNode(nodeName string, lv lua.LValue) (*ast.Node, error) {
 	t, ok := lv.(*lua.LTable)
 	if !ok {
 		return nil, fmt.Errorf("luaToNode: expected LTable, got %v", lv.Type())
@@ -78,10 +82,11 @@ func (c *Client) luaToNode(lv lua.LValue) (*ast.Node, error) {
 	}
 
 	node := &ast.Node{
-		OpName:      t.RawGetString("label").String(),
+		OpName:      nodeName,
 		ReturnValue: returnValue,
 		Inputs:      inputs,
 		Outputs:     outputs,
+		Label:       t.RawGetString("label").String(),
 	}
 	return node, nil
 }
@@ -92,14 +97,23 @@ func (c *Client) luaToInput(lv lua.LValue) (*ast.Input, error) {
 		return nil, fmt.Errorf("luaToInput: expected LTable, got %v", lv.Type())
 	}
 
+	if c.debug {
+		log.Printf("luaToInput: t=%#v", t)
+	}
+
 	props := map[string]any{}
 	t.ForEach(func(k, v lua.LValue) {
+		if c.debug {
+			log.Printf("luaToInput: props[%v]=%#v", k, v)
+		}
 		props[k.String()] = v
 	})
 
+	name := t.RawGetString("name").String()
+	dataType := t.RawGetString("type").String()
 	input := &ast.Input{
-		Name:     t.RawGetString("name").String(),
-		DataType: t.RawGetString("type").String(),
+		Name:     name,
+		DataType: dataType,
 		Props:    props,
 	}
 	return input, nil

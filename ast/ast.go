@@ -3,8 +3,6 @@
 package ast
 
 import (
-	"fmt"
-
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 )
@@ -48,11 +46,6 @@ type BJK struct {
 	Graph *Graph `"(" @@* ")"`
 }
 
-func (b *BJK) String() string {
-	v := b.Version
-	return fmt.Sprintf("%v %v %v %v\n(\n%v\n)", headerStr, v.Major, v.Minor, v.Patch, b.Graph)
-}
-
 // Graph represents the content of the Blackjack file.
 type Graph struct {
 	Nodes []*Node `"nodes" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
@@ -73,10 +66,13 @@ type Version struct {
 
 // Node represents a node in Blackjack.
 type Node struct {
-	OpName      string    `"op_name" ":" @String ","?`
+	OpName      string    `"op_name" ":" @String ","?` // e.g. "MakeScalar"
 	ReturnValue *string   `"return_value" ":" ( "Some" "(" @String ")" | "None" ) ","?`
 	Inputs      []*Input  `"inputs" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
 	Outputs     []*Output `"outputs" ":" "[" ( "(" @@* ")" ","? )* "]" ","?`
+
+	// Label is not preserved in the BJK file.
+	Label string // e.g. "Scalar"
 }
 
 // Input represents a node's input.

@@ -13,7 +13,8 @@ type Builder struct {
 	c    *Client
 	errs []error
 
-	Nodes map[string]*ast.Node
+	Nodes     map[string]*ast.Node
+	NodeOrder []string
 }
 
 // NewBuilder returns a new BJK Builder.
@@ -40,7 +41,13 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 		return b
 	}
 
-	b.Nodes[name] = n
+	b.Nodes[name] = &ast.Node{
+		OpName:      parts[0],
+		ReturnValue: n.ReturnValue,
+		Inputs:      n.Inputs,
+		Outputs:     n.Outputs,
+	}
+	b.NodeOrder = append(b.NodeOrder, name)
 
 	return b
 }
@@ -56,6 +63,19 @@ func (b *Builder) Build() (*ast.BJK, error) {
 		return nil, errors.Join(b.errs...)
 	}
 
-	result := ast.New()
-	return result, nil
+	bjk := ast.New()
+	if len(b.NodeOrder) == 0 {
+		return bjk, nil
+	}
+
+	g := bjk.Graph
+
+	for _, k := range b.NodeOrder {
+		g.Nodes = append(g.Nodes, b.Nodes[k])
+	}
+
+	dn := uint64(len(b.NodeOrder) - 1)
+	g.DefaultNode = &dn
+
+	return bjk, nil
 }

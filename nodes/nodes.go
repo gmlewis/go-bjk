@@ -23,18 +23,24 @@ const (
 type Client struct {
 	Nodes map[string]*ast.Node
 
-	ls *lua.LState
+	debug bool
+	ls    *lua.LState
 }
 
 func (c *Client) showTop() {
+	if !c.debug {
+		return
+	}
 	log.Printf("\n\nshowTop: Top=%v type: %v", c.ls.GetTop(), c.ls.Get(-1).Type())
 }
 
 // New creates a new instance of nodes.Client.
-func New(blackjackRepoPath string) (*Client, error) {
+func New(blackjackRepoPath string, debug bool) (*Client, error) {
 	ls := lua.NewState()
 	ls.OpenLibs()
-	log.Printf("At start: Top=%v", ls.GetTop())
+	if debug {
+		log.Printf("At start: Top=%v", ls.GetTop())
+	}
 
 	registerVec3Type(ls)
 	ls.DoString("vector = Vec3.new")
@@ -62,14 +68,16 @@ func New(blackjackRepoPath string) (*Client, error) {
 				return nil
 			}
 			fullPath := filepath.Join(root, path)
-			log.Printf("Processing file: %v", fullPath)
+			if debug {
+				log.Printf("Processing file: %v", fullPath)
+			}
 			return ls.DoFile(fullPath)
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	c := &Client{ls: ls}
+	c := &Client{debug: debug, ls: ls}
 	ns, err := c.list()
 	if err != nil {
 		return nil, err
