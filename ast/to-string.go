@@ -70,7 +70,7 @@ func (in *Input) String() string {
 	f := func(fmtStr string, args ...any) { lines = append(lines, fmt.Sprintf(indent+fmtStr, args...)) }
 
 	f("name: %q,", in.Name)
-	f("data_type: %q,", in.DataType)
+	f("data_type: %q,", dataTypeToBJK(in.DataType))
 
 	if in.Kind.External != nil {
 		f("kind: External(")
@@ -87,8 +87,22 @@ func (out *Output) String() string {
 	f := func(fmtStr string, args ...any) { lines = append(lines, fmt.Sprintf(indent+fmtStr, args...)) }
 
 	f("name: %q,", out.Name)
-	f("data_type: %q,", out.DataType)
+	f("data_type: %q,", dataTypeToBJK(out.DataType))
 
 	lines = append(lines, ")")
 	return strings.Join(lines, "\n")
+}
+
+func dataTypeToBJK(dt string) string {
+	if v, ok := dataTypeLookup[dt]; ok {
+		return v
+	}
+	return dt
+}
+
+var dataTypeLookup = map[string]string{
+	"enum":   "BJK_STRING",
+	"mesh":   "BJK_MESH",
+	"scalar": "BJK_SCALAR",
+	"vec3":   "BJK_VECTOR",
 }
