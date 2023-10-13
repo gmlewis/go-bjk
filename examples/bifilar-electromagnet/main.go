@@ -27,9 +27,7 @@ func main() {
 	}
 	defer c.Close()
 
-	ns, err := c.List()
-	must(err)
-	log.Printf("Got %v nodes.", len(ns))
+	log.Printf("Got %v nodes.", len(c.Nodes))
 
 	design := ast.New()
 	fmt.Printf("%v\n", design)

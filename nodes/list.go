@@ -7,7 +7,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func (c *Client) List() (map[string]*ast.Node, error) {
+func (c *Client) list() (map[string]*ast.Node, error) {
 	result := map[string]*ast.Node{}
 
 	if err := c.ls.DoString(`local N = require("node_library")

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gmlewis/go-bjk/ast"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -20,6 +21,8 @@ const (
 
 // Client represents all the known nodes in Blackjack from its Luau bindings.
 type Client struct {
+	Nodes map[string]*ast.Node
+
 	ls *lua.LState
 }
 
@@ -66,7 +69,14 @@ func New(blackjackRepoPath string) (*Client, error) {
 		}
 	}
 
-	return &Client{ls: ls}, nil
+	c := &Client{ls: ls}
+	ns, err := c.list()
+	if err != nil {
+		return nil, err
+	}
+	c.Nodes = ns
+
+	return c, nil
 }
 
 // Close closes the current client.
