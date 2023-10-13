@@ -63,6 +63,9 @@ type Input struct {
 	Name     string         `"name" ":" @String ","*`
 	DataType string         `"data_type" ":" @String ","*`
 	Kind     DependencyKind `"kind" ":" @@ ","*`
+
+	// Props are not preserved in the BJK file.
+	Props map[string]any
 }
 
 // DependencyKind is an enum that represents an input's dependency.
