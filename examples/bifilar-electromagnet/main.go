@@ -7,8 +7,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 
+	"github.com/gmlewis/go-bjk/ast"
 	"github.com/gmlewis/go-bjk/nodes"
 )
 
@@ -28,6 +30,9 @@ func main() {
 	ns, err := c.List()
 	must(err)
 	log.Printf("Got %v nodes.", len(ns))
+
+	design := ast.New()
+	fmt.Printf("%v\n", design)
 }
 
 func must(err error) {

@@ -3,13 +3,17 @@
 package ast
 
 import (
+	"fmt"
+
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 )
 
+const headerStr = "// BLACKJACK_VERSION_HEADER"
+
 // Lexer represents a lexer for the BJK grammar.
 var Lexer = lexer.MustSimple([]lexer.SimpleRule{
-	{"Header", `(?:// BLACKJACK_VERSION_HEADER)[ ]*`},
+	{"Header", `(?:` + headerStr + `)[ ]*`},
 	{"Ident", `[a-zA-Z]\w*`},
 	{"Float", `\-?(?:\d*)?\.\d+`},
 	{"Int", `\-?(?:\d*)?\d+`},
@@ -25,11 +29,28 @@ var Parser = participle.MustBuild[BJK](
 	participle.Unquote("String"),
 )
 
+// New returns a new BJK ast, ready to be populated.
+func New() *BJK {
+	return &BJK{
+		Version: Version{Minor: 1},
+		Graph: &Graph{
+			UIData: &UIData{
+				Zoom: 1,
+			},
+		},
+	}
+}
+
 // BJK is the root of a Blackjack file.
 type BJK struct {
 	Version Version `Header @@`
 
 	Graph *Graph `"(" @@* ")"`
+}
+
+func (b *BJK) String() string {
+	v := b.Version
+	return fmt.Sprintf("%v %v %v %v\n(\n%v\n)", headerStr, v.Major, v.Minor, v.Patch, b.Graph)
 }
 
 // Graph represents the content of the Blackjack file.
