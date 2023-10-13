@@ -15,6 +15,7 @@ import (
 
 var (
 	innerDiam = flag.Float64("id", 3.0, "Inner diameter of first coil in millimeters")
+	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	repoDir   = flag.String("repo", "/Users/glenn/src/github.com/gmlewis/blackjack", "Path to Blackjack repo")
 	vertTurns = flag.Float64("vt", 2.0, "Vertical turns of wire in electromagnet")
 	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")
@@ -31,16 +32,23 @@ func main() {
 	log.Printf("Got %v nodes.", len(c.Nodes))
 
 	design, err := c.NewBuilder().
-		AddNode("Scalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
+		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", *innerDiam, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.point").
-		AddNode("Helix.wire-1").
+		AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
 		Connect("VectorMath.vert-gap.out", "Helix.wire-1.size").
-		AddNode("Helix.wire-2").
-		AddNode("MakeQuad.wire-outline").
+		AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
+		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[v])", *wireWidth)).
 		AddNode("ExtrudeAlongCurve.wire-1").
-		AddNode("ExtrudeAlongCurve.wire-1").
+		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-1.cross_section").
+		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
+		AddNode("ExtrudeAlongCurve.wire-2").
+		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-2.cross_section").
+		Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
+		AddNode("MergeMeshes.wire-1-2").
+		Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
+		Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
 		Build()
 	must(err)
 
