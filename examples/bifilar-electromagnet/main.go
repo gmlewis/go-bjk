@@ -25,7 +25,8 @@ func main() {
 	}
 	defer c.Close()
 
-	ns := c.List()
+	ns, err := c.List()
+	must(err)
 	log.Printf("Got %v nodes.", len(ns))
 }
 

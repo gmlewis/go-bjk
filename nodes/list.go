@@ -1,9 +1,6 @@
 package nodes
 
 import (
-	"fmt"
-	"log"
-
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -11,19 +8,26 @@ import (
 type Node struct {
 }
 
-func (c *Client) List() map[string]*Node {
+func (c *Client) List() (map[string]*Node, error) {
 	result := map[string]*Node{}
 
-	// fn, ok := c.ls.GetGlobal("NodeLibrary").(*lua.LFunction)
-	fn := c.ls.GetGlobal("node_library")
-	log.Printf("fn=%#v", fn)
-	c.showTop()
+	if err := c.ls.DoString(`local N = require("node_library")
+local nodes = {}
+for k, v in pairs(N:listNodes()) do
+    table.insert(nodes, v)
+end
+return nodes
+`); err != nil {
+		return nil, err
+	}
 
 	lv := c.ls.Get(-1) // get the value at the top of the stack
 	if tbl, ok := lv.(*lua.LTable); ok {
-		// lv is LTable
-		fmt.Println(c.ls.ObjLen(tbl))
+		// fmt.Println(c.ls.ObjLen(tbl))
+		tbl.ForEach(func(_, v lua.LValue) {
+			result[v.String()] = &Node{}
+		})
 	}
 
-	return result
+	return result, nil
 }
