@@ -33,6 +33,9 @@ func New(blackjackRepoPath string) (*Client, error) {
 	ls.OpenLibs()
 	log.Printf("At start: Top=%v", ls.GetTop())
 
+	registerVec3Type(ls)
+	ls.DoString("vector = Vec3.new")
+
 	pkg := ls.GetGlobal("package")
 	packagePath := ls.GetField(pkg, "path").String()
 	for _, s := range packagePaths {
