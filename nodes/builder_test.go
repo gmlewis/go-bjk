@@ -26,7 +26,7 @@ func TestBuild(t *testing.T) {
 
 	design, err := c.NewBuilder().
 		// nodes:
-		AddNode("MakeQuad.wire-outline", "size=vector(1,1,1)").                           // node_idx: 0
+		AddNode("MakeQuad.wire-outline", "size=vector(1,1,1)", "normal=vector(0,0,1)").   // node_idx: 0
 		AddNode("Helix.wire-1", "start_angle=180", "segments=36", "direction=Clockwise"). // node_idx: 1
 		AddNode("Helix.wire-2", "start_angle=180", "segments=36").                        // node_idx: 2
 		AddNode("ExtrudeAlongCurve.wire-2", "flip=1").                                    // node_idx: 3
