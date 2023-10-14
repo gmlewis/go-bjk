@@ -190,7 +190,45 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 func deepCopyProps(inProps map[string]any) map[string]any {
 	outProps := map[string]any{}
 	for k, v := range inProps {
-		outProps[k] = v
+		lv, ok := v.(lua.LValue)
+		if !ok {
+			log.Fatalf("deepCopyProps: key=%q, expected LValue, got %T: %#v", k, v, v)
+		}
+		switch lv.Type() {
+
+		case lua.LTNil, lua.LTBool, lua.LTNumber, lua.LTString:
+			outProps[k] = lv
+
+		case lua.LTUserData:
+			ud, ok := lv.(*lua.LUserData)
+			if !ok {
+				log.Fatalf("deepCopyProps: key=%q, expected *LUserData, got %T: %#v", k, lv, lv)
+			}
+
+			//2023/10/14 14:14:50 deepCopyProps: unhandled property (k="values") type "table"=&lua.LTable{Metatable:(*lua.LNilType)(0x10487c360), array:[]lua.LValue{"Clockwise", "Counter-Clockwise"}, dict:map[lua.LValue]lua.LValue(nil), strdict:map[string]lua.LValue(nil), keys:[]lua.LValue(nil), k2i:map[lua.LValue]int(nil)}
+
+			var value any
+			switch t := ud.Value.(type) {
+			case *Vec3:
+				value = &Vec3{X: t.X, Y: t.Y, Z: t.Z}
+			default:
+				log.Fatalf("deepCopyProps: key=%q, expected *Vec3, got %T: %#v", k, t, t)
+			}
+
+			outProps[k] = &lua.LUserData{
+				Value:     value,
+				Env:       ud.Env,
+				Metatable: ud.Metatable,
+			}
+
+		case lua.LTTable:
+			// Copy the table over without a deep copy, as this is typically used for lookup of all
+			// possible enum values which are read-only and not going to be modified.
+			outProps[k] = lv
+
+		default:
+			log.Fatalf("deepCopyProps: unhandled property (k=%q) type %q=%#v", k, lv.Type(), lv)
+		}
 	}
 	return outProps
 }

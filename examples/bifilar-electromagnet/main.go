@@ -40,7 +40,7 @@ func main() {
 		AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
 		Connect("VectorMath.vert-gap.out", "Helix.wire-1.size").
 		AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
-		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[v])", *wireWidth)).
+		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[1]v)", *wireWidth)).
 		AddNode("ExtrudeAlongCurve.wire-1").
 		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-1.cross_section").
 		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
