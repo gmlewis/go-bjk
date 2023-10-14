@@ -40,7 +40,7 @@ func main() {
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
-		NewGroup("CoilPair", "cross_section,turns,size", "out_mesh", func(b *Builder) *Builder {
+		NewGroup("CoilPair", "cross_section,turns,size", "out_mesh", func(b *nodes.Builder) *nodes.Builder {
 			return b.
 				AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
 				AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
