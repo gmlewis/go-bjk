@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gmlewis/go-bjk/ast"
+	lua "github.com/yuin/gopher-lua"
 )
 
 // Builder represents a BJK builder.
@@ -49,8 +50,8 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 		Inputs:      n.Inputs,
 		Outputs:     n.Outputs,
 
-		Label:     n.Label,
-		NodeIndex: uint64(len(b.NodeOrder)), // 0-based indices
+		Label: n.Label,
+		Index: uint64(len(b.NodeOrder)), // 0-based indices
 	}
 	b.NodeOrder = append(b.NodeOrder, name)
 
@@ -103,7 +104,7 @@ func (b *Builder) Connect(from, to string) *Builder {
 
 	toInput.Kind.External = nil
 	toInput.Kind.Connection = &ast.Connection{
-		NodeIdx:   fromNode.NodeIndex,
+		NodeIdx:   fromNode.Index,
 		ParamName: fromOutput.Name,
 	}
 
@@ -122,14 +123,120 @@ func (b *Builder) Build() (*ast.BJK, error) {
 	}
 
 	g := bjk.Graph
+	ep := &b.ExternalParameters
+	addPV := func(pv *ast.ParamValue) { ep.ParamValues = append(ep.ParamValues, pv) }
 
 	for _, k := range b.NodeOrder {
-		g.Nodes = append(g.Nodes, b.Nodes[k])
+		node := b.Nodes[k]
+		g.Nodes = append(g.Nodes, node)
+		// For each unconnected input, add an ExternalParameters value.
+		for _, input := range node.Inputs {
+			if input.Kind.Connection != nil {
+				continue
+			}
+
+			ve, err := b.getValueEnum(input)
+			if err != nil {
+				return nil, err
+			}
+
+			addPV(&ast.ParamValue{
+				NodeIdx:   node.Index,
+				ParamName: input.Name,
+				ValueEnum: *ve,
+			})
+		}
 	}
 
 	dn := uint64(len(b.NodeOrder) - 1)
 	g.DefaultNode = &dn
-	g.ExternalParameters = &b.ExternalParameters
+	g.ExternalParameters = ep
 
 	return bjk, nil
+}
+
+func (b *Builder) getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
+	tAny, ok := input.Props["type"]
+	if !ok {
+		return nil, fmt.Errorf("getValueEnum: could not find 'type' for input %q: props=%#v", input.Name, input.Props)
+	}
+	t, ok := tAny.(lua.LString)
+	if !ok {
+		return nil, fmt.Errorf("getValueEnum: tAny=%T, want lua.LString", tAny)
+	}
+
+	switch t {
+	case "vec3":
+		return getVectorValue(t, input)
+	case "scalar":
+		return getScalarValue(t, input)
+	case "enum":
+		return getEnumValue(t, input)
+	default:
+		return nil, fmt.Errorf("t=%v, props=%#v", t, input.Props)
+	}
+}
+
+func getScalarValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
+	defLVal, ok := input.Props["default"]
+	if !ok {
+		return nil, fmt.Errorf("getScalarValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	val, ok := defLVal.(lua.LNumber)
+	if !ok {
+		return nil, fmt.Errorf("getScalarValue: defVal.Value=%T, want *Vec3", defLVal)
+	}
+
+	return &ast.ValueEnum{
+		Scalar: &ast.ScalarValue{X: float64(val)},
+	}, nil
+}
+
+func getEnumValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
+	valuesLVal, ok := input.Props["values"]
+	if !ok {
+		return nil, fmt.Errorf("getEnumValue: t=%v, could not find 'values' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	values, ok := valuesLVal.(*lua.LTable)
+	if !ok {
+		return nil, fmt.Errorf("getEnumValue: t=%v, valuesLVal=%T, want *lua.LTable", t, valuesLVal)
+	}
+
+	selectedLVal, ok := input.Props["selected"]
+	if !ok {
+		return nil, fmt.Errorf("getEnumValue: t=%v, could not find 'selected' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	selectedLNum, ok := selectedLVal.(lua.LNumber)
+	if !ok {
+		return nil, fmt.Errorf("getEnumValue: t=%v, input %q: selectedLVal=%T, want lua.LNumber", t, input.Name, selectedLVal)
+	}
+	selected := int(selectedLNum)
+
+	val, ok := values.RawGetInt(selected + 1).(lua.LString) // 1-indexed
+	if !ok {
+		return nil, fmt.Errorf("getEnumValue: t=%v, values.RawGetInt(%v)=%T, want string", t, selected, values.RawGetInt(selected))
+	}
+
+	return &ast.ValueEnum{
+		StrVal: &ast.StringValue{S: string(val)},
+	}, nil
+}
+
+func getVectorValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
+	defLVal, ok := input.Props["default"]
+	if !ok {
+		return nil, fmt.Errorf("getValueEnum: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	defVal, ok := defLVal.(*lua.LUserData)
+	if !ok {
+		return nil, fmt.Errorf("getValueEnum: t=%v, defLVal=%T, want *ast.LUserData", t, defLVal)
+	}
+	val, ok := defVal.Value.(*Vec3)
+	if !ok {
+		return nil, fmt.Errorf("getValueEnum: defVal.Value=%T, want *Vec3", defVal.Value)
+	}
+
+	return &ast.ValueEnum{
+		Vector: &ast.VectorValue{X: val.X, Y: val.Y, Z: val.Z},
+	}, nil
 }

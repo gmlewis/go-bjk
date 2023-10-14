@@ -73,8 +73,8 @@ type Node struct {
 
 	// Label is not preserved in the BJK file.
 	Label string // e.g. "Scalar"
-	// NodeIndex is not preserved in the BJK file.
-	NodeIndex uint64
+	// Index is not preserved in the BJK file.
+	Index uint64
 }
 
 // GetInput returns a named input or `nil, false` if not found.
@@ -164,7 +164,7 @@ type ParamValue struct {
 type ValueEnum struct {
 	Scalar    *ScalarValue    `  @@`
 	Selection *SelectionValue `| @@`
-	String    *StringValue    `| @@`
+	StrVal    *StringValue    `| @@`
 	Vector    *VectorValue    `| @@`
 }
 

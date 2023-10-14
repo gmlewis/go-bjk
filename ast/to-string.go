@@ -181,7 +181,52 @@ func (pv *ParamValue) String() string {
 	f("(")
 	f(indent+"node_idx: %v,", pv.NodeIdx)
 	f(indent+"param_name: %q,", pv.ParamName)
-	f(": %v") // trailing comma added by indentBlock
+	f("): %v", pv.ValueEnum) // trailing comma added by indentBlock
 
 	return strings.Join(lines, "\n")
+}
+
+func (ev ValueEnum) String() string {
+	// Only one value should be non-nil, so just combine them all:
+	return fmt.Sprintf("%v%v%v%v",
+		ev.Scalar,
+		ev.Selection,
+		ev.StrVal,
+		ev.Vector)
+}
+
+func (sv *ScalarValue) String() string {
+	if sv == nil {
+		return ""
+	}
+	return fmt.Sprintf("Scalar(%v)", addDot0(sv.X))
+}
+
+func (sv *StringValue) String() string {
+	if sv == nil {
+		return ""
+	}
+	return fmt.Sprintf("String(%q)", sv.S)
+}
+
+func (sv *SelectionValue) String() string {
+	if sv == nil {
+		return ""
+	}
+	return fmt.Sprintf("Selection(%q)", sv.Selection)
+}
+
+func (vv *VectorValue) String() string {
+	if vv == nil {
+		return ""
+	}
+	return fmt.Sprintf("Vector((%v,%v,%v))", addDot0(vv.X), addDot0(vv.Y), addDot0(vv.Z))
+}
+
+func addDot0(f float64) string {
+	s := fmt.Sprintf("%f", f)
+	if strings.Contains(s, ".") {
+		return s
+	}
+	return s + ".0"
 }

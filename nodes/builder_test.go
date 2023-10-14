@@ -83,7 +83,7 @@ func TestBuild(t *testing.T) {
 
 	got, want := design.String(), bifilarElectromagnet
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Log(got)
+		t.Log("\n\n" + got + "\n")
 		t.Errorf("design mismatch (-want +got):\n%v", diff)
 	}
 }
