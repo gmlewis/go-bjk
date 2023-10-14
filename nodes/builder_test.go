@@ -2,6 +2,7 @@ package nodes
 
 import (
 	_ "embed"
+	"fmt"
 	"testing"
 
 	"github.com/gmlewis/go-bjk/ast"
@@ -81,9 +82,53 @@ func TestBuild(t *testing.T) {
 	ui.Pan = ast.Vec2{914.03564, -222.5001}
 	ui.Zoom = 1.9877489
 
+	keyedParamValues := map[string]*ast.ParamValue{}
+	for _, pv := range design.Graph.ExternalParameters.ParamValues {
+		key := fmt.Sprintf("%v,%v", pv.NodeIdx, pv.ParamName)
+		keyedParamValues[key] = pv
+	}
+	var sortedParamValues []*ast.ParamValue
+	for _, key := range wantParamsSortOrder {
+		sortedParamValues = append(sortedParamValues, keyedParamValues[key])
+	}
+	design.Graph.ExternalParameters.ParamValues = sortedParamValues
+
 	got, want := design.String(), bifilarElectromagnet
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Log("\n\n" + got + "\n")
 		t.Errorf("design mismatch (-want +got):\n%v", diff)
 	}
+}
+
+var wantParamsSortOrder = []string{
+	"0,right",
+	"0,center",
+	"5,flip",
+	"13,start_angle",
+	"2,direction",
+	"1,start_angle",
+	"1,direction",
+	"12,vec_b",
+	"4,segments",
+	"13,direction",
+	"0,size",
+	"10,point",
+	"13,segments",
+	"4,start_angle",
+	"13,pos",
+	"4,direction",
+	"1,segments",
+	"12,op",
+	"2,pos",
+	"14,flip",
+	"2,start_angle",
+	"1,pos",
+	"0,normal",
+	"2,segments",
+	"11,op",
+	"7,x",
+	"4,pos",
+	"3,flip",
+	"8,flip",
+	"11,vec_b",
 }

@@ -220,11 +220,11 @@ func (vv *VectorValue) String() string {
 	if vv == nil {
 		return ""
 	}
-	return fmt.Sprintf("Vector((%v,%v,%v))", addDot0(vv.X), addDot0(vv.Y), addDot0(vv.Z))
+	return fmt.Sprintf("Vector((%v, %v, %v))", addDot0(vv.X), addDot0(vv.Y), addDot0(vv.Z))
 }
 
 func addDot0(f float64) string {
-	s := fmt.Sprintf("%f", f)
+	s := fmt.Sprintf("%v", f)
 	if strings.Contains(s, ".") {
 		return s
 	}
