@@ -111,11 +111,9 @@ func (c *Client) luaToInput(lv lua.LValue) (*ast.Input, error) {
 
 	name := t.RawGetString("name").String()
 	dataType := t.RawGetString("type").String()
-	kind := ast.DependencyKind{External: &ast.External{}} // TODO - make Conection[sic] kind
 	input := &ast.Input{
 		Name:     name,
 		DataType: dataType,
-		Kind:     kind,
 		Props:    props,
 	}
 	return input, nil

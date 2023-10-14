@@ -33,6 +33,29 @@ func (g *Graph) String() string {
 	}
 
 	f("],")
+
+	if g.DefaultNode == nil {
+		f("default_node: None,")
+	} else {
+		f("default_node: Some(%v),", *g.DefaultNode)
+	}
+
+	if g.UIData == nil {
+		f("ui_data: None,")
+	} else {
+		f("ui_data: Some((")
+		indentBlock(g.UIData.String(), f)
+		f(")),")
+	}
+
+	if g.ExternalParameters == nil {
+		f("external_parameters: None,")
+	} else {
+		f("external_parameters: Some((")
+		indentBlock(g.ExternalParameters.String(), f)
+		f(")),")
+	}
+
 	lines = append(lines, ")")
 	return strings.Join(lines, "\n")
 }
@@ -44,7 +67,7 @@ func (n *Node) String() string {
 	f("op_name: %q,", n.OpName)
 
 	if n.ReturnValue != nil {
-		f("return_value: %q,", *n.ReturnValue)
+		f("return_value: Some(%q),", *n.ReturnValue)
 	} else {
 		f("return_value: None,")
 	}
@@ -72,9 +95,18 @@ func (in *Input) String() string {
 	f("name: %q,", in.Name)
 	f("data_type: %q,", dataTypeToBJK(in.DataType))
 
-	if in.Kind.External != nil {
+	if v := in.Kind.Connection; v != nil {
+		f("kind: Conection(") // [sic]
+		f(indent+"node_idx: %v,", v.NodeIdx)
+		f(indent+"param_name: %q,", v.ParamName)
+		f("),")
+	} else if in.Kind.External != nil {
 		f("kind: External(")
-		f(indent + "promoted: None")
+		// TODO - f(indent + "promoted: None,")
+		f("),")
+	} else {
+		f("kind: External(")
+		f(indent + "promoted: None,")
 		f("),")
 	}
 
@@ -105,4 +137,46 @@ var dataTypeLookup = map[string]string{
 	"mesh":   "BJK_MESH",
 	"scalar": "BJK_SCALAR",
 	"vec3":   "BJK_VECTOR",
+}
+
+func (ui *UIData) String() string {
+	var lines []string
+	f := func(fmtStr string, args ...any) { lines = append(lines, fmt.Sprintf(fmtStr, args...)) }
+
+	f("node_positions: [")
+	for _, v2 := range ui.NodePositions {
+		f(indent+"(%0.5f, %0.5f),", v2.X, v2.Y)
+	}
+	f("],")
+
+	f("node_order: [")
+	for _, idx := range ui.NodeOrder {
+		f(indent+"%v", idx)
+	}
+	//      2,
+	//      3,
+	//      4,
+	//      5,
+	//      0,
+	//      1,
+	//      8,
+	//      9,
+	//      6,
+	//      7,
+	//      11,
+	//      10,
+	//      12,
+	//      13,
+	//      14,
+	//      15,
+	f("],")
+
+	f("pan: (%0.5f, %0.5f),", ui.Pan.X, ui.Pan.Y)
+	f("zoom: %0.7f,", ui.Zoom)
+	f("locked_gizmo_nodes: [],")
+	return strings.Join(lines, "\n")
+}
+
+func (ep *ExternalParameters) String() string {
+	return ""
 }

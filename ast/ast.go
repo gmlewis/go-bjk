@@ -73,6 +73,28 @@ type Node struct {
 
 	// Label is not preserved in the BJK file.
 	Label string // e.g. "Scalar"
+	// NodeIndex is not preserved in the BJK file.
+	NodeIndex uint64
+}
+
+// GetInput returns a named input or `nil, false` if not found.
+func (n *Node) GetInput(name string) (*Input, bool) {
+	for _, input := range n.Inputs {
+		if input.Name == name {
+			return input, true
+		}
+	}
+	return nil, false
+}
+
+// GetOutput returns a named output or `nil, false` if not found.
+func (n *Node) GetOutput(name string) (*Output, bool) {
+	for _, output := range n.Outputs {
+		if output.Name == name {
+			return output, true
+		}
+	}
+	return nil, false
 }
 
 // Input represents a node's input.

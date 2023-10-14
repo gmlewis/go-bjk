@@ -3,9 +3,11 @@ package nodes
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/gmlewis/go-bjk/ast"
+	"github.com/hexops/valast"
 )
 
 // Builder represents a BJK builder.
@@ -46,6 +48,9 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 		ReturnValue: n.ReturnValue,
 		Inputs:      n.Inputs,
 		Outputs:     n.Outputs,
+
+		Label:     n.Label,
+		NodeIndex: uint64(len(b.NodeOrder)), // 0-based indices
 	}
 	b.NodeOrder = append(b.NodeOrder, name)
 
@@ -54,6 +59,53 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 
 // Connect connects the `from` node.output to the `to` node.input.
 func (b *Builder) Connect(from, to string) *Builder {
+	fromParts := strings.Split(from, ".")
+	if len(fromParts) != 3 {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'from' name: %[1]q want 3 parts, got %v", from, to, len(fromParts)))
+		return b
+	}
+
+	fromNodeName := fmt.Sprintf("%v.%v", fromParts[0], fromParts[1])
+	fromNode, ok := b.Nodes[fromNodeName]
+	if !ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q", from, to, fromNodeName))
+		return b
+	}
+
+	fromOutput, ok := fromNode.GetOutput(fromParts[2])
+	if !ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node output: %q", from, to, fromParts[2]))
+		return b
+	}
+
+	toParts := strings.Split(to, ".")
+	if len(toParts) != 3 {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'to' name: %[1]q want 3 parts, got %v", from, to, len(toParts)))
+		return b
+	}
+
+	toNodeName := fmt.Sprintf("%v.%v", toParts[0], toParts[1])
+	toNode, ok := b.Nodes[toNodeName]
+	if !ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node: %q", from, to, toNodeName))
+		return b
+	}
+
+	toInput, ok := toNode.GetInput(toParts[2])
+	if !ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node input: %q", from, to, toParts[2]))
+		return b
+	}
+
+	if b.c.debug {
+		log.Printf("Connect(%q,%q):\nfrom:\n%#v\nto:\n%#v", from, to, valast.String(fromOutput), valast.String(toInput))
+	}
+
+	toInput.Kind.Connection = &ast.Connection{
+		NodeIdx:   fromNode.NodeIndex,
+		ParamName: fromOutput.Name,
+	}
+
 	return b
 }
 
