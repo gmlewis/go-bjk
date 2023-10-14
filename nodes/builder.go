@@ -3,11 +3,9 @@ package nodes
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/gmlewis/go-bjk/ast"
-	"github.com/hexops/valast"
 )
 
 // Builder represents a BJK builder.
@@ -17,6 +15,8 @@ type Builder struct {
 
 	Nodes     map[string]*ast.Node
 	NodeOrder []string
+
+	ExternalParameters ast.ExternalParameters
 }
 
 // NewBuilder returns a new BJK Builder.
@@ -97,10 +97,11 @@ func (b *Builder) Connect(from, to string) *Builder {
 		return b
 	}
 
-	if b.c.debug {
-		log.Printf("Connect(%q,%q):\nfrom:\n%#v\nto:\n%#v", from, to, valast.String(fromOutput), valast.String(toInput))
-	}
+	// if b.c.debug {
+	// 	log.Printf("Connect(%q,%q):\nfrom:\n%#v\nto:\n%#v", from, to, valast.String(fromOutput), valast.String(toInput))
+	// }
 
+	toInput.Kind.External = nil
 	toInput.Kind.Connection = &ast.Connection{
 		NodeIdx:   fromNode.NodeIndex,
 		ParamName: fromOutput.Name,
@@ -128,6 +129,7 @@ func (b *Builder) Build() (*ast.BJK, error) {
 
 	dn := uint64(len(b.NodeOrder) - 1)
 	g.DefaultNode = &dn
+	g.ExternalParameters = &b.ExternalParameters
 
 	return bjk, nil
 }

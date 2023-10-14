@@ -77,7 +77,9 @@ func TestBuild(t *testing.T) {
 		{1618.2654, 1269.7031},
 		{2386.4956, 821.07043},
 	}
-	ui.Pan = ast.Vec2{0, 0}
+	ui.NodeOrder = []uint64{2, 3, 4, 5, 0, 1, 8, 9, 6, 7, 11, 10, 12, 13, 14, 15}
+	ui.Pan = ast.Vec2{914.03564, -222.5001}
+	ui.Zoom = 1.9877489
 
 	got, want := design.String(), bifilarElectromagnet
 	if diff := cmp.Diff(want, got); diff != "" {

@@ -151,32 +151,37 @@ func (ui *UIData) String() string {
 
 	f("node_order: [")
 	for _, idx := range ui.NodeOrder {
-		f(indent+"%v", idx)
+		f(indent+"%v,", idx)
 	}
-	//      2,
-	//      3,
-	//      4,
-	//      5,
-	//      0,
-	//      1,
-	//      8,
-	//      9,
-	//      6,
-	//      7,
-	//      11,
-	//      10,
-	//      12,
-	//      13,
-	//      14,
-	//      15,
 	f("],")
 
 	f("pan: (%0.5f, %0.5f),", ui.Pan.X, ui.Pan.Y)
 	f("zoom: %0.7f,", ui.Zoom)
-	f("locked_gizmo_nodes: [],")
+	f("locked_gizmo_nodes: []") // trailing comma added by indentBlock
 	return strings.Join(lines, "\n")
 }
 
 func (ep *ExternalParameters) String() string {
-	return ""
+	var lines []string
+	f := func(fmtStr string, args ...any) { lines = append(lines, fmt.Sprintf(fmtStr, args...)) }
+
+	f("param_values: {")
+	for _, pv := range ep.ParamValues {
+		indentBlock(pv.String(), f)
+	}
+	f("}") // trailing comma added by indentBlock
+
+	return strings.Join(lines, "\n")
+}
+
+func (pv *ParamValue) String() string {
+	var lines []string
+	f := func(fmtStr string, args ...any) { lines = append(lines, fmt.Sprintf(fmtStr, args...)) }
+
+	f("(")
+	f(indent+"node_idx: %v,", pv.NodeIdx)
+	f(indent+"param_name: %q,", pv.ParamName)
+	f(": %v") // trailing comma added by indentBlock
+
+	return strings.Join(lines, "\n")
 }
