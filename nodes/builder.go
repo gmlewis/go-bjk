@@ -9,7 +9,10 @@ import (
 
 	"github.com/gmlewis/go-bjk/ast"
 	lua "github.com/yuin/gopher-lua"
+	"golang.org/x/exp/maps"
 )
+
+const nodeOffset = 50
 
 // Builder represents a BJK builder.
 type Builder struct {
@@ -93,13 +96,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 	fromNodeName := fmt.Sprintf("%v.%v", fromParts[0], fromParts[1])
 	fromNode, ok := b.Nodes[fromNodeName]
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q", from, to, fromNodeName))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q; valid choices are: %+v", from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
 	fromOutput, ok := fromNode.GetOutput(fromParts[2])
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node output: %q", from, to, fromParts[2]))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node's output pin: %q; valid choices are: %+v", from, to, fromParts[2], fromNode.GetOutputs()))
 		return b
 	}
 
@@ -112,13 +115,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 	toNodeName := fmt.Sprintf("%v.%v", toParts[0], toParts[1])
 	toNode, ok := b.Nodes[toNodeName]
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node: %q", from, to, toNodeName))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node: %q; valid choices are: %+v", from, to, toNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
 	toInput, ok := toNode.GetInput(toParts[2])
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node input: %q", from, to, toParts[2]))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node's input pin: %q; valid choices are: %+v", from, to, toParts[2], toNode.GetInputs()))
 		return b
 	}
 
@@ -311,9 +314,7 @@ func setInputScalarValue(t lua.LString, input *ast.Input, valStr string) error {
 		}
 	}
 
-	log.Printf("BEFORE: (x=%v) - setInputScalarValue: t=%v, input=%q, props=%#v", x, t, input.Name, input.Props)
 	input.Props["default"] = lua.LNumber(x)
-	log.Printf("AFTER: (x=%v) - setInputScalarValue: t=%v, input=%q, props=%#v", x, t, input.Name, input.Props)
 
 	return nil
 }
@@ -373,7 +374,13 @@ func (b *Builder) Build() (*ast.BJK, error) {
 	ep := &b.ExternalParameters
 	addPV := func(pv *ast.ParamValue) { ep.ParamValues = append(ep.ParamValues, pv) }
 
-	for _, k := range b.NodeOrder {
+	g.UIData.NodePositions = make([]*ast.Vec2, len(b.NodeOrder))
+	g.UIData.NodeOrder = make([]uint64, len(b.NodeOrder))
+
+	for i, k := range b.NodeOrder {
+		g.UIData.NodePositions[i] = &ast.Vec2{X: float64(nodeOffset * i), Y: float64(nodeOffset * i)}
+		g.UIData.NodeOrder[i] = uint64(i)
+
 		node, ok := b.Nodes[k]
 		if !ok {
 			return nil, fmt.Errorf("programming error: missing node '%v'", k)
@@ -438,8 +445,6 @@ func getScalarValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 	if !ok {
 		return nil, fmt.Errorf("getScalarValue: defVal.Value=%T, want *Vec3", defLVal)
 	}
-
-	log.Printf("GETTING SCALAR: t=%v, input=%q, props=(%p)=%#[3]v, val=%v", t, input.Name, input.Props, val)
 
 	return &ast.ValueEnum{
 		Scalar: &ast.ScalarValue{X: float64(val)},

@@ -87,6 +87,15 @@ func (n *Node) GetInput(name string) (*Input, bool) {
 	return nil, false
 }
 
+// GetInputs returns a slice of input names.
+func (n *Node) GetInputs() []string {
+	names := make([]string, 0, len(n.Inputs))
+	for _, input := range n.Inputs {
+		names = append(names, input.Name)
+	}
+	return names
+}
+
 // GetOutput returns a named output or `nil, false` if not found.
 func (n *Node) GetOutput(name string) (*Output, bool) {
 	for _, output := range n.Outputs {
@@ -95,6 +104,15 @@ func (n *Node) GetOutput(name string) (*Output, bool) {
 		}
 	}
 	return nil, false
+}
+
+// GetOutputs returns a slice of output names.
+func (n *Node) GetOutputs() []string {
+	names := make([]string, 0, len(n.Outputs))
+	for _, output := range n.Outputs {
+		names = append(names, output.Name)
+	}
+	return names
 }
 
 // Input represents a node's input.
