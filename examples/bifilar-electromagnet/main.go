@@ -33,27 +33,30 @@ func main() {
 	log.Printf("Got %v nodes.", len(c.Nodes))
 
 	design, err := c.NewBuilder().
-		// nodes
+		// inputs that drive the rest of the design
 		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[1]v)", *wireWidth), "normal=vector(0,0,1)").
+		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
+		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", *innerDiam, 2**wireWidth)).
+		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
+		// nodes
 		AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
 		AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
 		AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
 		AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
 		AddNode("MergeMeshes.wire-1-2").
-		// connections
+		// controlling connections
+		Connect("MakeScalar.vert-turns.x", "Helix.wire-1.turns").
+		Connect("MakeScalar.vert-turns.x", "Helix.wire-2.turns").
+		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
+		Connect("VectorMath.vert-gap.out", "Helix.wire-1.size").
+		Connect("VectorMath.vert-gap.out", "Helix.wire-2.size").
+		// mesh connections
 		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-1.cross_section").
 		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-2.cross_section").
 		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
 		Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
 		Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
 		Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
-		// AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
-		// AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", *innerDiam, 2**wireWidth)).
-		// AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
-		// Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-1.cross_section").
-		// Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-2.cross_section").
-		// Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
-		// Connect("VectorMath.vert-gap.out", "Helix.wire-1.size").
 		Build()
 	must(err)
 
