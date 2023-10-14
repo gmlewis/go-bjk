@@ -12,7 +12,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-const nodeOffset = 50
+const (
+	nodeXOffset = 360
+	nodeYOffset = 60
+)
 
 // Builder represents a BJK builder.
 type Builder struct {
@@ -378,7 +381,7 @@ func (b *Builder) Build() (*ast.BJK, error) {
 	g.UIData.NodeOrder = make([]uint64, len(b.NodeOrder))
 
 	for i, k := range b.NodeOrder {
-		g.UIData.NodePositions[i] = &ast.Vec2{X: float64(nodeOffset * i), Y: float64(nodeOffset * i)}
+		g.UIData.NodePositions[i] = &ast.Vec2{X: float64(nodeXOffset * i), Y: float64(nodeYOffset * i)}
 		g.UIData.NodeOrder[i] = uint64(i)
 
 		node, ok := b.Nodes[k]
