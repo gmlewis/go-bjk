@@ -3,6 +3,7 @@ package nodes
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/gmlewis/go-bjk/ast"
@@ -18,11 +19,17 @@ type Builder struct {
 	NodeOrder []string
 
 	ExternalParameters ast.ExternalParameters
+
+	InputsAlreadyConnected map[string]bool
 }
 
 // NewBuilder returns a new BJK Builder.
 func (c *Client) NewBuilder() *Builder {
-	return &Builder{c: c, Nodes: map[string]*ast.Node{}}
+	return &Builder{
+		c:                      c,
+		Nodes:                  map[string]*ast.Node{},
+		InputsAlreadyConnected: map[string]bool{},
+	}
 }
 
 // AddNode adds a new node to the design with the optional args.
@@ -44,10 +51,16 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 		return b
 	}
 
+	inputs, err := setInputValues(n.Inputs, args...)
+	if err != nil {
+		b.errs = append(b.errs, fmt.Errorf("setInputValues: %v", err))
+		return b
+	}
+
 	b.Nodes[name] = &ast.Node{
 		OpName:      parts[0],
 		ReturnValue: n.ReturnValue,
-		Inputs:      n.Inputs,
+		Inputs:      inputs,
 		Outputs:     n.Outputs,
 
 		Label: n.Label,
@@ -60,6 +73,11 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 
 // Connect connects the `from` node.output to the `to` node.input.
 func (b *Builder) Connect(from, to string) *Builder {
+	if b.InputsAlreadyConnected[to] {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
+	}
+	b.InputsAlreadyConnected[to] = true
+
 	fromParts := strings.Split(from, ".")
 	if len(fromParts) != 3 {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'from' name: %[1]q want 3 parts, got %v", from, to, len(fromParts)))
@@ -111,6 +129,168 @@ func (b *Builder) Connect(from, to string) *Builder {
 	return b
 }
 
+func setInputValues(inputs []*ast.Input, args ...string) ([]*ast.Input, error) {
+	var result []*ast.Input
+
+	assignments := map[string]string{}
+	for _, arg := range args {
+		parts := strings.Split(arg, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("unable to parse arg '%v', want x=y", arg)
+		}
+		k := strings.TrimSpace(parts[0])
+		v := strings.TrimSpace(parts[1])
+		assignments[k] = v
+	}
+
+	for _, input := range inputs {
+		if v, ok := assignments[input.Name]; ok {
+			in, err := setInputProp(input, v)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, in)
+			continue
+		}
+		result = append(result, &ast.Input{
+			Name:     input.Name,
+			DataType: input.DataType,
+			Kind:     input.Kind,
+			Props:    input.Props,
+		})
+	}
+
+	return result, nil
+}
+
+func setInputProp(input *ast.Input, valStr string) (*ast.Input, error) {
+	tAny, ok := input.Props["type"]
+	if !ok {
+		return nil, fmt.Errorf("setInputProp: could not find 'type' for input %q: props=%#v", input.Name, input.Props)
+	}
+	t, ok := tAny.(lua.LString)
+	if !ok {
+		return nil, fmt.Errorf("setInputProp: tAny=%T, want lua.LString", tAny)
+	}
+
+	switch t {
+	case "vec3":
+		return setInputVectorValue(t, input, valStr)
+	case "scalar":
+		return setInputScalarValue(t, input, valStr)
+	case "enum":
+		return setInputEnumValue(t, input, valStr)
+	default:
+		return nil, fmt.Errorf("setInputProp: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
+	}
+}
+
+func setInputEnumValue(t lua.LString, input *ast.Input, valStr string) (*ast.Input, error) {
+	valuesLVal, ok := input.Props["values"]
+	if !ok {
+		return nil, fmt.Errorf("setInputEnumValue: t=%v, could not find 'values' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	values, ok := valuesLVal.(*lua.LTable)
+	if !ok {
+		return nil, fmt.Errorf("setInputEnumValue: t=%v, valuesLVal=%T, want *lua.LTable", t, valuesLVal)
+	}
+
+	var index int
+	var found bool
+	var err error
+	values.ForEach(func(k, v lua.LValue) {
+		if v.String() == valStr {
+			found = true
+			kv, ok := k.(lua.LNumber)
+			if !ok {
+				err = fmt.Errorf("setInputEnumValue: t=%v, input.Name='%v', v='%v', k=%v (%T) want lua.LNumber", t, input.Name, v, k, k)
+				return
+			}
+			index = int(kv) - 1
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("setInputEnumValue: t=%v, input.Name='%v', props=%#v, values=%#v: enum '%v' not found", t, input.Name, input.Props, values, valStr)
+	}
+
+	input.Props["selected"] = lua.LNumber(index)
+
+	return &ast.Input{
+		Name:     input.Name,
+		DataType: input.DataType,
+		Kind:     input.Kind,
+		Props:    input.Props,
+	}, nil
+}
+
+func setInputScalarValue(t lua.LString, input *ast.Input, valStr string) (*ast.Input, error) {
+	if _, ok := input.Props["default"]; !ok {
+		return nil, fmt.Errorf("setInputScalarValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+
+	x, err := strconv.ParseFloat(valStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, unable to parse value: '%v'", t, input.Name, valStr)
+	}
+
+	input.Props["default"] = lua.LNumber(x)
+
+	return &ast.Input{
+		Name:     input.Name,
+		DataType: input.DataType,
+		Kind:     input.Kind,
+		Props:    input.Props,
+	}, nil
+}
+
+func setInputVectorValue(t lua.LString, input *ast.Input, valStr string) (*ast.Input, error) {
+	defLVal, ok := input.Props["default"]
+	if !ok {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	defVal, ok := defLVal.(*lua.LUserData)
+	if !ok {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, defLVal=%T, want *ast.LUserData", t, defLVal)
+	}
+
+	const prefix = "vector("
+	if !strings.HasPrefix(valStr, prefix) || valStr[len(valStr)-1:] != ")" {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, want vector(x,y,z), got %v", t, input.Name, valStr)
+	}
+	valStr = strings.TrimPrefix(valStr[:len(valStr)-1], prefix)
+	parts := strings.Split(valStr, ",")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, want vector(x,y,z), got %v", t, input.Name, valStr)
+	}
+	xStr := strings.TrimSpace(parts[0])
+	yStr := strings.TrimSpace(parts[1])
+	zStr := strings.TrimSpace(parts[2])
+	x, err := strconv.ParseFloat(xStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse X value: '%v'", t, input.Name, xStr)
+	}
+	y, err := strconv.ParseFloat(yStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse Y value: '%v'", t, input.Name, yStr)
+	}
+	z, err := strconv.ParseFloat(zStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse Z value: '%v'", t, input.Name, zStr)
+	}
+
+	defVal.Value = &Vec3{X: x, Y: y, Z: z}
+
+	return &ast.Input{
+		Name:     input.Name,
+		DataType: input.DataType,
+		Kind:     input.Kind,
+		Props:    input.Props,
+	}, nil
+}
+
 // Builder builds the design and returns the result.
 func (b *Builder) Build() (*ast.BJK, error) {
 	if len(b.errs) > 0 {
@@ -127,7 +307,10 @@ func (b *Builder) Build() (*ast.BJK, error) {
 	addPV := func(pv *ast.ParamValue) { ep.ParamValues = append(ep.ParamValues, pv) }
 
 	for _, k := range b.NodeOrder {
-		node := b.Nodes[k]
+		node, ok := b.Nodes[k]
+		if !ok {
+			return nil, fmt.Errorf("programming error: missing node '%v'", k)
+		}
 		g.Nodes = append(g.Nodes, node)
 		// For each unconnected input, add an ExternalParameters value.
 		for _, input := range node.Inputs {
@@ -135,9 +318,9 @@ func (b *Builder) Build() (*ast.BJK, error) {
 				continue
 			}
 
-			ve, err := b.getValueEnum(input)
+			ve, err := getValueEnum(input)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Build: node '%v': %w", k, err)
 			}
 
 			addPV(&ast.ParamValue{
@@ -155,7 +338,7 @@ func (b *Builder) Build() (*ast.BJK, error) {
 	return bjk, nil
 }
 
-func (b *Builder) getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
+func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 	tAny, ok := input.Props["type"]
 	if !ok {
 		return nil, fmt.Errorf("getValueEnum: could not find 'type' for input %q: props=%#v", input.Name, input.Props)
@@ -172,8 +355,10 @@ func (b *Builder) getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 		return getScalarValue(t, input)
 	case "enum":
 		return getEnumValue(t, input)
+	case "mesh":
+		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)
 	default:
-		return nil, fmt.Errorf("t=%v, props=%#v", t, input.Props)
+		return nil, fmt.Errorf("getValueEnum: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
 }
 

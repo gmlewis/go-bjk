@@ -26,20 +26,20 @@ func TestBuild(t *testing.T) {
 
 	design, err := c.NewBuilder().
 		AddNode("MakeQuad.wire-outline", "size=vector(1,1,1)").
-		AddNode("Helix.wire-1", "start_angle=180", "segments=36").
+		AddNode("Helix.wire-1", "start_angle=180", "segments=36", "direction=Clockwise").
 		AddNode("Helix.wire-2", "start_angle=0", "segments=36").
-		AddNode("ExtrudeAlongCurve.wire-1").
+		AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
 		AddNode("Helix.wire-3", "start_angle=180", "segments=36").
-		AddNode("ExtrudeAlongCurve.wire-2").
+		AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
 		AddNode("MergeMeshes.wire-1-2").
 		AddNode("MakeScalar.vert-turns", "x=2").
-		AddNode("ExtrudeAlongCurve.wire-3").
+		AddNode("ExtrudeAlongCurve.wire-3", "flip=1").
 		AddNode("MergeMeshes.wire-2-3").
 		AddNode("Point.helix-bbox", "point=vector(3,2,3)").
 		AddNode("VectorMath.vert-gap-1", "vec_b=vector(0,0.5,0)").
 		AddNode("VectorMath.vert-gap-2", "vec_b=vector(0,1.5,0)").
 		AddNode("Helix.wire-4", "start_angle=0", "segments=36").
-		AddNode("ExtrudeAlongCurve.wire-4").
+		AddNode("ExtrudeAlongCurve.wire-4", "flip=1").
 		AddNode("MergeMeshes.wire-3-4").
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap-1.vec_a").
 		Connect("VectorMath.vert-gap-1.out", "Helix.wire-1.size").
@@ -53,6 +53,14 @@ func TestBuild(t *testing.T) {
 		Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
 		Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
 		Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
+		Connect("Helix.wire-3.out_mesh", "ExtrudeAlongCurve.wire-3.backbone").
+		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-3.cross_section").
+		Connect("Helix.wire-4.out_mesh", "ExtrudeAlongCurve.wire-4.backbone").
+		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-4.cross_section").
+		Connect("MergeMeshes.wire-1-2.out_mesh", "MergeMeshes.wire-2-3.mesh_a").
+		Connect("ExtrudeAlongCurve.wire-3.out_mesh", "MergeMeshes.wire-2-3.mesh_b").
+		Connect("MergeMeshes.wire-2-3.out_mesh", "MergeMeshes.wire-3-4.mesh_a").
+		Connect("ExtrudeAlongCurve.wire-4.out_mesh", "MergeMeshes.wire-3-4.mesh_b").
 		Build()
 	if err != nil {
 		t.Fatal(err)
