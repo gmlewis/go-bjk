@@ -52,17 +52,22 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 		return b
 	}
 
+	// Make a deep copy of the node since this is a new instance and we don't want to share values.
 	inputs, err := b.setInputValues(name, n.Inputs, args...)
 	if err != nil {
 		b.errs = append(b.errs, fmt.Errorf("setInputValues: %v", err))
 		return b
 	}
+	outputs := make([]*ast.Output, 0, len(n.Outputs))
+	for _, out := range n.Outputs {
+		outputs = append(outputs, &ast.Output{Name: out.Name, DataType: out.DataType})
+	}
 
 	b.Nodes[name] = &ast.Node{
 		OpName:      parts[0],
-		ReturnValue: n.ReturnValue,
+		ReturnValue: n.ReturnValue, // OK not to make a deep copy of ReturnValue - it doesn't change.
 		Inputs:      inputs,
-		Outputs:     n.Outputs,
+		Outputs:     outputs,
 
 		Label: n.Label,
 		Index: uint64(len(b.NodeOrder)), // 0-based indices
@@ -154,34 +159,50 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 		}
 	}
 
-	for _, input := range inputs {
+	for _, origInput := range inputs {
+		// Make deep copy of inputs
+		input := &ast.Input{
+			Name:     origInput.Name,
+			DataType: origInput.DataType,
+			Kind:     ast.DependencyKind{},
+			Props:    deepCopyProps(origInput.Props),
+		}
+		if origInput.Kind.External != nil {
+			input.Kind.External = &ast.External{Promoted: origInput.Kind.External.Promoted}
+		}
+
 		if v, ok := assignments[input.Name]; ok {
-			in, err := setInputProp(input, v)
-			if err != nil {
+			if err := setInputProp(input, v); err != nil {
 				return nil, err
 			}
-			result = append(result, in)
+			result = append(result, input)
+			if b.c.debug {
+				log.Printf("input node '%v.%v' props=%p", nodeName, input.Name, input.Props)
+			}
 			continue
 		}
-		result = append(result, &ast.Input{
-			Name:     input.Name,
-			DataType: input.DataType,
-			Kind:     input.Kind,
-			Props:    input.Props,
-		})
+		result = append(result, input)
 	}
 
 	return result, nil
 }
 
-func setInputProp(input *ast.Input, valStr string) (*ast.Input, error) {
+func deepCopyProps(inProps map[string]any) map[string]any {
+	outProps := map[string]any{}
+	for k, v := range inProps {
+		outProps[k] = v
+	}
+	return outProps
+}
+
+func setInputProp(input *ast.Input, valStr string) error {
 	tAny, ok := input.Props["type"]
 	if !ok {
-		return nil, fmt.Errorf("setInputProp: could not find 'type' for input %q: props=%#v", input.Name, input.Props)
+		return fmt.Errorf("setInputProp: could not find 'type' for input %q: props=%#v", input.Name, input.Props)
 	}
 	t, ok := tAny.(lua.LString)
 	if !ok {
-		return nil, fmt.Errorf("setInputProp: tAny=%T, want lua.LString", tAny)
+		return fmt.Errorf("setInputProp: tAny=%T, want lua.LString", tAny)
 	}
 
 	switch t {
@@ -192,18 +213,18 @@ func setInputProp(input *ast.Input, valStr string) (*ast.Input, error) {
 	case "enum":
 		return setInputEnumValue(t, input, valStr)
 	default:
-		return nil, fmt.Errorf("setInputProp: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
+		return fmt.Errorf("setInputProp: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
 }
 
-func setInputEnumValue(t lua.LString, input *ast.Input, valStr string) (*ast.Input, error) {
+func setInputEnumValue(t lua.LString, input *ast.Input, valStr string) error {
 	valuesLVal, ok := input.Props["values"]
 	if !ok {
-		return nil, fmt.Errorf("setInputEnumValue: t=%v, could not find 'values' for input %q: props=%#v", t, input.Name, input.Props)
+		return fmt.Errorf("setInputEnumValue: t=%v, could not find 'values' for input %q: props=%#v", t, input.Name, input.Props)
 	}
 	values, ok := valuesLVal.(*lua.LTable)
 	if !ok {
-		return nil, fmt.Errorf("setInputEnumValue: t=%v, valuesLVal=%T, want *lua.LTable", t, valuesLVal)
+		return fmt.Errorf("setInputEnumValue: t=%v, valuesLVal=%T, want *lua.LTable", t, valuesLVal)
 	}
 
 	var index int
@@ -221,39 +242,34 @@ func setInputEnumValue(t lua.LString, input *ast.Input, valStr string) (*ast.Inp
 		}
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if !found {
-		return nil, fmt.Errorf("setInputEnumValue: t=%v, input.Name='%v', props=%#v, values=%#v: enum '%v' not found", t, input.Name, input.Props, values, valStr)
+		return fmt.Errorf("setInputEnumValue: t=%v, input.Name='%v', props=%#v, values=%#v: enum '%v' not found", t, input.Name, input.Props, values, valStr)
 	}
 
 	input.Props["selected"] = lua.LNumber(index)
 
-	return &ast.Input{
-		Name:     input.Name,
-		DataType: input.DataType,
-		Kind:     input.Kind,
-		Props:    input.Props,
-	}, nil
+	return nil
 }
 
-func setInputScalarValue(t lua.LString, input *ast.Input, valStr string) (*ast.Input, error) {
+func setInputScalarValue(t lua.LString, input *ast.Input, valStr string) error {
 	if _, ok := input.Props["default"]; !ok {
-		return nil, fmt.Errorf("setInputScalarValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+		return fmt.Errorf("setInputScalarValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
 	}
 
 	x, err := strconv.ParseFloat(valStr, 64)
 	if err != nil {
-		return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, unable to parse value: '%v'", t, input.Name, valStr)
+		return fmt.Errorf("setInputScalarValue: t=%v, input=%q, unable to parse value: '%v'", t, input.Name, valStr)
 	}
 
 	if minLVal, ok := input.Props["min"]; ok {
 		min, ok := minLVal.(lua.LNumber)
 		if !ok {
-			return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, min=%T, expected LNumber", t, input.Name, minLVal)
+			return fmt.Errorf("setInputScalarValue: t=%v, input=%q, min=%T, expected LNumber", t, input.Name, minLVal)
 		}
 		if x < float64(min) {
-			return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, attempt to set scalar (%v) < min (%v)", t, input.Name, x, min)
+			return fmt.Errorf("setInputScalarValue: t=%v, input=%q, attempt to set scalar (%v) < min (%v)", t, input.Name, x, min)
 		}
 	}
 
@@ -261,57 +277,47 @@ func setInputScalarValue(t lua.LString, input *ast.Input, valStr string) (*ast.I
 	input.Props["default"] = lua.LNumber(x)
 	log.Printf("AFTER: (x=%v) - setInputScalarValue: t=%v, input=%q, props=%#v", x, t, input.Name, input.Props)
 
-	return &ast.Input{
-		Name:     input.Name,
-		DataType: input.DataType,
-		Kind:     input.Kind,
-		Props:    input.Props,
-	}, nil
+	return nil
 }
 
-func setInputVectorValue(t lua.LString, input *ast.Input, valStr string) (*ast.Input, error) {
+func setInputVectorValue(t lua.LString, input *ast.Input, valStr string) error {
 	defLVal, ok := input.Props["default"]
 	if !ok {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+		return fmt.Errorf("setInputVectorValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
 	}
 	defVal, ok := defLVal.(*lua.LUserData)
 	if !ok {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, defLVal=%T, want *ast.LUserData", t, defLVal)
+		return fmt.Errorf("setInputVectorValue: t=%v, defLVal=%T, want *ast.LUserData", t, defLVal)
 	}
 
 	const prefix = "vector("
 	if !strings.HasPrefix(valStr, prefix) || valStr[len(valStr)-1:] != ")" {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, want vector(x,y,z), got %v", t, input.Name, valStr)
+		return fmt.Errorf("setInputVectorValue: t=%v, input=%q, want vector(x,y,z), got %v", t, input.Name, valStr)
 	}
 	valStr = strings.TrimPrefix(valStr[:len(valStr)-1], prefix)
 	parts := strings.Split(valStr, ",")
 	if len(parts) != 3 {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, want vector(x,y,z), got %v", t, input.Name, valStr)
+		return fmt.Errorf("setInputVectorValue: t=%v, input=%q, want vector(x,y,z), got %v", t, input.Name, valStr)
 	}
 	xStr := strings.TrimSpace(parts[0])
 	yStr := strings.TrimSpace(parts[1])
 	zStr := strings.TrimSpace(parts[2])
 	x, err := strconv.ParseFloat(xStr, 64)
 	if err != nil {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse X value: '%v'", t, input.Name, xStr)
+		return fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse X value: '%v'", t, input.Name, xStr)
 	}
 	y, err := strconv.ParseFloat(yStr, 64)
 	if err != nil {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse Y value: '%v'", t, input.Name, yStr)
+		return fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse Y value: '%v'", t, input.Name, yStr)
 	}
 	z, err := strconv.ParseFloat(zStr, 64)
 	if err != nil {
-		return nil, fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse Z value: '%v'", t, input.Name, zStr)
+		return fmt.Errorf("setInputVectorValue: t=%v, input=%q, unable to parse Z value: '%v'", t, input.Name, zStr)
 	}
 
 	defVal.Value = &Vec3{X: x, Y: y, Z: z}
 
-	return &ast.Input{
-		Name:     input.Name,
-		DataType: input.DataType,
-		Kind:     input.Kind,
-		Props:    input.Props,
-	}, nil
+	return nil
 }
 
 // Builder builds the design and returns the result.
@@ -395,7 +401,7 @@ func getScalarValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 		return nil, fmt.Errorf("getScalarValue: defVal.Value=%T, want *Vec3", defLVal)
 	}
 
-	log.Printf("GETTING SCALAR: t=%v, input=%q, props=%#v, val=%v", t, input.Name, input.Props, val)
+	log.Printf("GETTING SCALAR: t=%v, input=%q, props=(%p)=%#[3]v, val=%v", t, input.Name, input.Props, val)
 
 	return &ast.ValueEnum{
 		Scalar: &ast.ScalarValue{X: float64(val)},
