@@ -3,6 +3,7 @@ package nodes
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -51,7 +52,7 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 		return b
 	}
 
-	inputs, err := setInputValues(n.Inputs, args...)
+	inputs, err := b.setInputValues(name, n.Inputs, args...)
 	if err != nil {
 		b.errs = append(b.errs, fmt.Errorf("setInputValues: %v", err))
 		return b
@@ -129,7 +130,7 @@ func (b *Builder) Connect(from, to string) *Builder {
 	return b
 }
 
-func setInputValues(inputs []*ast.Input, args ...string) ([]*ast.Input, error) {
+func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...string) ([]*ast.Input, error) {
 	var result []*ast.Input
 
 	assignments := map[string]string{}
@@ -139,8 +140,18 @@ func setInputValues(inputs []*ast.Input, args ...string) ([]*ast.Input, error) {
 			return nil, fmt.Errorf("unable to parse arg '%v', want x=y", arg)
 		}
 		k := strings.TrimSpace(parts[0])
+
+		fullInputName := fmt.Sprintf("%v.%v", nodeName, k)
+		if b.InputsAlreadyConnected[fullInputName] {
+			return nil, fmt.Errorf("input '%v' already assigned", fullInputName)
+		}
+		b.InputsAlreadyConnected[fullInputName] = true
+
 		v := strings.TrimSpace(parts[1])
 		assignments[k] = v
+		if b.c.debug {
+			log.Printf("setting input node '%v' = %v", fullInputName, v)
+		}
 	}
 
 	for _, input := range inputs {
@@ -236,7 +247,19 @@ func setInputScalarValue(t lua.LString, input *ast.Input, valStr string) (*ast.I
 		return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, unable to parse value: '%v'", t, input.Name, valStr)
 	}
 
+	if minLVal, ok := input.Props["min"]; ok {
+		min, ok := minLVal.(lua.LNumber)
+		if !ok {
+			return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, min=%T, expected LNumber", t, input.Name, minLVal)
+		}
+		if x < float64(min) {
+			return nil, fmt.Errorf("setInputScalarValue: t=%v, input=%q, attempt to set scalar (%v) < min (%v)", t, input.Name, x, min)
+		}
+	}
+
+	log.Printf("BEFORE: (x=%v) - setInputScalarValue: t=%v, input=%q, props=%#v", x, t, input.Name, input.Props)
 	input.Props["default"] = lua.LNumber(x)
+	log.Printf("AFTER: (x=%v) - setInputScalarValue: t=%v, input=%q, props=%#v", x, t, input.Name, input.Props)
 
 	return &ast.Input{
 		Name:     input.Name,
@@ -371,6 +394,8 @@ func getScalarValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 	if !ok {
 		return nil, fmt.Errorf("getScalarValue: defVal.Value=%T, want *Vec3", defLVal)
 	}
+
+	log.Printf("GETTING SCALAR: t=%v, input=%q, props=%#v, val=%v", t, input.Name, input.Props, val)
 
 	return &ast.ValueEnum{
 		Scalar: &ast.ScalarValue{X: float64(val)},
