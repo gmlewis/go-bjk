@@ -19,11 +19,13 @@ const (
 
 // Builder represents a BJK builder.
 type Builder struct {
-	c    *Client
-	errs []error
+	c       *Client
+	errs    []error
+	isGroup bool
 
 	Nodes     map[string]*ast.Node
 	NodeOrder []string
+	Groups    map[string]*Builder
 
 	ExternalParameters ast.ExternalParameters
 
@@ -35,6 +37,7 @@ func (c *Client) NewBuilder() *Builder {
 	return &Builder{
 		c:                      c,
 		Nodes:                  map[string]*ast.Node{},
+		Groups:                 map[string]*Builder{},
 		InputsAlreadyConnected: map[string]bool{},
 	}
 }

@@ -39,24 +39,32 @@ func main() {
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", *innerDiam, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
-		// nodes
-		AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
-		AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
-		AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
-		AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
-		AddNode("MergeMeshes.wire-1-2").
-		// internal connections
-		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
-		Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
-		Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
-		Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
+		// define a pair of coils
+		NewGroup("CoilPair", "cross_section,turns,size", "out_mesh", func(b *Builder) *Builder {
+			return b.
+				AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
+				AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
+				AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
+				AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
+				AddNode("MergeMeshes.wire-1-2").
+				// internal connections
+				Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
+				Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
+				Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
+				Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
+				Input("cross_section", "ExtrudeAlongCurve.wire-1.cross_section").
+				Input("cross_section", "ExtrudeAlongCurve.wire-2.cross_section").
+				Input("turns", "Helix.wire-1.turns").
+				Input("turns", "Helix.wire-2.turns").
+				Input("size", "Helix.wire-1.size").
+				Input("size", "Helix.wire-2.size").
+				Output("MergeMeshes.wire-1-2.mesh_b", "out_mesh")
+		}).
+		AddNode("CoilPair.coils-1-2"). // instance of group
 		// external controlling connections
-		Connect("MakeScalar.vert-turns.x", "Helix.wire-1.turns").
-		Connect("MakeScalar.vert-turns.x", "Helix.wire-2.turns").
-		Connect("VectorMath.vert-gap.out", "Helix.wire-1.size").
-		Connect("VectorMath.vert-gap.out", "Helix.wire-2.size").
-		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-1.cross_section").
-		Connect("MakeQuad.wire-outline.out_mesh", "ExtrudeAlongCurve.wire-2.cross_section").
+		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
+		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
+		Connect("MakeQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section").
 		Build()
 	must(err)
 
