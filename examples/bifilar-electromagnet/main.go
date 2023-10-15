@@ -3,6 +3,10 @@
 // bifilar-electromagnet generates a Blackjack .bjk file that
 // represents a bifilar electromagnet similar to those found
 // here: https://github.com/gmlewis/irmf-examples/tree/master/examples/012-bifilar-electromagnet#axial-radial-bifilar-electromagnet-1irmf
+//
+// Warning - increasing the numPairs, numSegs, or vertTurns parameters
+// can cause significant degredation in the performance of Blackjack
+// when viewing the designs.
 package main
 
 import (
@@ -16,9 +20,10 @@ import (
 var (
 	debug     = flag.Bool("debug", false, "Turn on debugging info")
 	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
+	numPairs  = flag.Int("np", 11, "Number of coil pairs (minimum 1)")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	repoDir   = flag.String("repo", "/Users/glenn/src/github.com/gmlewis/blackjack", "Path to Blackjack repo")
-	vertTurns = flag.Float64("vt", 2.0, "Vertical turns of wire in electromagnet")
+	vertTurns = flag.Float64("vt", 5.0, "Vertical turns of wire in electromagnet")
 	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")
 	wireWidth = flag.Float64("ww", 1.0, "Wire width in millimeters")
 )
@@ -33,7 +38,7 @@ func main() {
 	log.Printf("Got %v nodes.", len(c.Nodes))
 
 	innerRadius := 0.5 * *innerDiam
-	design, err := c.NewBuilder().
+	b := c.NewBuilder().
 		// inputs that drive the rest of the design
 		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[1]v)", *wireWidth), "normal=vector(0,0,1)").
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
@@ -69,18 +74,29 @@ func main() {
 		// external controlling connections
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
 		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
-		Connect("MakeQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section").
-		// second instance of CoilPair
-		AddNode("VectorMath.size-3-4", fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", *wireWidth+*wireGap)).
-		Connect("VectorMath.vert-gap.out", "VectorMath.size-3-4.vec_a").
-		AddNode("CoilPair.coils-3-4").
-		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-3-4.turns").
-		Connect("VectorMath.size-3-4.out", "CoilPair.coils-3-4.size").
-		Connect("MakeQuad.wire-outline.out_mesh", "CoilPair.coils-3-4.cross_section").
-		AddNode("MergeMeshes.wires-12-34").
-		Connect("CoilPair.coils-1-2.out_mesh", "MergeMeshes.wires-12-34.mesh_a").
-		Connect("CoilPair.coils-3-4.out_mesh", "MergeMeshes.wires-12-34.mesh_b").
-		Build()
+		Connect("MakeQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
+
+	lastMergeMeshes := "CoilPair.coils-1-2"
+	for i := 2; i < *numPairs; i++ {
+		pairName := fmt.Sprintf("pair-%v", i)
+		sizeMathNode := fmt.Sprintf("VectorMath.size-%v", pairName)
+		thisCoilPair := fmt.Sprintf("CoilPair.%v", pairName)
+		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%v", pairName)
+		b = b.
+			// second instance of CoilPair
+			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))).
+			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
+			AddNode(thisCoilPair).
+			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
+			Connect(sizeMathNode+".out", thisCoilPair+".size").
+			Connect("MakeQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
+			AddNode(thisMergeMeshes).
+			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
+			Connect(thisCoilPair+".out_mesh", thisMergeMeshes+".mesh_b")
+		lastMergeMeshes = thisMergeMeshes
+	}
+
+	design, err := b.Build()
 	must(err)
 
 	fmt.Printf("%v\n", design)
