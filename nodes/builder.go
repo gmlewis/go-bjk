@@ -86,15 +86,15 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 	return b.instantiateNode(nodeType, name, n, args...)
 }
 
+func injectGroupName(fullPortName, groupName string) string {
+	parts := strings.Split(fullPortName, ".")
+	baseName, portName := strings.Join(parts[0:len(parts)-1], "."), parts[len(parts)-1]
+	return fmt.Sprintf("%v.%v.%v", baseName, groupName, portName)
+}
+
 func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...string) *Builder {
 	if b.c.debug {
 		log.Printf("Instantiating group '%v' with %v steps", groupName, len(group.groupRecorder))
-	}
-
-	injectGroupName := func(fullPortName string) string {
-		parts := strings.Split(fullPortName, ".")
-		baseName, portName := strings.Join(parts[0:len(parts)-1], "."), parts[len(parts)-1]
-		return fmt.Sprintf("%v.%v.%v", baseName, groupName, portName)
 	}
 
 	for i, step := range group.groupRecorder {
@@ -107,11 +107,11 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 			fullNodeName := fmt.Sprintf("%v.%v", step.args[0], groupName)
 			b = b.AddNode(fullNodeName, step.args[1:]...)
 		case "Connect":
-			b = b.Connect(injectGroupName(step.args[0]), injectGroupName(step.args[1]))
+			b = b.Connect(injectGroupName(step.args[0], groupName), injectGroupName(step.args[1], groupName))
 		case "Input":
-			b = b.Input(step.args[0], injectGroupName(step.args[1]))
+			// TODO: b = b.Input(step.args[0], injectGroupName(step.args[1]))
 		case "Output":
-			b = b.Output(injectGroupName(step.args[0]), step.args[1])
+			// TODO: b = b.Output(injectGroupName(step.args[0]), step.args[1])
 		default:
 			b.errs = append(b.errs, fmt.Errorf("programming error: unknown action %q", step.action))
 		}
@@ -177,13 +177,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 	}
 
 	fromNodeName := strings.Join(fromParts[0:len(fromParts)-1], ".")
+	fromOutputName := fromParts[len(fromParts)-1]
 	fromNode, ok := b.Nodes[fromNodeName]
 	if !ok {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q; valid choices are: %+v", from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
-	fromOutputName := fromParts[len(fromParts)-1]
 	fromOutput, ok := fromNode.GetOutput(fromOutputName)
 	if !ok {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node's output pin: %q; valid choices are: %+v", from, to, fromOutputName, fromNode.GetOutputs()))
@@ -197,13 +197,35 @@ func (b *Builder) Connect(from, to string) *Builder {
 	}
 
 	toNodeName := strings.Join(toParts[0:len(toParts)-1], ".")
+	toInputName := toParts[len(toParts)-1]
 	toNode, ok := b.Nodes[toNodeName]
 	if !ok {
+		if b.c.debug {
+			log.Printf("Checking groups %+v for '%v'", maps.Keys(b.Groups), toParts[0])
+		}
+
+		var connectionsMade int
+		if g, ok := b.Groups[toParts[0]]; ok {
+			for _, step := range g.groupRecorder {
+				// if b.c.debug {
+				// 	log.Printf("Checking step #%v of %v of group '%v': %v('%v',...)", i+1, len(g.groupRecorder), toNodeName, step.action, step.args[0])
+				// }
+
+				if step.action == "Input" && step.args[0] == toInputName {
+					connectionsMade++
+					newTo := injectGroupName(step.args[1], toNodeName)
+					b = b.Connect(from, newTo)
+				}
+			}
+		}
+		if connectionsMade > 0 {
+			return b
+		}
+
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node: %q; valid choices are: %+v", from, to, toNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
-	toInputName := toParts[len(toParts)-1]
 	toInput, ok := toNode.GetInput(toInputName)
 	if !ok {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node's input pin: %q; valid choices are: %+v", from, to, toInputName, toNode.GetInputs()))
