@@ -109,7 +109,6 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 		case "Connect":
 			b = b.Connect(injectGroupName(step.args[0], groupName), injectGroupName(step.args[1], groupName))
 		case "Input":
-			// TODO: b = b.Input(step.args[0], injectGroupName(step.args[1]))
 		case "Output":
 			// TODO: b = b.Output(injectGroupName(step.args[0]), step.args[1])
 		default:
@@ -157,6 +156,10 @@ func (b *Builder) instantiateNode(nodeType, name string, n *ast.Node, args ...st
 
 // Connect connects the `from` node.output_port to the `to` node.input_port.
 func (b *Builder) Connect(from, to string) *Builder {
+	if b.c.debug {
+		log.Printf("Connect(%q,%q)", from, to)
+	}
+
 	if b.isGroup {
 		b.groupRecorder = append(b.groupRecorder, &recorder{
 			action: "Connect",
@@ -165,10 +168,10 @@ func (b *Builder) Connect(from, to string) *Builder {
 		return b
 	}
 
-	if b.InputsAlreadyConnected[to] {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
-	}
-	b.InputsAlreadyConnected[to] = true
+	// if b.InputsAlreadyConnected[to] {
+	// 	b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
+	// }
+	// b.InputsAlreadyConnected[to] = true
 
 	fromParts := strings.Split(from, ".")
 	if len(fromParts) < 2 {
@@ -180,6 +183,24 @@ func (b *Builder) Connect(from, to string) *Builder {
 	fromOutputName := fromParts[len(fromParts)-1]
 	fromNode, ok := b.Nodes[fromNodeName]
 	if !ok {
+		/*
+			Connect("CoilPair.coils-1-2.out_mesh","MergeMeshes.wires-12-34.mesh_a") unable to find 'from' node: "CoilPair.coils-1-2"; valid choices are: [MakeQuad.wire-outline Helix.wire-2.CoilPair.coils-1-2 ExtrudeAlongCurve.wire-1.CoilPair.coils-3-4 ExtrudeAlongCurve.wire-2.CoilPair.coils-3-4 MergeMeshes.wire-1-2.CoilPair.coils-3-4 MakeScalar.vert-turns VectorMath.vert-gap Helix.wire-1.CoilPair.coils-1-2 MergeMeshes.wire-1-2.CoilPair.coils-1-2 Helix.wire-2.CoilPair.coils-3-4 MergeMeshes.wires-12-34 Helix.wire-1.CoilPair.coils-3-4 Point.helix-bbox ExtrudeAlongCurve.wire-1.CoilPair.coils-1-2 ExtrudeAlongCurve.wire-2.CoilPair.coils-1-2 VectorMath.size-3-4]
+		*/
+
+		var connectionsMade int
+		if g, ok := b.Groups[fromParts[0]]; ok {
+			for _, step := range g.groupRecorder {
+				if step.action == "Output" && step.args[1] == fromOutputName {
+					connectionsMade++
+					newFrom := injectGroupName(step.args[0], fromNodeName)
+					b = b.Connect(newFrom, to)
+				}
+			}
+		}
+		if connectionsMade > 0 {
+			return b
+		}
+
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q; valid choices are: %+v", from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
@@ -241,6 +262,11 @@ func (b *Builder) Connect(from, to string) *Builder {
 		NodeIdx:   fromNode.Index,
 		ParamName: fromOutput.Name,
 	}
+
+	if b.InputsAlreadyConnected[to] {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
+	}
+	b.InputsAlreadyConnected[to] = true
 
 	return b
 }
