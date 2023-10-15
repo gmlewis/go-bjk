@@ -19,9 +19,11 @@ const (
 
 // Builder represents a BJK builder.
 type Builder struct {
-	c       *Client
-	errs    []error
-	isGroup bool
+	c    *Client
+	errs []error
+
+	isGroup       bool
+	groupRecorder []*recorder
 
 	Nodes     map[string]*ast.Node
 	NodeOrder []string
@@ -30,6 +32,11 @@ type Builder struct {
 	ExternalParameters ast.ExternalParameters
 
 	InputsAlreadyConnected map[string]bool
+}
+
+type recorder struct {
+	action string
+	args   []string
 }
 
 // NewBuilder returns a new BJK Builder.
@@ -43,19 +50,81 @@ func (c *Client) NewBuilder() *Builder {
 }
 
 // AddNode adds a new node to the design with the optional args.
+// A nodes's name always starts with the type of node that it is, whether
+// it is a built-in type like 'MakeScalar' or a new group like 'CoilPair'.
+// The type is followed by a dot ('.') then one or more optional
+// (but recommended) label(s). A node generated from an instance of
+// a Group uses the node's name, a dot, then the group's full name.
+// When referring to inputs or outputs of a node, its full name is followed
+// by a dot then the name of the input or output port. For example,
+// "Helix.wire-1" or "Helix.wire-1.CoilPair.coils-1-2.start_angle".
 func (b *Builder) AddNode(name string, args ...string) *Builder {
 	if name == "" {
 		b.errs = append(b.errs, errors.New("AddNode: name cannot be empty"))
 		return b
 	}
 
-	parts := strings.Split(name, ".")
-	n, ok := b.c.Nodes[parts[0]]
-	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("AddNode: unknown node type '%v'", parts[0]))
+	if b.isGroup {
+		b.groupRecorder = append(b.groupRecorder, &recorder{
+			action: "AddNode",
+			args:   append([]string{name}, args...),
+		})
 		return b
 	}
 
+	parts := strings.Split(name, ".")
+	nodeType := parts[0]
+	n, ok := b.c.Nodes[nodeType]
+	if !ok {
+		if g, ok := b.Groups[nodeType]; ok {
+			return b.instantiateGroup(name, g, args...)
+		}
+		b.errs = append(b.errs, fmt.Errorf("AddNode: unknown node type '%v'", nodeType))
+		return b
+	}
+
+	return b.instantiateNode(nodeType, name, n, args...)
+}
+
+func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...string) *Builder {
+	if b.c.debug {
+		log.Printf("Instantiating group '%v' with %v steps", groupName, len(group.groupRecorder))
+	}
+
+	injectGroupName := func(fullPortName string) string {
+		parts := strings.Split(fullPortName, ".")
+		baseName, portName := strings.Join(parts[0:len(parts)-1], "."), parts[len(parts)-1]
+		return fmt.Sprintf("%v.%v.%v", baseName, groupName, portName)
+	}
+
+	for i, step := range group.groupRecorder {
+		if b.c.debug {
+			log.Printf("Group '%v' step #%v of %v: %v('%v') ...", groupName, i+1, len(group.groupRecorder), step.action, strings.Join(step.args, "', '"))
+		}
+
+		switch step.action {
+		case "AddNode":
+			fullNodeName := fmt.Sprintf("%v.%v", step.args[0], groupName)
+			b = b.AddNode(fullNodeName, step.args[1:]...)
+		case "Connect":
+			b = b.Connect(injectGroupName(step.args[0]), injectGroupName(step.args[1]))
+		case "Input":
+			b = b.Input(step.args[0], injectGroupName(step.args[1]))
+		case "Output":
+			b = b.Output(injectGroupName(step.args[0]), step.args[1])
+		default:
+			b.errs = append(b.errs, fmt.Errorf("programming error: unknown action %q", step.action))
+		}
+	}
+
+	if b.c.debug {
+		log.Printf("Completed group '%v' with %v steps", groupName, len(group.groupRecorder))
+	}
+
+	return b
+}
+
+func (b *Builder) instantiateNode(nodeType, name string, n *ast.Node, args ...string) *Builder {
 	if _, ok := b.Nodes[name]; ok {
 		b.errs = append(b.errs, fmt.Errorf("AddNode: node '%v' already exists", name))
 		return b
@@ -73,7 +142,7 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 	}
 
 	b.Nodes[name] = &ast.Node{
-		OpName:      parts[0],
+		OpName:      nodeType,
 		ReturnValue: n.ReturnValue, // OK not to make a deep copy of ReturnValue - it doesn't change.
 		Inputs:      inputs,
 		Outputs:     outputs,
@@ -86,48 +155,58 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 	return b
 }
 
-// Connect connects the `from` node.output to the `to` node.input.
+// Connect connects the `from` node.output_port to the `to` node.input_port.
 func (b *Builder) Connect(from, to string) *Builder {
+	if b.isGroup {
+		b.groupRecorder = append(b.groupRecorder, &recorder{
+			action: "Connect",
+			args:   []string{from, to},
+		})
+		return b
+	}
+
 	if b.InputsAlreadyConnected[to] {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
 	}
 	b.InputsAlreadyConnected[to] = true
 
 	fromParts := strings.Split(from, ".")
-	if len(fromParts) != 3 {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'from' name: %[1]q want 3 parts, got %v", from, to, len(fromParts)))
+	if len(fromParts) < 2 {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'from' name: %[1]q want at least 2 parts, got %v", from, to, len(fromParts)))
 		return b
 	}
 
-	fromNodeName := fmt.Sprintf("%v.%v", fromParts[0], fromParts[1])
+	fromNodeName := strings.Join(fromParts[0:len(fromParts)-1], ".")
 	fromNode, ok := b.Nodes[fromNodeName]
 	if !ok {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q; valid choices are: %+v", from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
-	fromOutput, ok := fromNode.GetOutput(fromParts[2])
+	fromOutputName := fromParts[len(fromParts)-1]
+	fromOutput, ok := fromNode.GetOutput(fromOutputName)
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node's output pin: %q; valid choices are: %+v", from, to, fromParts[2], fromNode.GetOutputs()))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node's output pin: %q; valid choices are: %+v", from, to, fromOutputName, fromNode.GetOutputs()))
 		return b
 	}
 
 	toParts := strings.Split(to, ".")
-	if len(toParts) != 3 {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'to' name: %[1]q want 3 parts, got %v", from, to, len(toParts)))
+	if len(toParts) < 2 {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'to' name: %[1]q want at least 2 parts, got %v", from, to, len(toParts)))
 		return b
 	}
 
-	toNodeName := fmt.Sprintf("%v.%v", toParts[0], toParts[1])
+	toNodeName := strings.Join(toParts[0:len(toParts)-1], ".")
 	toNode, ok := b.Nodes[toNodeName]
 	if !ok {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node: %q; valid choices are: %+v", from, to, toNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
-	toInput, ok := toNode.GetInput(toParts[2])
+	toInputName := toParts[len(toParts)-1]
+	toInput, ok := toNode.GetInput(toInputName)
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node's input pin: %q; valid choices are: %+v", from, to, toParts[2], toNode.GetInputs()))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node's input pin: %q; valid choices are: %+v", from, to, toInputName, toNode.GetInputs()))
 		return b
 	}
 
@@ -150,10 +229,12 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 	assignments := map[string]string{}
 	for _, arg := range args {
 		parts := strings.Split(arg, "=")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("unable to parse arg '%v', want x=y", arg)
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("bad arg '%v', want x=y", arg)
 		}
-		k := strings.TrimSpace(parts[0])
+
+		lhs, rhs := parts[0], strings.Join(parts[1:], "=")
+		k := strings.TrimSpace(lhs)
 
 		fullInputName := fmt.Sprintf("%v.%v", nodeName, k)
 		if b.InputsAlreadyConnected[fullInputName] {
@@ -161,7 +242,7 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 		}
 		b.InputsAlreadyConnected[fullInputName] = true
 
-		v := strings.TrimSpace(parts[1])
+		v := strings.TrimSpace(rhs)
 		assignments[k] = v
 		if b.c.debug {
 			log.Printf("setting input node '%v' = %v", fullInputName, v)
@@ -368,7 +449,7 @@ func setInputVectorValue(t lua.LString, input *ast.Input, valStr string) error {
 // Builder builds the design and returns the result.
 func (b *Builder) Build() (*ast.BJK, error) {
 	if len(b.errs) > 0 {
-		return nil, errors.Join(b.errs...)
+		return nil, fmt.Errorf("%v ERRORS FOUND:\n%w", len(b.errs), errors.Join(b.errs...))
 	}
 
 	bjk := ast.New()

@@ -15,7 +15,7 @@ import (
 
 var (
 	debug     = flag.Bool("debug", false, "Turn on debugging info")
-	innerDiam = flag.Float64("id", 3.0, "Inner diameter of first coil in millimeters")
+	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	repoDir   = flag.String("repo", "/Users/glenn/src/github.com/gmlewis/blackjack", "Path to Blackjack repo")
 	vertTurns = flag.Float64("vt", 2.0, "Vertical turns of wire in electromagnet")
@@ -32,14 +32,16 @@ func main() {
 
 	log.Printf("Got %v nodes.", len(c.Nodes))
 
+	innerRadius := 0.5 * *innerDiam
 	design, err := c.NewBuilder().
 		// inputs that drive the rest of the design
 		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[1]v)", *wireWidth), "normal=vector(0,0,1)").
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
-		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", *innerDiam, 2**wireWidth)).
+		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
+		// NewGroup("CoilPair", "cross_section,turns,inner_radius,height_per_turn", "out_mesh", func(b *nodes.Builder) *nodes.Builder {
 		NewGroup("CoilPair", "cross_section,turns,size", "out_mesh", func(b *nodes.Builder) *nodes.Builder {
 			return b.
 				AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
@@ -56,6 +58,8 @@ func main() {
 				Input("cross_section", "ExtrudeAlongCurve.wire-2.cross_section").
 				Input("turns", "Helix.wire-1.turns").
 				Input("turns", "Helix.wire-2.turns").
+				// Input("inner_radius", "Helix.wire-1.size").
+				// Input("inner_radius", "Helix.wire-2.size").
 				Input("size", "Helix.wire-1.size").
 				Input("size", "Helix.wire-2.size").
 				Output("MergeMeshes.wire-1-2.mesh_b", "out_mesh")

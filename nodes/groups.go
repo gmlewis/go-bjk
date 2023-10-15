@@ -1,6 +1,9 @@
 package nodes
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // NewGroup creates a new group of nodes and connections that can then later be instantiated
 // one or more times to make a more complex design.
@@ -10,11 +13,21 @@ func (b *Builder) NewGroup(groupName, inputs, outputs string, fn func(b *Builder
 		return b
 	}
 
+	if b.c.debug {
+		log.Printf("NewGroup(%q,%q,%q) calling NewBuilder", groupName, inputs, outputs)
+	}
+
 	gb := b.c.NewBuilder()
 	gb.isGroup = true
+	if b.c.debug {
+		log.Printf("NewGroup(%q,%q,%q) calling fn(gb)", groupName, inputs, outputs)
+	}
 	gb = fn(gb)
 	b.Groups[groupName] = gb
 
+	if b.c.debug {
+		log.Printf("NewGroup(%q,%q,%q) returning with %v steps in recorded group", groupName, inputs, outputs, len(gb.groupRecorder))
+	}
 	return b
 }
 
@@ -26,8 +39,10 @@ func (b *Builder) Input(inputName, connectTo string) *Builder {
 		return b
 	}
 
-	// TODO - connect this up
-
+	b.groupRecorder = append(b.groupRecorder, &recorder{
+		action: "Input",
+		args:   []string{inputName, connectTo},
+	})
 	return b
 }
 
@@ -39,7 +54,9 @@ func (b *Builder) Output(connectFrom, outputName string) *Builder {
 		return b
 	}
 
-	// TODO - connect this up
-
+	b.groupRecorder = append(b.groupRecorder, &recorder{
+		action: "Output",
+		args:   []string{connectFrom, outputName},
+	})
 	return b
 }
