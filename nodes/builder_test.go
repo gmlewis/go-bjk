@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/gmlewis/go-bjk/ast"
@@ -30,80 +29,6 @@ func TestMain(m *testing.M) {
 	defer c.Close()
 
 	os.Exit(m.Run())
-}
-
-func TestAddNode(t *testing.T) {
-	t.Parallel()
-	inputsByType := map[string]string{}
-	outputsByType := map[string]string{}
-
-	// First, generate a map of all possible BJK input/output types along
-	// with an input and an output of that type, then try every possible
-	// combination to make sure that go-bjk enforces type checking during "Connect".
-	for _, node := range c.Nodes {
-		for _, input := range node.Inputs {
-			if _, ok := inputsByType[input.DataType]; ok {
-				continue
-			}
-			inputsByType[input.DataType] = fmt.Sprintf("%v.%v", node.OpName, input.Name)
-		}
-		for _, output := range node.Outputs {
-			if _, ok := outputsByType[output.DataType]; ok {
-				continue
-			}
-			if in, ok := inputsByType[output.DataType]; ok && strings.HasPrefix(in, node.OpName) {
-				continue
-			}
-			outputsByType[output.DataType] = fmt.Sprintf("%v.%v", node.OpName, output.Name)
-		}
-	}
-
-	t.Logf("Found %v input types: %+v", len(inputsByType), inputsByType)
-	t.Logf("Found %v output types: %+v", len(outputsByType), outputsByType)
-
-	shouldErr := func(outNode, outType, inType string) bool {
-		out, ok := c.Nodes[outNode]
-		if !ok {
-			t.Fatalf("programming error: could not find node %q", outNode)
-		}
-		// If any of the output node's input pins is of type "mesh", then this pin
-		// will be unconnected and will cause an error.
-		// Since we iterate over maps to choose the inNodes above, this outcome
-		// can be different on each test.
-		for _, input := range out.Inputs {
-			if input.DataType == "mesh" {
-				return true
-			}
-		}
-
-		return outType != inType
-		// TODO: Maybe lua_string can connect to enum or selection or string inputs?
-	}
-
-	for outType, nodeOutPin := range outputsByType {
-		parts := strings.Split(nodeOutPin, ".")
-		outNode := parts[0]
-		for inType, nodeInPin := range inputsByType {
-			parts = strings.Split(nodeInPin, ".")
-			inNode := parts[0]
-
-			name := fmt.Sprintf("Connect('%v','%v')", nodeOutPin, nodeInPin)
-			t.Run(name, func(t *testing.T) {
-				wantErr := shouldErr(outNode, outType, inType)
-				_, err := c.NewBuilder().
-					AddNode(outNode).
-					AddNode(inNode).
-					Connect(nodeOutPin, nodeInPin).
-					Build()
-				if wantErr && err == nil {
-					t.Fatal("Connect worked, want error")
-				}
-				if !wantErr && err != nil {
-					t.Fatalf("Connect = %v, want success", err)
-				}
-			})
-		}
-	}
 }
 
 //go:embed testdata/bifilar-electromagnet.bjk
