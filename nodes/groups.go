@@ -7,26 +7,26 @@ import (
 
 // NewGroup creates a new group of nodes and connections that can then later be instantiated
 // one or more times to make a more complex design.
-func (b *Builder) NewGroup(groupName, inputs, outputs string, fn func(b *Builder) *Builder) *Builder {
+func (b *Builder) NewGroup(groupName string, fn func(b *Builder) *Builder) *Builder {
 	if _, ok := b.Groups[groupName]; ok || groupName == "" {
 		b.errs = append(b.errs, fmt.Errorf("already defined group %q", groupName))
 		return b
 	}
 
 	if b.c.debug {
-		log.Printf("NewGroup(%q,%q,%q) calling NewBuilder", groupName, inputs, outputs)
+		log.Printf("NewGroup(%q) calling NewBuilder", groupName)
 	}
 
 	gb := b.c.NewBuilder()
 	gb.isGroup = true
 	if b.c.debug {
-		log.Printf("NewGroup(%q,%q,%q) calling fn(gb)", groupName, inputs, outputs)
+		log.Printf("NewGroup(%q) calling fn(gb)", groupName)
 	}
 	gb = fn(gb)
 	b.Groups[groupName] = gb
 
 	if b.c.debug {
-		log.Printf("NewGroup(%q,%q,%q) returning with %v steps in recorded group", groupName, inputs, outputs, len(gb.groupRecorder))
+		log.Printf("NewGroup(%q) returning with %v steps in recorded group", groupName, len(gb.groupRecorder))
 	}
 	return b
 }

@@ -42,15 +42,15 @@ func main() {
 		// inputs that drive the rest of the design
 		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[1]v)", *wireWidth), "normal=vector(0,0,1)").
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
+		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
-		// NewGroup("CoilPair", "cross_section,turns,inner_radius,height_per_turn", "out_mesh", func(b *nodes.Builder) *nodes.Builder {
-		NewGroup("CoilPair", "cross_section,turns,size", "out_mesh", func(b *nodes.Builder) *nodes.Builder {
+		NewGroup("CoilPair", func(b *nodes.Builder) *nodes.Builder {
 			return b.
-				AddNode("Helix.wire-1", "start_angle=180", fmt.Sprintf("segments=%v", *numSegs)).
-				AddNode("Helix.wire-2", "start_angle=0", fmt.Sprintf("segments=%v", *numSegs)).
+				AddNode("Helix.wire-1", "start_angle=180").
+				AddNode("Helix.wire-2", "start_angle=0").
 				AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
 				AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
 				AddNode("MergeMeshes.wire-1-2").
@@ -63,16 +63,17 @@ func main() {
 				Input("cross_section", "ExtrudeAlongCurve.wire-2.cross_section").
 				Input("turns", "Helix.wire-1.turns").
 				Input("turns", "Helix.wire-2.turns").
-				// Input("inner_radius", "Helix.wire-1.size").
-				// Input("inner_radius", "Helix.wire-2.size").
 				Input("size", "Helix.wire-1.size").
 				Input("size", "Helix.wire-2.size").
+				Input("segments", "Helix.wire-1.segments").
+				Input("segments", "Helix.wire-2.segments").
 				Output("MergeMeshes.wire-1-2.out_mesh", "out_mesh")
 		}).
 		// instance of group
 		AddNode("CoilPair.coils-1-2").
 		// external controlling connections
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
+		Connect("MakeScalar.segments.x", "CoilPair.coils-1-2.segments").
 		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
 		Connect("MakeQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
 
@@ -88,6 +89,7 @@ func main() {
 			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
 			AddNode(thisCoilPair).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
+			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
 			Connect(sizeMathNode+".out", thisCoilPair+".size").
 			Connect("MakeQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
 			AddNode(thisMergeMeshes).
