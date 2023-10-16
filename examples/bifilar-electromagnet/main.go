@@ -44,7 +44,7 @@ func main() {
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
 		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
 		AddNode("MakeScalar.start-angle", "x=0").
-		AddNode("MakeScalar.start-angle-shift-mixer", "x=0", "min=-1", "max=1").
+		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
