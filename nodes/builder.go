@@ -31,7 +31,7 @@ type Builder struct {
 
 	ExternalParameters ast.ExternalParameters
 
-	InputsAlreadyConnected map[string]bool
+	InputsAlreadyConnected map[string]string
 }
 
 type recorder struct {
@@ -45,7 +45,7 @@ func (c *Client) NewBuilder() *Builder {
 		c:                      c,
 		Nodes:                  map[string]*ast.Node{},
 		Groups:                 map[string]*Builder{},
-		InputsAlreadyConnected: map[string]bool{},
+		InputsAlreadyConnected: map[string]string{},
 	}
 }
 
@@ -246,11 +246,11 @@ func (b *Builder) Connect(from, to string) *Builder {
 		ParamName: fromOutput.Name,
 	}
 
-	if b.InputsAlreadyConnected[to] {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
+	if v, ok := b.InputsAlreadyConnected[to]; ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected OR statically assigned to %q!", from, to, v))
 		return b
 	}
-	b.InputsAlreadyConnected[to] = true
+	b.InputsAlreadyConnected[to] = from
 
 	if toInput.DataType != fromOutput.DataType {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'from' node type '%v' not compatible with 'to' node type '%v'.", from, to, fromOutput.DataType, toInput.DataType))
@@ -273,12 +273,12 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 		k := strings.TrimSpace(lhs)
 
 		fullInputName := fmt.Sprintf("%v.%v", nodeName, k)
-		if b.InputsAlreadyConnected[fullInputName] {
-			return nil, fmt.Errorf("input '%v' already assigned", fullInputName)
+		if v, ok := b.InputsAlreadyConnected[fullInputName]; ok {
+			return nil, fmt.Errorf("input '%v' already assigned to %q!", fullInputName, v)
 		}
-		b.InputsAlreadyConnected[fullInputName] = true
-
 		v := strings.TrimSpace(rhs)
+		b.InputsAlreadyConnected[fullInputName] = v
+
 		assignments[k] = v
 		if b.c.debug {
 			log.Printf("setting input node '%v' = %v", fullInputName, v)
