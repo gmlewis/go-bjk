@@ -44,6 +44,7 @@ func main() {
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
 		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
 		AddNode("MakeScalar.start-angle", "x=0").
+		AddNode("MakeScalar.start-angle-shift-mixer", "x=0", "min=-1", "max=1").
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
@@ -87,7 +88,8 @@ func main() {
 	for i := 2; i < *numPairs; i++ {
 		pairName := fmt.Sprintf("pair-%v", i)
 		sizeMathNode := fmt.Sprintf("VectorMath.size-%v", pairName)
-		coilStartAngleNode := fmt.Sprintf("MakeScalar.start-angle-%v", pairName)
+		// coilStartAngleNode := fmt.Sprintf("MakeScalar.start-angle-%v", pairName)
+		coilStartAngleMixerNode := fmt.Sprintf("ScalarMath.start-angle-mixer-%v", pairName)
 		thisCoilPair := fmt.Sprintf("CoilPair.%v", pairName)
 		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%v", pairName)
 		b = b.
@@ -95,10 +97,12 @@ func main() {
 			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))).
 			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
 			AddNode(thisCoilPair).
-			AddNode(coilStartAngleNode, fmt.Sprintf("x=%v", 180.0*float64(i-1)/float64(*numPairs-1))).
+			AddNode(coilStartAngleMixerNode, "op=Mul", fmt.Sprintf("y=%v", 180.0*float64(i-1)/float64(*numPairs-1))).
+			// AddNode(coilStartAngleNode).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
 			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
-			Connect(coilStartAngleNode+".x", thisCoilPair+".start_angle").
+			Connect("MakeScalar.start-angle-shift-mixer.x", coilStartAngleMixerNode+".x").
+			Connect(coilStartAngleMixerNode+".out", thisCoilPair+".start_angle").
 			Connect(sizeMathNode+".out", thisCoilPair+".size").
 			Connect("MakeQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
 			AddNode(thisMergeMeshes).
