@@ -168,11 +168,6 @@ func (b *Builder) Connect(from, to string) *Builder {
 		return b
 	}
 
-	// if b.InputsAlreadyConnected[to] {
-	// 	b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
-	// }
-	// b.InputsAlreadyConnected[to] = true
-
 	fromParts := strings.Split(from, ".")
 	if len(fromParts) < 2 {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'from' name: %[1]q want at least 2 parts, got %v", from, to, len(fromParts)))
@@ -183,10 +178,6 @@ func (b *Builder) Connect(from, to string) *Builder {
 	fromOutputName := fromParts[len(fromParts)-1]
 	fromNode, ok := b.Nodes[fromNodeName]
 	if !ok {
-		/*
-			Connect("CoilPair.coils-1-2.out_mesh","MergeMeshes.wires-12-34.mesh_a") unable to find 'from' node: "CoilPair.coils-1-2"; valid choices are: [MakeQuad.wire-outline Helix.wire-2.CoilPair.coils-1-2 ExtrudeAlongCurve.wire-1.CoilPair.coils-3-4 ExtrudeAlongCurve.wire-2.CoilPair.coils-3-4 MergeMeshes.wire-1-2.CoilPair.coils-3-4 MakeScalar.vert-turns VectorMath.vert-gap Helix.wire-1.CoilPair.coils-1-2 MergeMeshes.wire-1-2.CoilPair.coils-1-2 Helix.wire-2.CoilPair.coils-3-4 MergeMeshes.wires-12-34 Helix.wire-1.CoilPair.coils-3-4 Point.helix-bbox ExtrudeAlongCurve.wire-1.CoilPair.coils-1-2 ExtrudeAlongCurve.wire-2.CoilPair.coils-1-2 VectorMath.size-3-4]
-		*/
-
 		var connectionsMade int
 		if g, ok := b.Groups[fromParts[0]]; ok {
 			for _, step := range g.groupRecorder {
@@ -228,10 +219,6 @@ func (b *Builder) Connect(from, to string) *Builder {
 		var connectionsMade int
 		if g, ok := b.Groups[toParts[0]]; ok {
 			for _, step := range g.groupRecorder {
-				// if b.c.debug {
-				// 	log.Printf("Checking step #%v of %v of group '%v': %v('%v',...)", i+1, len(g.groupRecorder), toNodeName, step.action, step.args[0])
-				// }
-
 				if step.action == "Input" && step.args[0] == toInputName {
 					connectionsMade++
 					newTo := injectGroupName(step.args[1], toNodeName)
@@ -253,10 +240,6 @@ func (b *Builder) Connect(from, to string) *Builder {
 		return b
 	}
 
-	// if b.c.debug {
-	// 	log.Printf("Connect(%q,%q):\nfrom:\n%#v\nto:\n%#v", from, to, valast.String(fromOutput), valast.String(toInput))
-	// }
-
 	toInput.Kind.External = nil
 	toInput.Kind.Connection = &ast.Connection{
 		NodeIdx:   fromNode.Index,
@@ -265,8 +248,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 
 	if b.InputsAlreadyConnected[to] {
 		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected!", from, to))
+		return b
 	}
 	b.InputsAlreadyConnected[to] = true
+
+	if toInput.DataType != fromOutput.DataType {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'from' node type '%v' not compatible with 'to' node type '%v'.", from, to, fromOutput.DataType, toInput.DataType))
+	}
 
 	return b
 }
@@ -564,6 +552,12 @@ func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 		return getScalarValue(t, input)
 	case "enum":
 		return getEnumValue(t, input)
+	case "file", "lua_string", "string":
+		log.Printf("WARNING: value of type '%v' not supported yet.", t)
+		return &ast.ValueEnum{StrVal: &ast.StringValue{S: "TODO"}}, nil
+	case "selection":
+		log.Printf("WARNING: value of type '%v' not supported yet.", t)
+		return &ast.ValueEnum{Selection: &ast.SelectionValue{Selection: "TODO"}}, nil
 	case "mesh":
 		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)
 	default:
@@ -596,15 +590,15 @@ func getEnumValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 		return nil, fmt.Errorf("getEnumValue: t=%v, valuesLVal=%T, want *lua.LTable", t, valuesLVal)
 	}
 
+	var selected int // 'selected' field is optional - default to 0 - for example, see: EditGeometry
 	selectedLVal, ok := input.Props["selected"]
-	if !ok {
-		return nil, fmt.Errorf("getEnumValue: t=%v, could not find 'selected' for input %q: props=%#v", t, input.Name, input.Props)
+	if ok {
+		selectedLNum, ok := selectedLVal.(lua.LNumber)
+		if !ok {
+			return nil, fmt.Errorf("getEnumValue: t=%v, input %q: selectedLVal=%T, want lua.LNumber", t, input.Name, selectedLVal)
+		}
+		selected = int(selectedLNum)
 	}
-	selectedLNum, ok := selectedLVal.(lua.LNumber)
-	if !ok {
-		return nil, fmt.Errorf("getEnumValue: t=%v, input %q: selectedLVal=%T, want lua.LNumber", t, input.Name, selectedLVal)
-	}
-	selected := int(selectedLNum)
 
 	val, ok := values.RawGetInt(selected + 1).(lua.LString) // 1-indexed
 	if !ok {
