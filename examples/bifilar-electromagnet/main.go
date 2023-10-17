@@ -31,6 +31,19 @@ var (
 func main() {
 	flag.Parse()
 
+	if *innerDiam < 0 {
+		log.Fatalf("-id must be at least 0")
+	}
+	if *numPairs < 1 {
+		log.Fatalf("-np must be at least 1")
+	}
+	if *numSegs < 1 {
+		log.Fatalf("-ns must be at least 1")
+	}
+	if *vertTurns < 0 {
+		log.Fatalf("-vt must be at least 0")
+	}
+
 	c, err := nodes.New(*repoDir, *debug)
 	must(err)
 	defer c.Close()
