@@ -124,6 +124,12 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 }
 
 func (b *Builder) instantiateNode(nodeType, name string, n *ast.Node, args ...string) *Builder {
+	parts := strings.Split(name, ".")
+	if len(parts) == 1 {
+		// auto-generate a label if the node doesn't have one.
+		name = fmt.Sprintf("%v.node-%v", name, len(b.NodeOrder)+1)
+	}
+
 	if _, ok := b.Nodes[name]; ok {
 		b.errs = append(b.errs, fmt.Errorf("AddNode: node '%v' already exists", name))
 		return b
@@ -140,6 +146,18 @@ func (b *Builder) instantiateNode(nodeType, name string, n *ast.Node, args ...st
 		outputs = append(outputs, &ast.Output{Name: out.Name, DataType: out.DataType})
 	}
 
+	var nodePosition *ast.Vec2
+	for _, arg := range args {
+		const label = "node_position="
+		if strings.HasPrefix(arg, label) {
+			pos, ok := parseVec2(arg[len(label):])
+			if !ok {
+				b.errs = append(b.errs, fmt.Errorf("unable to parse node '%v' arg: '%v'", name, arg))
+			}
+			nodePosition = pos
+		}
+	}
+
 	b.Nodes[name] = &ast.Node{
 		OpName:      nodeType,
 		ReturnValue: n.ReturnValue, // OK not to make a deep copy of ReturnValue - it doesn't change.
@@ -148,6 +166,8 @@ func (b *Builder) instantiateNode(nodeType, name string, n *ast.Node, args ...st
 
 		Label: n.Label,
 		Index: uint64(len(b.NodeOrder)), // 0-based indices
+
+		NodePosition: nodePosition,
 	}
 	b.NodeOrder = append(b.NodeOrder, name)
 
@@ -376,9 +396,21 @@ func setInputProp(input *ast.Input, valStr string) error {
 		return setInputScalarValue(t, input, valStr)
 	case "enum":
 		return setInputEnumValue(t, input, valStr)
+	case "string":
+		return setInputStringValue(t, input, valStr)
 	default:
 		return fmt.Errorf("setInputProp: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
+}
+
+func setInputStringValue(t lua.LString, input *ast.Input, valStr string) error {
+	if _, ok := input.Props["default"]; !ok {
+		return fmt.Errorf("setInputStringValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+
+	input.Props["default"] = lua.LString(valStr)
+
+	return nil
 }
 
 func setInputEnumValue(t lua.LString, input *ast.Input, valStr string) error {
@@ -500,8 +532,11 @@ func (b *Builder) Build() (*ast.BJK, error) {
 	g.UIData.NodePositions = make([]*ast.Vec2, len(b.NodeOrder))
 	g.UIData.NodeOrder = make([]uint64, len(b.NodeOrder))
 
+	lastXOffset, lastYOffset := float64(nodeXOffset), float64(-nodeYOffset)
 	for i, k := range b.NodeOrder {
-		g.UIData.NodePositions[i] = &ast.Vec2{X: float64(nodeXOffset * i), Y: float64(nodeYOffset * i)}
+		lastXOffset += nodeXOffset
+		lastYOffset += nodeYOffset
+		g.UIData.NodePositions[i] = &ast.Vec2{X: lastXOffset, Y: lastYOffset}
 		g.UIData.NodeOrder[i] = uint64(i)
 
 		node, ok := b.Nodes[k]
@@ -509,6 +544,13 @@ func (b *Builder) Build() (*ast.BJK, error) {
 			return nil, fmt.Errorf("programming error: missing node '%v'", k)
 		}
 		g.Nodes = append(g.Nodes, node)
+
+		if node.NodePosition != nil {
+			g.UIData.NodePositions[i] = node.NodePosition
+			lastXOffset = node.NodePosition.X
+			lastYOffset = node.NodePosition.Y
+		}
+
 		// For each unconnected input, add an ExternalParameters value.
 		for _, input := range node.Inputs {
 			if input.Kind.Connection != nil {
@@ -552,17 +594,34 @@ func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 		return getScalarValue(t, input)
 	case "enum":
 		return getEnumValue(t, input)
-	case "file", "lua_string", "string":
-		log.Printf("WARNING: value of type '%v' not supported yet.", t)
+	case "string":
+		return getStringValue(t, input)
+	case "file", "lua_string":
+		log.Printf("getValueEnum: WARNING: value of type '%v' not supported yet.", t)
 		return &ast.ValueEnum{StrVal: &ast.StringValue{S: "TODO"}}, nil
 	case "selection":
-		log.Printf("WARNING: value of type '%v' not supported yet.", t)
+		log.Printf("getValueEnum: WARNING: value of type '%v' not supported yet.", t)
 		return &ast.ValueEnum{Selection: &ast.SelectionValue{Selection: "TODO"}}, nil
 	case "mesh":
 		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)
 	default:
 		return nil, fmt.Errorf("getValueEnum: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
+}
+
+func getStringValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
+	defLVal, ok := input.Props["default"]
+	if !ok {
+		return nil, fmt.Errorf("getStringValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	val, ok := defLVal.(lua.LString)
+	if !ok {
+		return nil, fmt.Errorf("getStringValue: defVal.Value=%T, want lua.LString", defLVal)
+	}
+
+	return &ast.ValueEnum{
+		StrVal: &ast.StringValue{S: string(val)},
+	}, nil
 }
 
 func getScalarValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
@@ -572,7 +631,7 @@ func getScalarValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 	}
 	val, ok := defLVal.(lua.LNumber)
 	if !ok {
-		return nil, fmt.Errorf("getScalarValue: defVal.Value=%T, want *Vec3", defLVal)
+		return nil, fmt.Errorf("getScalarValue: defVal.Value=%T, want lua.LNumber", defLVal)
 	}
 
 	return &ast.ValueEnum{
@@ -627,4 +686,26 @@ func getVectorValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 	return &ast.ValueEnum{
 		Vector: &ast.VectorValue{X: val.X, Y: val.Y, Z: val.Z},
 	}, nil
+}
+
+func parseVec2(s string) (*ast.Vec2, bool) {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "(") || !strings.HasSuffix(s, ")") {
+		return nil, false
+	}
+	parts := strings.Split(s[1:len(s)-1], ",")
+	if len(parts) != 2 {
+		return nil, false
+	}
+	xStr := strings.TrimSpace(parts[0])
+	x, err := strconv.ParseFloat(xStr, 64)
+	if err != nil {
+		return nil, false
+	}
+	yStr := strings.TrimSpace(parts[1])
+	y, err := strconv.ParseFloat(yStr, 64)
+	if err != nil {
+		return nil, false
+	}
+	return &ast.Vec2{X: x, Y: y}, true
 }

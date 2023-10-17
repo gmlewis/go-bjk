@@ -75,6 +75,8 @@ type Node struct {
 	Label string // e.g. "Scalar"
 	// Index is not preserved in the BJK file.
 	Index uint64
+	// NodePosition, if set, is used to manually position the node.
+	NodePosition *Vec2
 }
 
 // GetInput returns a named input or `nil, false` if not found.

@@ -136,6 +136,7 @@ var dataTypeLookup = map[string]string{
 	"enum":   "BJK_STRING",
 	"mesh":   "BJK_MESH",
 	"scalar": "BJK_SCALAR",
+	"string": "BJK_STRING",
 	"vec3":   "BJK_VECTOR",
 }
 
