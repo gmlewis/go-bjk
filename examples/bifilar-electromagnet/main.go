@@ -71,32 +71,7 @@ func main() {
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
-		NewGroup("CoilPair", func(b *nodes.Builder) *nodes.Builder {
-			return b.
-				AddNode("ScalarMath.add180", "op=Add", "y=180").
-				AddNode("Helix.wire-1").
-				AddNode("Helix.wire-2").
-				AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
-				AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
-				AddNode("MergeMeshes.wire-1-2").
-				// internal connections
-				Connect("ScalarMath.add180.out", "Helix.wire-1.start_angle").
-				Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
-				Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
-				Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
-				Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
-				Input("cross_section", "ExtrudeAlongCurve.wire-1.cross_section").
-				Input("cross_section", "ExtrudeAlongCurve.wire-2.cross_section").
-				Input("turns", "Helix.wire-1.turns").
-				Input("turns", "Helix.wire-2.turns").
-				Input("size", "Helix.wire-1.size").
-				Input("size", "Helix.wire-2.size").
-				Input("segments", "Helix.wire-1.segments").
-				Input("segments", "Helix.wire-2.segments").
-				Input("start_angle", "ScalarMath.add180.x").
-				Input("start_angle", "Helix.wire-2.start_angle").
-				Output("MergeMeshes.wire-1-2.out_mesh", "out_mesh")
-		}).
+		NewGroup("CoilPair", makeCoilPair).
 		// instance of group
 		AddNode("MakeComment", "node_position=(0,600)", "comment=This is coil pair #1:").
 		AddNode("CoilPair.coils-1-2").
@@ -139,6 +114,33 @@ func main() {
 	must(err)
 
 	fmt.Printf("%v\n", design)
+}
+
+func makeCoilPair(b *nodes.Builder) *nodes.Builder {
+	return b.
+		AddNode("ScalarMath.add180", "op=Add", "y=180").
+		AddNode("Helix.wire-1").
+		AddNode("Helix.wire-2").
+		AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
+		AddNode("ExtrudeAlongCurve.wire-2", "flip=1").
+		AddNode("MergeMeshes.wire-1-2").
+		// internal connections
+		Connect("ScalarMath.add180.out", "Helix.wire-1.start_angle").
+		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
+		Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
+		Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
+		Connect("ExtrudeAlongCurve.wire-2.out_mesh", "MergeMeshes.wire-1-2.mesh_b").
+		Input("cross_section", "ExtrudeAlongCurve.wire-1.cross_section").
+		Input("cross_section", "ExtrudeAlongCurve.wire-2.cross_section").
+		Input("turns", "Helix.wire-1.turns").
+		Input("turns", "Helix.wire-2.turns").
+		Input("size", "Helix.wire-1.size").
+		Input("size", "Helix.wire-2.size").
+		Input("segments", "Helix.wire-1.segments").
+		Input("segments", "Helix.wire-2.segments").
+		Input("start_angle", "ScalarMath.add180.x").
+		Input("start_angle", "Helix.wire-2.start_angle").
+		Output("MergeMeshes.wire-1-2.out_mesh", "out_mesh")
 }
 
 func must(err error) {
