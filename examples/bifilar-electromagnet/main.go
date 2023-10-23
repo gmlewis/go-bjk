@@ -56,10 +56,11 @@ func main() {
 
 	log.Printf("Got %v nodes.", len(c.Nodes))
 
-	var nodePosY int
+	nodePosDY := 200
+	nodePosY := -nodePosDY
 	nextNodePos := func() string {
+		nodePosY += nodePosDY
 		s := fmt.Sprintf("node_position=(0,%v)", nodePosY)
-		nodePosY += 200
 		return s
 	}
 
@@ -86,6 +87,7 @@ func main() {
 		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
 
 	lastMergeMeshes := "CoilPair.coils-1-2"
+	nodePosDY = 600
 	for i := 2; i <= *numPairs; i++ {
 		pairName := fmt.Sprintf("pair-%v", i)
 		sizeMathNode := fmt.Sprintf("VectorMath.size-%v", pairName)
@@ -94,7 +96,7 @@ func main() {
 		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%v", pairName)
 		b = b.
 			// second instance of CoilPair
-			AddNode("MakeComment", fmt.Sprintf("node_position=(0,%v)", 600*i), fmt.Sprintf("comment=This is coil pair #%v:", i)).
+			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
 			AddNode(coilStartAngleMixerNode, "op=Mul", fmt.Sprintf("y=%v", 180.0*float64(i-1)/float64(*numPairs))).
 			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))).
 			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
