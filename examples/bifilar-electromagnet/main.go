@@ -71,7 +71,6 @@ func main() {
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
-		AddNode("MakeScalar.start-angle", "x=0").
 		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
 		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
@@ -83,7 +82,6 @@ func main() {
 		// external controlling connections
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
 		Connect("MakeScalar.segments.x", "CoilPair.coils-1-2.segments").
-		Connect("MakeScalar.start-angle.x", "CoilPair.coils-1-2.start_angle").
 		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
 		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
 
@@ -91,7 +89,6 @@ func main() {
 	for i := 2; i <= *numPairs; i++ {
 		pairName := fmt.Sprintf("pair-%v", i)
 		sizeMathNode := fmt.Sprintf("VectorMath.size-%v", pairName)
-		// coilStartAngleNode := fmt.Sprintf("MakeScalar.start-angle-%v", pairName)
 		coilStartAngleMixerNode := fmt.Sprintf("ScalarMath.start-angle-mixer-%v", pairName)
 		thisCoilPair := fmt.Sprintf("CoilPair.%v", pairName)
 		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%v", pairName)
@@ -102,7 +99,6 @@ func main() {
 			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))).
 			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
 			AddNode(thisCoilPair).
-			// AddNode(coilStartAngleNode).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
 			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
 			Connect("MakeScalar.start-angle-shift-mixer.x", coilStartAngleMixerNode+".x").
