@@ -3,11 +3,22 @@ package nodes
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 // NewGroup creates a new group of nodes and connections that can then later be instantiated
-// one or more times to make a more complex design.
-func (b *Builder) NewGroup(groupName string, fn func(b *Builder) *Builder) *Builder {
+// one or more times to make a more complex design. If the fullName includes a dot ('.')
+// and an instance name, then the creation of the group is immediately followed by
+// a call to `AddNode` using that same group and instance name. Otherwise, if no dot
+// is included, the `fullName` will be used as the name of the group.
+func (b *Builder) NewGroup(fullName string, fn func(b *Builder) *Builder) *Builder {
+	var hasInstanceName bool
+	groupName := fullName
+	if parts := strings.Split(fullName, "."); len(parts) > 1 {
+		groupName = parts[0]
+		hasInstanceName = true
+	}
+
 	if _, ok := b.Groups[groupName]; ok || groupName == "" {
 		b.errs = append(b.errs, fmt.Errorf("already defined group %q", groupName))
 		return b
@@ -28,6 +39,14 @@ func (b *Builder) NewGroup(groupName string, fn func(b *Builder) *Builder) *Buil
 	if b.c.debug {
 		log.Printf("NewGroup(%q) returning with %v steps in recorded group", groupName, len(gb.groupRecorder))
 	}
+
+	if hasInstanceName {
+		if b.c.debug {
+			log.Printf("NewGroup(%q) instantiating new instance of node", fullName)
+		}
+		b = b.AddNode(fullName)
+	}
+
 	return b
 }
 

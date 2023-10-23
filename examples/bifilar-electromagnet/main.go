@@ -56,31 +56,36 @@ func main() {
 
 	log.Printf("Got %v nodes.", len(c.Nodes))
 
+	var nodePosY int
+	nextNodePos := func() string {
+		s := fmt.Sprintf("node_position=(0,%v)", nodePosY)
+		nodePosY += 200
+		return s
+	}
+
 	innerRadius := 0.5 * *innerDiam
 	b := c.NewBuilder().
 		// inputs that drive the rest of the design
-		AddNode("MakeQuad.wire-outline", fmt.Sprintf("size=vector(%v,%[1]v,%[1]v)", *wireWidth), "normal=vector(0,0,1)").
-		AddNode("MakeComment.vert-turns", "node_position=(0,0)", "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
+		NewGroup("SizedQuad.wire-outline", embedNextNodePos(makeSizedQuad, nextNodePos)).
+		AddNode("MakeComment.vert-turns", nextNodePos(), "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
-		AddNode("MakeComment.segments", "node_position=(0,200)", "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
+		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
 		AddNode("MakeScalar.start-angle", "x=0").
-		AddNode("MakeComment.start-angle-shift-mixer", "node_position=(0,400)", "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
+		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
 		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
-		NewGroup("CoilPair", makeCoilPair).
-		// instance of group
-		AddNode("MakeComment", "node_position=(0,600)", "comment=This is coil pair #1:").
-		AddNode("CoilPair.coils-1-2").
+		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
+		NewGroup("CoilPair.coils-1-2", makeCoilPair).
 		// external controlling connections
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
 		Connect("MakeScalar.segments.x", "CoilPair.coils-1-2.segments").
 		Connect("MakeScalar.start-angle.x", "CoilPair.coils-1-2.start_angle").
 		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
-		Connect("MakeQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
+		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
 
 	lastMergeMeshes := "CoilPair.coils-1-2"
 	for i := 2; i <= *numPairs; i++ {
@@ -103,7 +108,7 @@ func main() {
 			Connect("MakeScalar.start-angle-shift-mixer.x", coilStartAngleMixerNode+".x").
 			Connect(coilStartAngleMixerNode+".out", thisCoilPair+".start_angle").
 			Connect(sizeMathNode+".out", thisCoilPair+".size").
-			Connect("MakeQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
+			Connect("SizedQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
 			AddNode(thisMergeMeshes).
 			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
 			Connect(thisCoilPair+".out_mesh", thisMergeMeshes+".mesh_b")
@@ -142,6 +147,27 @@ func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 		Input("start_angle", "Helix.wire-2.start_angle").
 		Output("MergeMeshes.wire-1-2.out_mesh", "out_mesh")
 }
+
+func embedNextNodePos(f embedNNPFunc, nextNodePos func() string) nodes.BuilderFunc {
+	return func(b *nodes.Builder) *nodes.Builder { return f(b, nextNodePos) }
+}
+
+type embedNNPFunc func(b *nodes.Builder, nextNodePos func() string) *nodes.Builder
+
+func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
+	return b.
+		AddNode("MakeComment.wire-width", nextNodePos(), "comment=This Scalar node controls the\nwidth of the wire in mm.").
+		AddNode("MakeScalar.wire-width", fmt.Sprintf("x=%v", *wireWidth)).
+		AddNode("MakeVector.wire-width").
+		Connect("MakeScalar.wire-width.x", "MakeVector.wire-width.x").
+		Connect("MakeScalar.wire-width.x", "MakeVector.wire-width.y").
+		Connect("MakeScalar.wire-width.x", "MakeVector.wire-width.z").
+		AddNode("MakeQuad.wire-outline", "normal=vector(0,0,1)").
+		Connect("MakeVector.wire-width.v", "MakeQuad.wire-outline.size").
+		Output("MakeQuad.wire-outline.out_mesh", "out_mesh")
+}
+
+var _ embedNNPFunc = makeSizedQuad
 
 func must(err error) {
 	if err != nil {

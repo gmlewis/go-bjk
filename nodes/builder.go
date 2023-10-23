@@ -17,6 +17,9 @@ const (
 	nodeYOffset = 60
 )
 
+// BuilderFunc is a func used to build up a design.
+type BuilderFunc func(b *Builder) *Builder
+
 // Builder represents a BJK builder.
 type Builder struct {
 	c    *Client
