@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gmlewis/go-bjk/ast"
 	"github.com/google/go-cmp/cmp"
+	"github.com/mitchellh/go-homedir"
 )
 
 const (
-	// TODO: make this work on a machine other than my laptop?!?
-	repoDir = "/Users/glenn/src/github.com/gmlewis/blackjack"
+	repoDir = "src/github.com/gmlewis/blackjack"
 )
 
 var (
@@ -21,8 +22,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	var err error
-	c, err = New(repoDir, true)
+	homeDir, err := homedir.Dir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	repoPath := filepath.Join(homeDir, repoDir)
+	c, err = New(repoPath, true)
 	if err != nil {
 		log.Fatal("unable to create test Client")
 	}

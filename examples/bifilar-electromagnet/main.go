@@ -13,8 +13,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
+	"github.com/mitchellh/go-homedir"
 )
 
 var (
@@ -22,7 +24,7 @@ var (
 	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numPairs  = flag.Int("np", 11, "Number of coil pairs (minimum 1)")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
-	repoDir   = flag.String("repo", "/Users/glenn/src/github.com/gmlewis/blackjack", "Path to Blackjack repo")
+	repoDir   = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo")
 	vertTurns = flag.Float64("vt", 5.0, "Vertical turns of wire in electromagnet")
 	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")
 	wireWidth = flag.Float64("ww", 1.0, "Wire width in millimeters")
@@ -44,7 +46,11 @@ func main() {
 		log.Fatalf("-vt must be at least 0")
 	}
 
-	c, err := nodes.New(*repoDir, *debug)
+	homeDir, err := homedir.Dir()
+	must(err)
+
+	repoPath := filepath.Join(homeDir, *repoDir)
+	c, err := nodes.New(repoPath, *debug)
 	must(err)
 	defer c.Close()
 

@@ -73,7 +73,7 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 			}
 			return ls.DoFile(fullPath)
 		}); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to find root %v: %w", root, err)
 		}
 	}
 
