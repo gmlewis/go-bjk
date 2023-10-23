@@ -67,13 +67,22 @@ func main() {
 	innerRadius := 0.5 * *innerDiam
 	b := c.NewBuilder().
 		// inputs that drive the rest of the design
+		AddNode("MakeComment.inner-radius", nextNodePos(), "comment=This Scalar node controls\nthe radius of the inner-most\ncoil pair in mm.").
+		AddNode("MakeScalar.inner-radius", fmt.Sprintf("x=%v", innerRadius)).
+		//
 		NewGroup("SizedQuad.wire-outline", embedNextNodePos(makeSizedQuad, nextNodePos)).
+		//
+		NewGroup("WireGaps.wire-gap", embedNextNodePos(makeWireGapNodes, nextNodePos)).
+		//
 		AddNode("MakeComment.vert-turns", nextNodePos(), "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
+		//
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
+		//
 		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
 		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
+		//
 		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
 		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
@@ -163,6 +172,19 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 		AddNode("MakeQuad.wire-outline", "normal=vector(0,0,1)").
 		Connect("MakeVector.wire-width.v", "MakeQuad.wire-outline.size").
 		Output("MakeQuad.wire-outline.out_mesh", "out_mesh")
+}
+
+func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
+	return b.
+		AddNode("MakeComment.wire-gap", nextNodePos(), "comment=This Scalar node controls\nthe gap between wires\nin mm.").
+		AddNode("MakeScalar.wire-gap", fmt.Sprintf("x=%v", *wireGap)).
+		AddNode("MakeVector.wire-gap-y").
+		AddNode("MakeVector.wire-gap-xz").
+		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-y.y").
+		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.x").
+		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.z").
+		Output("MakeVector.wire-gap-y.v", "vy").
+		Output("MakeVector.wire-gap-xz.v", "vxz")
 }
 
 var _ embedNNPFunc = makeSizedQuad
