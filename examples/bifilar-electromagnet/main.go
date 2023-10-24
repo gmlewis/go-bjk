@@ -89,8 +89,9 @@ func main() {
 		Connect("VectorMath.inner-rad-half-ww.out", "VectorMath.helix-bbox.vec_a").
 		Connect("SizedQuad.wire-outline.twice-wire-width-y", "VectorMath.helix-bbox.vec_b").
 		//
-		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)). // TODO
+		AddNode("VectorMath.vert-gap").
 		Connect("VectorMath.helix-bbox.out", "VectorMath.vert-gap.vec_a").
+		Connect("WireGaps.wire-gap.vy", "VectorMath.vert-gap.vec_b").
 		// define a pair of coils
 		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
 		NewGroup("CoilPair.coils-1-2", makeCoilPair).
@@ -112,7 +113,7 @@ func main() {
 			// second instance of CoilPair
 			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
 			AddNode(coilStartAngleMixerNode, "op=Mul", fmt.Sprintf("y=%v", 180.0*float64(i-1)/float64(*numPairs))).
-			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))).
+			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))). // TODO
 			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
 			AddNode(thisCoilPair).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
