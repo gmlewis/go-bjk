@@ -64,7 +64,6 @@ func main() {
 		return s
 	}
 
-	innerRadius := 0.5 * *innerDiam
 	b := c.NewBuilder().
 		// inputs that drive the rest of the design
 		NewGroup("InnerRadius.inner-radius", embedNextNodePos(makeInnerRadius, nextNodePos)).
@@ -82,9 +81,16 @@ func main() {
 		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
 		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
 		//
-		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)). // TODO
-		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).                                   // TODO
-		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
+		AddNode("VectorMath.inner-rad-half-ww").
+		Connect("InnerRadius.inner-radius.vxz", "VectorMath.inner-rad-half-ww.vec_a").
+		Connect("SizedQuad.wire-outline.half-wire-width-xz", "VectorMath.inner-rad-half-ww.vec_b").
+		//
+		AddNode("VectorMath.helix-bbox").
+		Connect("VectorMath.inner-rad-half-ww.out", "VectorMath.helix-bbox.vec_a").
+		Connect("SizedQuad.wire-outline.twice-wire-width-y", "VectorMath.helix-bbox.vec_b").
+		//
+		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)). // TODO
+		Connect("VectorMath.helix-bbox.out", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
 		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
 		NewGroup("CoilPair.coils-1-2", makeCoilPair).
@@ -177,9 +183,9 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-half-xz.vec_a").
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-1-xz.vec_a").
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-2-y.vec_a").
-		Output("VectorMath.mul-half-xz", "half-wire-width-xz").
-		Output("VectorMath.mul-1-xz", "wire-width-xz").
-		Output("VectorMath.mul-2-y", "twice-wire-width-y")
+		Output("VectorMath.mul-half-xz.out", "half-wire-width-xz").
+		Output("VectorMath.mul-1-xz.out", "wire-width-xz").
+		Output("VectorMath.mul-2-y.out", "twice-wire-width-y")
 }
 
 func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {

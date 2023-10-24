@@ -89,9 +89,12 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 	return b.instantiateNode(nodeType, name, n, args...)
 }
 
+// injectGroupName takes a fullPortName (e.g. "Type.a.b.c.d") and a groupName (e.g. "MyGroup.instance")
+// and combines them such at the groupName is injected after the Type but before the labels of the fullPortName:
+// e.g. "Type.MyGroup.instance.a.b.c.d".
 func injectGroupName(fullPortName, groupName string) string {
 	parts := strings.Split(fullPortName, ".")
-	baseName, portName := strings.Join(parts[0:len(parts)-1], "."), parts[len(parts)-1]
+	baseName, portName := parts[0], strings.Join(parts[1:], ".")
 	return fmt.Sprintf("%v.%v.%v", baseName, groupName, portName)
 }
 
@@ -107,13 +110,20 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 
 		switch step.action {
 		case "AddNode":
-			fullNodeName := fmt.Sprintf("%v.%v", step.args[0], groupName)
+			fullNodeName := injectGroupName(step.args[0], groupName) // fmt.Sprintf("%v.%v", step.args[0], groupName)
+			if b.c.debug {
+				log.Printf("calling: AddNode(%q, %+v)", fullNodeName, step.args[1:])
+			}
 			b = b.AddNode(fullNodeName, step.args[1:]...)
 		case "Connect":
-			b = b.Connect(injectGroupName(step.args[0], groupName), injectGroupName(step.args[1], groupName))
+			fullFromNodeName := injectGroupName(step.args[0], groupName)
+			fullToNodeName := injectGroupName(step.args[1], groupName)
+			if b.c.debug {
+				log.Printf("calling: Connect(%q, %q)", fullFromNodeName, fullToNodeName)
+			}
+			b = b.Connect(fullFromNodeName, fullToNodeName)
 		case "Input":
 		case "Output":
-			// TODO: b = b.Output(injectGroupName(step.args[0]), step.args[1])
 		default:
 			b.errs = append(b.errs, fmt.Errorf("programming error: unknown action %q", step.action))
 		}
@@ -180,7 +190,7 @@ func (b *Builder) instantiateNode(nodeType, name string, n *ast.Node, args ...st
 // Connect connects the `from` node.output_port to the `to` node.input_port.
 func (b *Builder) Connect(from, to string) *Builder {
 	if b.c.debug {
-		log.Printf("Connect(%q,%q)", from, to)
+		log.Printf("Connect(%q, %q)", from, to)
 	}
 
 	if b.isGroup {
@@ -193,7 +203,17 @@ func (b *Builder) Connect(from, to string) *Builder {
 
 	fromParts := strings.Split(from, ".")
 	if len(fromParts) < 2 {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'from' name: %[1]q want at least 2 parts, got %v", from, to, len(fromParts)))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): unable to parse 'from' name: %[1]q want at least 2 parts, got %v", from, to, len(fromParts)))
+		return b
+	}
+
+	// pre-emptively fail on common mistakes that are otherwise hard to debug
+	if _, ok := b.Nodes[from]; ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): missing port name on 'from' node: %q", from, to, from))
+		return b
+	}
+	if _, ok := b.Nodes[to]; ok {
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): missing port name on 'to' node: %q", from, to, to))
 		return b
 	}
 
@@ -204,9 +224,15 @@ func (b *Builder) Connect(from, to string) *Builder {
 		var connectionsMade int
 		if g, ok := b.Groups[fromParts[0]]; ok {
 			for _, step := range g.groupRecorder {
+				// if b.c.debug {
+				// 	log.Printf("Searching for group connection: fromNodeName=%q, fromOutputName=%q, step.action=%q, step.args=%+v", fromNodeName, fromOutputName, step.action, step.args)
+				// }
 				if step.action == "Output" && step.args[1] == fromOutputName {
 					connectionsMade++
 					newFrom := injectGroupName(step.args[0], fromNodeName)
+					if b.c.debug {
+						log.Printf("Found group output connection: fromNodeName=%q, fromOutputName=%q, step.action=%q, step.args=%+v, newFrom=%q", fromNodeName, fromOutputName, step.action, step.args, newFrom)
+					}
 					b = b.Connect(newFrom, to)
 				}
 			}
@@ -215,19 +241,24 @@ func (b *Builder) Connect(from, to string) *Builder {
 			return b
 		}
 
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node: %q; valid choices are: %+v", from, to, fromNodeName, maps.Keys(b.Nodes)))
+		msg := "Connect(%q, %q) unable to find 'from' node: %q; valid choices are: %+v"
+		if b.c.debug {
+			log.Fatalf(msg, from, to, fromNodeName, maps.Keys(b.Nodes))
+		}
+
+		b.errs = append(b.errs, fmt.Errorf(msg, from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
 	fromOutput, ok := fromNode.GetOutput(fromOutputName)
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'from' node's output pin: %q; valid choices are: %+v", from, to, fromOutputName, fromNode.GetOutputs()))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) unable to find 'from' node's output pin: %q; valid choices are: %+v", from, to, fromOutputName, fromNode.GetOutputs()))
 		return b
 	}
 
 	toParts := strings.Split(to, ".")
 	if len(toParts) < 2 {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q): unable to parse 'to' name: %[1]q want at least 2 parts, got %v", from, to, len(toParts)))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): unable to parse 'to' name: %[1]q want at least 2 parts, got %v", from, to, len(toParts)))
 		return b
 	}
 
@@ -253,13 +284,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 			return b
 		}
 
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node: %q; valid choices are: %+v", from, to, toNodeName, maps.Keys(b.Nodes)))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) unable to find 'to' node: %q; valid choices are: %+v", from, to, toNodeName, maps.Keys(b.Nodes)))
 		return b
 	}
 
 	toInput, ok := toNode.GetInput(toInputName)
 	if !ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) unable to find 'to' node's input pin: %q; valid choices are: %+v", from, to, toInputName, toNode.GetInputs()))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) unable to find 'to' node's input pin: %q; valid choices are: %+v", from, to, toInputName, toNode.GetInputs()))
 		return b
 	}
 
@@ -270,13 +301,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 	}
 
 	if v, ok := b.InputsAlreadyConnected[to]; ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'to' node '%[2]v' already connected OR statically assigned to %q!", from, to, v))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) - 'to' node '%[2]v' already connected OR statically assigned to %q!", from, to, v))
 		return b
 	}
 	b.InputsAlreadyConnected[to] = from
 
 	if toInput.DataType != fromOutput.DataType {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q,%q) - 'from' node type '%v' not compatible with 'to' node type '%v'.", from, to, fromOutput.DataType, toInput.DataType))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) - 'from' node type '%v' not compatible with 'to' node type '%v'.", from, to, fromOutput.DataType, toInput.DataType))
 	}
 
 	return b
