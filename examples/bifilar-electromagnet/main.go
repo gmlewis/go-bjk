@@ -102,6 +102,7 @@ func main() {
 		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
 
 	lastMergeMeshes := "CoilPair.coils-1-2"
+	lastSizeOut := "VectorMath.vert-gap.out"
 	nodePosDY = 600
 	for i := 2; i <= *numPairs; i++ {
 		pairName := fmt.Sprintf("pair-%v", i)
@@ -113,8 +114,8 @@ func main() {
 			// second instance of CoilPair
 			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
 			AddNode(coilStartAngleMixerNode, "op=Mul", fmt.Sprintf("y=%v", 180.0*float64(i-1)/float64(*numPairs))).
-			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", float64(i-1)*(*wireWidth+*wireGap))). // TODO
-			Connect("VectorMath.vert-gap.out", sizeMathNode+".vec_a").
+			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", *wireWidth+*wireGap)). // TODO
+			Connect(lastSizeOut, sizeMathNode+".vec_a").
 			AddNode(thisCoilPair).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
 			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
@@ -126,6 +127,7 @@ func main() {
 			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
 			Connect(thisCoilPair+".out_mesh", thisMergeMeshes+".mesh_b")
 		lastMergeMeshes = thisMergeMeshes
+		lastSizeOut = sizeMathNode + ".out"
 	}
 
 	design, err := b.Build()
