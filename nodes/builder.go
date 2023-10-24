@@ -95,6 +95,9 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 func injectGroupName(fullPortName, groupName string) string {
 	parts := strings.Split(fullPortName, ".")
 	baseName, portName := parts[0], strings.Join(parts[1:], ".")
+	if portName == "" {
+		return fmt.Sprintf("%v.%v", baseName, groupName)
+	}
 	return fmt.Sprintf("%v.%v.%v", baseName, groupName, portName)
 }
 
@@ -110,7 +113,7 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 
 		switch step.action {
 		case "AddNode":
-			fullNodeName := injectGroupName(step.args[0], groupName) // fmt.Sprintf("%v.%v", step.args[0], groupName)
+			fullNodeName := injectGroupName(step.args[0], groupName)
 			if b.c.debug {
 				log.Printf("calling: AddNode(%q, %+v)", fullNodeName, step.args[1:])
 			}

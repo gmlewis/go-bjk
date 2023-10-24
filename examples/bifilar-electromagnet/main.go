@@ -72,6 +72,10 @@ func main() {
 		//
 		NewGroup("WireGaps.wire-gap", embedNextNodePos(makeWireGapNodes, nextNodePos)).
 		//
+		NewGroup("WireWidthAndGap.1", makeWireWidthAndGap).
+		Connect("SizedQuad.wire-outline.wire-width-xz", "WireWidthAndGap.1.vec_a").
+		Connect("WireGaps.wire-gap.vxz", "WireWidthAndGap.1.vec_b").
+		//
 		AddNode("MakeComment.vert-turns", nextNodePos(), "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
 		//
@@ -114,7 +118,8 @@ func main() {
 			// second instance of CoilPair
 			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
 			AddNode(coilStartAngleMixerNode, "op=Mul", fmt.Sprintf("y=%v", 180.0*float64(i-1)/float64(*numPairs))).
-			AddNode(sizeMathNode, fmt.Sprintf("vec_b=vector(%v,0,%[1]v)", *wireWidth+*wireGap)). // TODO
+			AddNode(sizeMathNode).
+			Connect("WireWidthAndGap.1.vxz", sizeMathNode+".vec_b").
 			Connect(lastSizeOut, sizeMathNode+".vec_a").
 			AddNode(thisCoilPair).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
@@ -202,6 +207,14 @@ func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builde
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.z").
 		Output("MakeVector.wire-gap-y.v", "vy").
 		Output("MakeVector.wire-gap-xz.v", "vxz")
+}
+
+func makeWireWidthAndGap(b *nodes.Builder) *nodes.Builder {
+	return b.
+		AddNode("VectorMath", "op=Add").
+		Input("vec_a", "VectorMath.vec_a").
+		Input("vec_b", "VectorMath.vec_b").
+		Output("VectorMath.out", "vxz")
 }
 
 func makeInnerRadius(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
