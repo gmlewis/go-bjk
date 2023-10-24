@@ -170,7 +170,16 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 		Connect("MakeScalar.wire-width.x", "MakeVector.wire-width.z").
 		AddNode("MakeQuad.wire-outline", "normal=vector(0,0,1)").
 		Connect("MakeVector.wire-width.v", "MakeQuad.wire-outline.size").
-		Output("MakeQuad.wire-outline.out_mesh", "out_mesh")
+		Output("MakeQuad.wire-outline.out_mesh", "out_mesh").
+		AddNode("VectorMath.mul-half-xz", "op=Mul", "vec_b=vector(0.5,0,0.5)").
+		AddNode("VectorMath.mul-1-xz", "op=Mul", "vec_b=vector(1,0,1)").
+		AddNode("VectorMath.mul-2-y", "op=Mul", "vec_b=vector(0,2,0)").
+		Connect("MakeVector.wire-width.v", "VectorMath.mul-half-xz.vec_a").
+		Connect("MakeVector.wire-width.v", "VectorMath.mul-1-xz.vec_a").
+		Connect("MakeVector.wire-width.v", "VectorMath.mul-2-y.vec_a").
+		Output("VectorMath.mul-half-xz", "half-wire-width-xz").
+		Output("VectorMath.mul-1-xz", "wire-width-xz").
+		Output("VectorMath.mul-2-y", "twice-wire-width-y")
 }
 
 func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
