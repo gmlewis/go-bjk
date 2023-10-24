@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
@@ -133,6 +134,34 @@ func main() {
 			Connect(thisCoilPair+".out_mesh", thisMergeMeshes+".mesh_b")
 		lastMergeMeshes = thisMergeMeshes
 		lastSizeOut = sizeMathNode + ".out"
+	}
+
+	// Generate connectors around outer edge of coils.
+	radius := 20.0
+	for i := 0; i < *numPairs; i++ {
+		angle := float64(i) * math.Pi / float64(*numPairs)
+		x := radius * math.Cos(angle)
+		z := radius * math.Sin(angle)
+		thisBox := fmt.Sprintf("MakeBox.%va", i+1)
+		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%va", i+1)
+		b = b.
+			AddNode(thisBox, fmt.Sprintf("origin=vector(%v,0,%v)", x, z)).
+			AddNode(thisMergeMeshes).
+			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
+			Connect(thisBox+".out_mesh", thisMergeMeshes+".mesh_b")
+		lastMergeMeshes = thisMergeMeshes
+
+		angle = math.Pi + float64(i)*math.Pi/float64(*numPairs)
+		x = radius * math.Cos(angle)
+		z = radius * math.Sin(angle)
+		thisBox = fmt.Sprintf("MakeBox.%vb", i+1)
+		thisMergeMeshes = fmt.Sprintf("MergeMeshes.%vb", i+1)
+		b = b.
+			AddNode(thisBox, fmt.Sprintf("origin=vector(%v,0,%v)", x, z)).
+			AddNode(thisMergeMeshes).
+			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
+			Connect(thisBox+".out_mesh", thisMergeMeshes+".mesh_b")
+		lastMergeMeshes = thisMergeMeshes
 	}
 
 	design, err := b.Build()
