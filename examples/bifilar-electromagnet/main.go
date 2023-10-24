@@ -67,8 +67,7 @@ func main() {
 	innerRadius := 0.5 * *innerDiam
 	b := c.NewBuilder().
 		// inputs that drive the rest of the design
-		AddNode("MakeComment.inner-radius", nextNodePos(), "comment=This Scalar node controls\nthe radius of the inner-most\ncoil pair in mm.").
-		AddNode("MakeScalar.inner-radius", fmt.Sprintf("x=%v", innerRadius)).
+		NewGroup("InnerRadius.inner-radius", embedNextNodePos(makeInnerRadius, nextNodePos)).
 		//
 		NewGroup("SizedQuad.wire-outline", embedNextNodePos(makeSizedQuad, nextNodePos)).
 		//
@@ -83,8 +82,8 @@ func main() {
 		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
 		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
 		//
-		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)).
-		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).
+		AddNode("Point.helix-bbox", fmt.Sprintf("point=vector(%v,%v,%[1]v)", innerRadius+0.5**wireWidth, 2**wireWidth)). // TODO
+		AddNode("VectorMath.vert-gap", fmt.Sprintf("vec_b=vector(0,%v,0)", *wireGap)).                                   // TODO
 		Connect("Point.helix-bbox.point", "VectorMath.vert-gap.vec_a").
 		// define a pair of coils
 		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
@@ -185,6 +184,17 @@ func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builde
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.z").
 		Output("MakeVector.wire-gap-y.v", "vy").
 		Output("MakeVector.wire-gap-xz.v", "vxz")
+}
+
+func makeInnerRadius(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
+	innerRadius := 0.5 * *innerDiam
+	return b.
+		AddNode("MakeComment.inner-radius", nextNodePos(), "comment=This Scalar node controls\nthe radius of the inner-most\ncoil pair in mm.").
+		AddNode("MakeScalar.inner-radius", fmt.Sprintf("x=%v", innerRadius)).
+		AddNode("MakeVector.inner-radius-xz").
+		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.x").
+		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.z").
+		Output("MakeVector.inner-radius-xz.v", "vxz")
 }
 
 var _ embedNNPFunc = makeSizedQuad
