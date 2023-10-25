@@ -25,7 +25,7 @@ follow these steps in a command-line shell terminal window:
 
 ```bash
 git clone https://github.com/gmlewis/blackjack
-pushd blackjack && git checkout bugfix/i95-extrude-along-curve
+pushd blackjack
 BLACKJACK_REPO_DIR=$(pwd)
 popd
 git clone https://github.com/gmlewis/go-bjk
