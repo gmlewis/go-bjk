@@ -27,6 +27,7 @@ type Builder struct {
 
 	isGroup       bool
 	groupRecorder []*recorder
+	lastMergeMesh string
 
 	Nodes     map[string]*ast.Node
 	NodeOrder []string
@@ -549,6 +550,25 @@ func setInputVectorValue(t lua.LString, input *ast.Input, valStr string) error {
 	defVal.Value = &Vec3{X: x, Y: y, Z: z}
 
 	return nil
+}
+
+// MergeMesh creates a new 'MergeMeshes' node if necessary to combine the last
+// mesh with this current mesh. Typically, a design will end with a `MergeMesh`
+// before the call to `Build` such that it is the last (and therefore "active")
+// node in the graph network.
+func (b *Builder) MergeMesh(name string) *Builder {
+	if b.lastMergeMesh == "" {
+		b.lastMergeMesh = name
+		return b
+	}
+
+	newNode := fmt.Sprintf("MergeMeshes.%v", len(b.Nodes))
+	b = b.
+		AddNode(newNode).
+		Connect(b.lastMergeMesh, newNode+".mesh_a").
+		Connect(name, newNode+".mesh_b")
+	b.lastMergeMesh = newNode + ".out_mesh"
+	return b
 }
 
 // Builder builds the design and returns the result.

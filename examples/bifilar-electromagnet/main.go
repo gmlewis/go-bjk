@@ -106,9 +106,9 @@ func main() {
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
 		Connect("MakeScalar.segments.x", "CoilPair.coils-1-2.segments").
 		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
-		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section")
+		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section").
+		MergeMesh("CoilPair.coils-1-2.out_mesh")
 
-	lastMergeMeshes := "CoilPair.coils-1-2"
 	lastSizeOut := "VectorMath.vert-gap.out"
 	nodePosDY = 600
 	for i := 2; i <= *numPairs; i++ {
@@ -116,7 +116,6 @@ func main() {
 		sizeMathNode := fmt.Sprintf("VectorMath.size-%v", pairName)
 		coilStartAngleMixerNode := fmt.Sprintf("ScalarMath.start-angle-mixer-%v", pairName)
 		thisCoilPair := fmt.Sprintf("CoilPair.%v", pairName)
-		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%v", pairName)
 		b = b.
 			// second instance of CoilPair
 			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
@@ -131,14 +130,10 @@ func main() {
 			Connect(coilStartAngleMixerNode+".out", thisCoilPair+".start_angle").
 			Connect(sizeMathNode+".out", thisCoilPair+".size").
 			Connect("SizedQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
-			AddNode(thisMergeMeshes).
-			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
-			Connect(thisCoilPair+".out_mesh", thisMergeMeshes+".mesh_b")
-		lastMergeMeshes = thisMergeMeshes
+			MergeMesh(thisCoilPair + ".out_mesh")
 		lastSizeOut = sizeMathNode + ".out"
 	}
 
-	thisMergeMeshes := "MergeMeshes.cage"
 	b = b.
 		AddNode("BFEMCage.cage", fmt.Sprintf("tickness=%v", 3**wireWidth), fmt.Sprintf("num_pairs=%v", *numPairs)).
 		Connect(lastSizeOut, "BFEMCage.cage.size").
@@ -146,10 +141,7 @@ func main() {
 		Connect("WireGaps.wire-gap.x", "BFEMCage.cage.wire_gap").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
-		AddNode(thisMergeMeshes).
-		Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
-		Connect("BFEMCage.cage.out_mesh", thisMergeMeshes+".mesh_b")
-	lastMergeMeshes = thisMergeMeshes
+		MergeMesh("BFEMCage.cage.out_mesh")
 
 	design, err := b.Build()
 	must(err)
