@@ -13,7 +13,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
@@ -99,7 +98,7 @@ func main() {
 		//
 		AddNode("VectorMath.vert-gap").
 		Connect("VectorMath.helix-bbox.out", "VectorMath.vert-gap.vec_a").
-		Connect("WireGaps.wire-gap.vy", "VectorMath.vert-gap.vec_b").
+		Connect("WireGaps.wire-gap.twice-vy", "VectorMath.vert-gap.vec_b").
 		// define a pair of coils
 		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
 		NewGroup("CoilPair.coils-1-2", makeCoilPair).
@@ -139,33 +138,18 @@ func main() {
 		lastSizeOut = sizeMathNode + ".out"
 	}
 
-	// Generate connectors around outer edge of coils.
-	radius := 20.0
-	for i := 0; i < *numPairs; i++ {
-		angle := float64(i) * math.Pi / float64(*numPairs)
-		x := radius * math.Cos(angle)
-		z := radius * math.Sin(angle)
-		thisBox := fmt.Sprintf("MakeBox.%va", i+1)
-		thisMergeMeshes := fmt.Sprintf("MergeMeshes.%va", i+1)
-		b = b.
-			AddNode(thisBox, fmt.Sprintf("origin=vector(%v,0,%v)", x, z)).
-			AddNode(thisMergeMeshes).
-			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
-			Connect(thisBox+".out_mesh", thisMergeMeshes+".mesh_b")
-		lastMergeMeshes = thisMergeMeshes
-
-		angle = math.Pi + float64(i)*math.Pi/float64(*numPairs)
-		x = radius * math.Cos(angle)
-		z = radius * math.Sin(angle)
-		thisBox = fmt.Sprintf("MakeBox.%vb", i+1)
-		thisMergeMeshes = fmt.Sprintf("MergeMeshes.%vb", i+1)
-		b = b.
-			AddNode(thisBox, fmt.Sprintf("origin=vector(%v,0,%v)", x, z)).
-			AddNode(thisMergeMeshes).
-			Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
-			Connect(thisBox+".out_mesh", thisMergeMeshes+".mesh_b")
-		lastMergeMeshes = thisMergeMeshes
-	}
+	thisMergeMeshes := "MergeMeshes.cage"
+	b = b.
+		AddNode("BFEMCage.cage", fmt.Sprintf("tickness=%v", 3**wireWidth), fmt.Sprintf("num_pairs=%v", *numPairs)).
+		Connect(lastSizeOut, "BFEMCage.cage.size").
+		Connect("SizedQuad.wire-outline.wire-width-x", "BFEMCage.cage.wire_width").
+		Connect("WireGaps.wire-gap.x", "BFEMCage.cage.wire_gap").
+		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
+		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
+		AddNode(thisMergeMeshes).
+		Connect(lastMergeMeshes+".out_mesh", thisMergeMeshes+".mesh_a").
+		Connect("BFEMCage.cage.out_mesh", thisMergeMeshes+".mesh_b")
+	lastMergeMeshes = thisMergeMeshes
 
 	design, err := b.Build()
 	must(err)
@@ -223,6 +207,7 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-half-xz.vec_a").
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-1-xz.vec_a").
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-2-y.vec_a").
+		Output("MakeScalar.wire-width.x", "wire-width-x").
 		Output("VectorMath.mul-half-xz.out", "half-wire-width-xz").
 		Output("VectorMath.mul-1-xz.out", "wire-width-xz").
 		Output("VectorMath.mul-2-y.out", "twice-wire-width-y")
@@ -237,7 +222,10 @@ func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builde
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-y.y").
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.x").
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.z").
-		Output("MakeVector.wire-gap-y.v", "vy").
+		AddNode("VectorMath.twice-vy", "op=Mul", "vec_b=vector(0,2,0)").
+		Connect("MakeVector.wire-gap-y.v", "VectorMath.twice-vy.vec_a").
+		Output("MakeScalar.wire-gap.x", "x").
+		Output("VectorMath.twice-vy.out", "twice-vy").
 		Output("MakeVector.wire-gap-xz.v", "vxz")
 }
 
