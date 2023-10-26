@@ -11,7 +11,7 @@ import (
 // and an instance name, then the creation of the group is immediately followed by
 // a call to `AddNode` using that same group and instance name. Otherwise, if no dot
 // is included, the `fullName` will be used as the name of the group.
-func (b *Builder) NewGroup(fullName string, fn func(b *Builder) *Builder) *Builder {
+func (b *Builder) NewGroup(fullName string, fn func(b *Builder) *Builder, args ...string) *Builder {
 	var hasInstanceName bool
 	groupName := fullName
 	if parts := strings.Split(fullName, "."); len(parts) > 1 {
@@ -31,7 +31,7 @@ func (b *Builder) NewGroup(fullName string, fn func(b *Builder) *Builder) *Build
 	gb := b.c.NewBuilder()
 	gb.isGroup = true
 	if b.c.debug {
-		log.Printf("NewGroup(%q) calling fn(gb)", groupName)
+		log.Printf("NewGroup(%q) calling builder fn(gb)", groupName)
 	}
 	gb = fn(gb)
 	b.Groups[groupName] = gb
@@ -44,7 +44,7 @@ func (b *Builder) NewGroup(fullName string, fn func(b *Builder) *Builder) *Build
 		if b.c.debug {
 			log.Printf("NewGroup(%q) instantiating new instance of node", fullName)
 		}
-		b = b.AddNode(fullName)
+		b = b.AddNode(fullName, args...)
 	}
 
 	return b

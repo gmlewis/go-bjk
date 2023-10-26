@@ -91,22 +91,78 @@ func (b *Builder) AddNode(name string, args ...string) *Builder {
 }
 
 // injectGroupName takes a fullPortName (e.g. "Type.a.b.c.d") and a groupName (e.g. "MyGroup.instance")
-// and combines them such at the groupName is injected after the Type but before the labels of the fullPortName:
-// e.g. "Type.MyGroup.instance.a.b.c.d".
-func injectGroupName(fullPortName, groupName string) string {
+// and re-combines them such at the groupName is injected after the Type but before the labels of the fullPortName:
+// e.g. newFullPortName = "Type.MyGroup.instance.a.b.c.d", newNodeName = "Type.MyGroup.instance.a.b.c", portName = "d"
+func injectGroupName(fullPortName, groupName string) (newFullPortName, newNodeName, portName string) {
 	parts := strings.Split(fullPortName, ".")
 	baseName, portName := parts[0], strings.Join(parts[1:], ".")
+	newNodeName = fmt.Sprintf("%v.%v", baseName, groupName)
 	if portName == "" {
-		return fmt.Sprintf("%v.%v", baseName, groupName)
+		return newNodeName, newNodeName, ""
 	}
-	return fmt.Sprintf("%v.%v.%v", baseName, groupName, portName)
+	// To generate the final "newNodeName" and "portName" correctly, the portName has to be split if
+	// it already contains multiple parts.
+	newFullPortName = fmt.Sprintf("%v.%v", newNodeName, portName)
+	if len(parts) == 2 { // only one part to the portName - return as-is.
+		return newFullPortName, newNodeName, portName
+	}
+	// Re-partition the pieces:
+	newNodeName = fmt.Sprintf("%v.%v.%v", baseName, groupName, strings.Join(parts[1:len(parts)-1], "."))
+	portName = parts[len(parts)-1]
+	return newFullPortName, newNodeName, portName
 }
 
 func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...string) *Builder {
 	if b.c.debug {
-		log.Printf("Instantiating group '%v' with %v steps", groupName, len(group.groupRecorder))
+		log.Printf("Instantiating group '%v' with %v steps and args: %+v", groupName, len(group.groupRecorder), args)
 	}
 
+	staticArgs := map[string]string{}
+	for _, arg := range args {
+		lhs, rhs, err := splitArg(arg)
+		if err != nil {
+			b.errs = append(b.errs, err)
+			return b
+		}
+		staticArgs[lhs] = rhs
+	}
+
+	errFn := func(i int, step *recorder, msg string) error {
+		return fmt.Errorf("Group '%v' step #%v of %v: %v: %v('%v')", groupName, i+1, len(group.groupRecorder), msg, step.action, strings.Join(step.args, "', '"))
+	}
+
+	// First pass - make sure we know all possible valid new node names (after instantiating) for this group
+	validNewNodeNames := map[string]bool{}
+	for _, step := range group.groupRecorder {
+		if step.action != "AddNode" {
+			continue
+		}
+		newFullNodeName, _, _ := injectGroupName(step.args[0], groupName) // not expecting a port name here.
+		validNewNodeNames[newFullNodeName] = true
+	}
+
+	// Next pass - make a map of the declared inputs that match the provided static args
+	// This map is keyed by the node name, whose value is one or more assignment statements.
+	namedArgs := map[string][]string{}
+	for i, step := range group.groupRecorder {
+		if step.action != "Input" || staticArgs[step.args[0]] == "" {
+			continue
+		}
+
+		_, newToNodeName, portName := injectGroupName(step.args[1], groupName)
+		if portName == "" {
+			b.errs = append(b.errs, errFn(i, step, "'to' node missing port"))
+			return b
+		}
+		if !validNewNodeNames[newToNodeName] {
+			b.errs = append(b.errs, errFn(i, step, fmt.Sprintf("'to' node %q not found, valid choices are: %+v", newToNodeName, maps.Keys(validNewNodeNames))))
+			return b
+		}
+
+		namedArgs[newToNodeName] = append(namedArgs[newToNodeName], fmt.Sprintf("%v=%v", portName, staticArgs[step.args[0]]))
+	}
+
+	// Final pass - whenever a named static argument is used, add it to the list of args to `AddNode`
 	for i, step := range group.groupRecorder {
 		if b.c.debug {
 			log.Printf("Group '%v' step #%v of %v: %v('%v') ...", groupName, i+1, len(group.groupRecorder), step.action, strings.Join(step.args, "', '"))
@@ -114,18 +170,30 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 
 		switch step.action {
 		case "AddNode":
-			fullNodeName := injectGroupName(step.args[0], groupName)
-			if b.c.debug {
-				log.Printf("calling: AddNode(%q, %+v)", fullNodeName, step.args[1:])
+			fullNodeName, _, _ := injectGroupName(step.args[0], groupName) // not expecting a port name here.
+			newArgs := append([]string{}, step.args[1:]...)
+			if v, ok := namedArgs[fullNodeName]; ok {
+				newArgs = append(newArgs, v...)
 			}
-			b = b.AddNode(fullNodeName, step.args[1:]...)
+			if b.c.debug {
+				log.Printf("calling: AddNode(%q, %+v)", fullNodeName, newArgs)
+			}
+			b = b.AddNode(fullNodeName, newArgs...)
 		case "Connect":
-			fullFromNodeName := injectGroupName(step.args[0], groupName)
-			fullToNodeName := injectGroupName(step.args[1], groupName)
-			if b.c.debug {
-				log.Printf("calling: Connect(%q, %q)", fullFromNodeName, fullToNodeName)
+			fullFromPortName, _, portName := injectGroupName(step.args[0], groupName)
+			if portName == "" {
+				b.errs = append(b.errs, errFn(i, step, "'from' node missing port"))
+				return b
 			}
-			b = b.Connect(fullFromNodeName, fullToNodeName)
+			fullToPortName, _, portName := injectGroupName(step.args[1], groupName)
+			if portName == "" {
+				b.errs = append(b.errs, errFn(i, step, "'to' node missing port"))
+				return b
+			}
+			if b.c.debug {
+				log.Printf("calling: Connect(%q, %q)", fullFromPortName, fullToPortName)
+			}
+			b = b.Connect(fullFromPortName, fullToPortName)
 		case "Input":
 		case "Output":
 		default:
@@ -207,7 +275,7 @@ func (b *Builder) Connect(from, to string) *Builder {
 
 	fromParts := strings.Split(from, ".")
 	if len(fromParts) < 2 {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): unable to parse 'from' name: %[1]q want at least 2 parts, got %v", from, to, len(fromParts)))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): unable to parse 'from' name: %[1]q want at least 2 parts, got %[3]v", from, to, len(fromParts)))
 		return b
 	}
 
@@ -233,11 +301,19 @@ func (b *Builder) Connect(from, to string) *Builder {
 				// }
 				if step.action == "Output" && step.args[1] == fromOutputName {
 					connectionsMade++
-					newFrom := injectGroupName(step.args[0], fromNodeName)
-					if b.c.debug {
-						log.Printf("Found group output connection: fromNodeName=%q, fromOutputName=%q, step.action=%q, step.args=%+v, newFrom=%q", fromNodeName, fromOutputName, step.action, step.args, newFrom)
+					newFromPortName, _, portName := injectGroupName(step.args[0], fromNodeName)
+					if portName == "" {
+						msg := "Connect(%q, %q): 'from' node missing port"
+						// if b.c.debug {
+						// 	log.Fatalf("DEBUG MODE - %v PRIOR ERRORS! - ABORTING EARLY: "+msg, len(b.errs), from, to)
+						// }
+						b.errs = append(b.errs, fmt.Errorf(msg, from, to))
+						return b
 					}
-					b = b.Connect(newFrom, to)
+					if b.c.debug {
+						log.Printf("Found group output connection: fromNodeName=%q, fromOutputName=%q, step.action=%q, step.args=%+v, newFromPortName=%q", fromNodeName, fromOutputName, step.action, step.args, newFromPortName)
+					}
+					b = b.Connect(newFromPortName, to)
 				}
 			}
 		}
@@ -246,9 +322,9 @@ func (b *Builder) Connect(from, to string) *Builder {
 		}
 
 		msg := "Connect(%q, %q) unable to find 'from' node: %q; valid choices are: %+v"
-		if b.c.debug {
-			log.Fatalf(msg, from, to, fromNodeName, maps.Keys(b.Nodes))
-		}
+		// if b.c.debug {
+		// 	log.Fatalf("DEBUG MODE - %v PRIOR ERRORS! - ABORTING EARLY: "+msg, len(b.errs), from, to, fromNodeName, maps.Keys(b.Nodes))
+		// }
 
 		b.errs = append(b.errs, fmt.Errorf(msg, from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
@@ -262,7 +338,7 @@ func (b *Builder) Connect(from, to string) *Builder {
 
 	toParts := strings.Split(to, ".")
 	if len(toParts) < 2 {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): unable to parse 'to' name: %[1]q want at least 2 parts, got %v", from, to, len(toParts)))
+		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q): unable to parse 'to' name: %[1]q want at least 2 parts, got %[3]v", from, to, len(toParts)))
 		return b
 	}
 
@@ -279,8 +355,12 @@ func (b *Builder) Connect(from, to string) *Builder {
 			for _, step := range g.groupRecorder {
 				if step.action == "Input" && step.args[0] == toInputName {
 					connectionsMade++
-					newTo := injectGroupName(step.args[1], toNodeName)
-					b = b.Connect(from, newTo)
+					newToPortName, _, portName := injectGroupName(step.args[1], toNodeName)
+					if portName == "" {
+						b.errs = append(b.errs, fmt.Errorf("Input(%q, %q): 'to' node missing port", from, to))
+						return b
+					}
+					b = b.Connect(from, newToPortName)
 				}
 			}
 		}
@@ -317,18 +397,25 @@ func (b *Builder) Connect(from, to string) *Builder {
 	return b
 }
 
+func splitArg(arg string) (lhs, rhs string, err error) {
+	parts := strings.Split(arg, "=")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("bad arg '%v', want x=y", arg)
+	}
+
+	lhs, rhs = strings.TrimSpace(parts[0]), strings.Join(parts[1:], "=") // Do NOT trim rhs! Lose trailing "\n"
+	return lhs, rhs, nil
+}
+
 func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...string) ([]*ast.Input, error) {
 	var result []*ast.Input
 
 	assignments := map[string]string{}
 	for _, arg := range args {
-		parts := strings.Split(arg, "=")
-		if len(parts) < 2 {
-			return nil, fmt.Errorf("bad arg '%v', want x=y", arg)
+		k, rhs, err := splitArg(arg)
+		if err != nil {
+			return nil, err
 		}
-
-		lhs, rhs := parts[0], strings.Join(parts[1:], "=")
-		k := strings.TrimSpace(lhs)
 
 		fullInputName := fmt.Sprintf("%v.%v", nodeName, k)
 		if v, ok := b.InputsAlreadyConnected[fullInputName]; ok {
@@ -574,7 +661,10 @@ func (b *Builder) MergeMesh(name string) *Builder {
 // Builder builds the design and returns the result.
 func (b *Builder) Build() (*ast.BJK, error) {
 	if len(b.errs) > 0 {
-		return nil, fmt.Errorf("%v ERRORS FOUND:\n%w", len(b.errs), errors.Join(b.errs...))
+		if b.c.debug || len(b.errs) <= 5 {
+			return nil, fmt.Errorf("%v ERRORS FOUND:\n%w", len(b.errs), errors.Join(b.errs...))
+		}
+		return nil, fmt.Errorf("%v ERRORS FOUND - HERE ARE THE FIRST 5:\n%w", len(b.errs), errors.Join(b.errs[:5]...))
 	}
 
 	bjk := ast.New()

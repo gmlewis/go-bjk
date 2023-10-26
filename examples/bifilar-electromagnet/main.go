@@ -101,7 +101,7 @@ func main() {
 		Connect("WireGaps.wire-gap.twice-vy", "VectorMath.vert-gap.vec_b").
 		// define a pair of coils
 		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
-		NewGroup("CoilPair.coils-1-2", makeCoilPair).
+		NewGroup("CoilPair.coils-1-2", makeCoilPair, "delta_y=0").
 		// external controlling connections
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
 		Connect("MakeScalar.segments.x", "CoilPair.coils-1-2.segments").
@@ -123,7 +123,7 @@ func main() {
 			AddNode(sizeMathNode).
 			Connect("WireWidthAndGap.1.vxz", sizeMathNode+".vec_b").
 			Connect(lastSizeOut, sizeMathNode+".vec_a").
-			AddNode(thisCoilPair).
+			AddNode(thisCoilPair, fmt.Sprintf("delta_y=%v", float64(i-1)/float64(*numPairs-1))).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
 			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
 			Connect("MakeScalar.start-angle-shift-mixer.x", coilStartAngleMixerNode+".x").
@@ -153,6 +153,7 @@ func main() {
 func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 	return b.
 		AddNode("ScalarMath.add180", "op=Add", "y=180").
+		AddNode("MakeVector.pos-y").
 		AddNode("Helix.wire-1").
 		AddNode("Helix.wire-2").
 		AddNode("ExtrudeAlongCurve.wire-1", "flip=1").
@@ -160,6 +161,8 @@ func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 		AddNode("MergeMeshes.wire-1-2").
 		// internal connections
 		Connect("ScalarMath.add180.out", "Helix.wire-1.start_angle").
+		Connect("MakeVector.pos-y.v", "Helix.wire-1.pos").
+		Connect("MakeVector.pos-y.v", "Helix.wire-2.pos").
 		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
 		Connect("Helix.wire-2.out_mesh", "ExtrudeAlongCurve.wire-2.backbone").
 		Connect("ExtrudeAlongCurve.wire-1.out_mesh", "MergeMeshes.wire-1-2.mesh_a").
@@ -174,6 +177,7 @@ func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 		Input("segments", "Helix.wire-2.segments").
 		Input("start_angle", "ScalarMath.add180.x").
 		Input("start_angle", "Helix.wire-2.start_angle").
+		Input("delta_y", "MakeVector.pos-y.y").
 		Output("MergeMeshes.wire-1-2.out_mesh", "out_mesh")
 }
 
