@@ -30,6 +30,10 @@ var (
 	wireWidth = flag.Float64("ww", 1.0, "Wire width in millimeters")
 )
 
+func set(name string, value any) string {
+	return fmt.Sprintf("%v=%v", name, value)
+}
+
 func main() {
 	flag.Parse()
 
@@ -63,8 +67,7 @@ func main() {
 	nodePosY := -nodePosDY
 	nextNodePos := func() string {
 		nodePosY += nodePosDY
-		s := fmt.Sprintf("node_position=(0,%v)", nodePosY)
-		return s
+		return fmt.Sprintf("node_position=(0,%v)", nodePosY)
 	}
 
 	b := c.NewBuilder().
@@ -80,10 +83,10 @@ func main() {
 		Connect("WireGaps.wire-gap.vxz", "WireWidthAndGap.1.vec_b").
 		//
 		AddNode("MakeComment.vert-turns", nextNodePos(), "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
-		AddNode("MakeScalar.vert-turns", fmt.Sprintf("x=%v", *vertTurns)).
+		AddNode("MakeScalar.vert-turns", set("x", *vertTurns)).
 		//
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
-		AddNode("MakeScalar.segments", fmt.Sprintf("x=%v", *numSegs)).
+		AddNode("MakeScalar.segments", set("x", *numSegs)).
 		//
 		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
 		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
@@ -121,11 +124,11 @@ func main() {
 		b = b.
 			// second instance of CoilPair
 			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
-			AddNode(coilStartAngleMixerNode, "op=Mul", fmt.Sprintf("y=%v", 180.0*float64(i-1)/float64(*numPairs))).
+			AddNode(coilStartAngleMixerNode, "op=Mul", set("y", 180.0*float64(i-1)/float64(*numPairs))).
 			AddNode(sizeMathNode).
 			Connect("WireWidthAndGap.1.vxz", sizeMathNode+".vec_b").
 			Connect(lastSizeOut, sizeMathNode+".vec_a").
-			AddNode(thisCoilPair, fmt.Sprintf("delta_y=%v", float64(i-1)/float64(*numPairs-1))).
+			AddNode(thisCoilPair, set("delta_y", float64(i-1)/float64(*numPairs-1))).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
 			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
 			Connect("MakeScalar.start-angle-shift-mixer.x", coilStartAngleMixerNode+".x").
@@ -139,7 +142,7 @@ func main() {
 	}
 
 	b = b.
-		AddNode("BFEMCage.cage", fmt.Sprintf("tickness=%v", 3**wireWidth), fmt.Sprintf("num_pairs=%v", *numPairs)).
+		AddNode("BFEMCage.cage", set("tickness", 3**wireWidth), set("num_pairs", *numPairs)).
 		Connect(lastSizeOut, "BFEMCage.cage.size").
 		Connect("SizedQuad.wire-outline.wire-width", "BFEMCage.cage.wire_width").
 		Connect("WireGaps.wire-gap.wire_gap", "BFEMCage.cage.wire_gap").
@@ -200,7 +203,7 @@ type embedNNPFunc func(b *nodes.Builder, nextNodePos func() string) *nodes.Build
 func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 	return b.
 		AddNode("MakeComment.wire-width", nextNodePos(), "comment=This Scalar node controls the\nwidth of the wire in mm.").
-		AddNode("MakeScalar.wire-width", fmt.Sprintf("x=%v", *wireWidth)).
+		AddNode("MakeScalar.wire-width", set("x", *wireWidth)).
 		AddNode("MakeVector.wire-width").
 		Connect("MakeScalar.wire-width.x", "MakeVector.wire-width.x").
 		Connect("MakeScalar.wire-width.x", "MakeVector.wire-width.y").
@@ -223,7 +226,7 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 	return b.
 		AddNode("MakeComment.wire-gap", nextNodePos(), "comment=This Scalar node controls\nthe gap between wires\nin mm.").
-		AddNode("MakeScalar.wire-gap", fmt.Sprintf("x=%v", *wireGap)).
+		AddNode("MakeScalar.wire-gap", set("x", *wireGap)).
 		AddNode("MakeVector.wire-gap-y").
 		AddNode("MakeVector.wire-gap-xz").
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-y.y").
@@ -248,7 +251,7 @@ func makeInnerRadius(b *nodes.Builder, nextNodePos func() string) *nodes.Builder
 	innerRadius := 0.5 * *innerDiam
 	return b.
 		AddNode("MakeComment.inner-radius", nextNodePos(), "comment=This Scalar node controls\nthe radius of the inner-most\ncoil pair in mm.").
-		AddNode("MakeScalar.inner-radius", fmt.Sprintf("x=%v", innerRadius)).
+		AddNode("MakeScalar.inner-radius", set("x", innerRadius)).
 		AddNode("MakeVector.inner-radius-xz").
 		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.x").
 		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.z").
