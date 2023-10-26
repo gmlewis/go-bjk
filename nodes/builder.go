@@ -25,9 +25,10 @@ type Builder struct {
 	c    *Client
 	errs []error
 
-	isGroup       bool
-	groupRecorder []*recorder
-	lastMergeMesh string
+	isGroup                 bool
+	groupRecorder           []*recorder
+	lastMergeMesh           string
+	groupFullInputPortNames map[string]bool
 
 	Nodes     map[string]*ast.Node
 	NodeOrder []string
@@ -36,6 +37,8 @@ type Builder struct {
 	ExternalParameters ast.ExternalParameters
 
 	InputsAlreadyConnected map[string]string
+
+	CheckUnusedGroupInputs bool
 }
 
 type recorder struct {
@@ -50,6 +53,9 @@ func (c *Client) NewBuilder() *Builder {
 		Nodes:                  map[string]*ast.Node{},
 		Groups:                 map[string]*Builder{},
 		InputsAlreadyConnected: map[string]string{},
+		CheckUnusedGroupInputs: true,
+
+		groupFullInputPortNames: map[string]bool{},
 	}
 }
 
@@ -145,15 +151,22 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 	// This map is keyed by the node name, whose value is one or more assignment statements.
 	namedArgs := map[string][]string{}
 	for i, step := range group.groupRecorder {
-		if step.action != "Input" || staticArgs[step.args[0]] == "" {
+		if step.action != "Input" {
 			continue
 		}
 
-		_, newToNodeName, portName := injectGroupName(step.args[1], groupName)
+		newFullInputPortName, newToNodeName, portName := injectGroupName(step.args[1], groupName)
 		if portName == "" {
 			b.errs = append(b.errs, errFn(i, step, "'to' node missing port"))
 			return b
 		}
+
+		b.groupFullInputPortNames[newFullInputPortName] = true
+
+		if staticArgs[step.args[0]] == "" {
+			continue
+		}
+
 		if !validNewNodeNames[newToNodeName] {
 			b.errs = append(b.errs, errFn(i, step, fmt.Sprintf("'to' node %q not found, valid choices are: %+v", newToNodeName, maps.Keys(validNewNodeNames))))
 			return b
@@ -296,17 +309,17 @@ func (b *Builder) Connect(from, to string) *Builder {
 		var connectionsMade int
 		if g, ok := b.Groups[fromParts[0]]; ok {
 			for _, step := range g.groupRecorder {
-				// if b.c.debug {
-				// 	log.Printf("Searching for group connection: fromNodeName=%q, fromOutputName=%q, step.action=%q, step.args=%+v", fromNodeName, fromOutputName, step.action, step.args)
-				// }
+				if b.c.debug {
+					log.Printf("Searching for group connection: fromNodeName=%q, fromOutputName=%q, step.action=%q, step.args=%+v", fromNodeName, fromOutputName, step.action, step.args)
+				}
 				if step.action == "Output" && step.args[1] == fromOutputName {
 					connectionsMade++
 					newFromPortName, _, portName := injectGroupName(step.args[0], fromNodeName)
 					if portName == "" {
 						msg := "Connect(%q, %q): 'from' node missing port"
-						// if b.c.debug {
-						// 	log.Fatalf("DEBUG MODE - %v PRIOR ERRORS! - ABORTING EARLY: "+msg, len(b.errs), from, to)
-						// }
+						if b.c.debug {
+							log.Fatalf("DEBUG MODE - %v PRIOR ERRORS! - ABORTING EARLY: "+msg, len(b.errs), from, to)
+						}
 						b.errs = append(b.errs, fmt.Errorf(msg, from, to))
 						return b
 					}
@@ -322,9 +335,9 @@ func (b *Builder) Connect(from, to string) *Builder {
 		}
 
 		msg := "Connect(%q, %q) unable to find 'from' node: %q; valid choices are: %+v"
-		// if b.c.debug {
-		// 	log.Fatalf("DEBUG MODE - %v PRIOR ERRORS! - ABORTING EARLY: "+msg, len(b.errs), from, to, fromNodeName, maps.Keys(b.Nodes))
-		// }
+		if b.c.debug {
+			log.Fatalf("DEBUG MODE - %v PRIOR ERRORS! - ABORTING EARLY: "+msg, len(b.errs), from, to, fromNodeName, maps.Keys(b.Nodes))
+		}
 
 		b.errs = append(b.errs, fmt.Errorf(msg, from, to, fromNodeName, maps.Keys(b.Nodes)))
 		return b
@@ -660,6 +673,14 @@ func (b *Builder) MergeMesh(name string) *Builder {
 
 // Builder builds the design and returns the result.
 func (b *Builder) Build() (*ast.BJK, error) {
+	if b.CheckUnusedGroupInputs {
+		for k := range b.groupFullInputPortNames {
+			if _, ok := b.InputsAlreadyConnected[k]; !ok {
+				b.errs = append(b.errs, fmt.Errorf("unused group input port: %q", k))
+			}
+		}
+	}
+
 	if len(b.errs) > 0 {
 		if b.c.debug || len(b.errs) <= 5 {
 			return nil, fmt.Errorf("%v ERRORS FOUND:\n%w", len(b.errs), errors.Join(b.errs...))

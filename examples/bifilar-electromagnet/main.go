@@ -98,15 +98,17 @@ func main() {
 		//
 		AddNode("VectorMath.vert-gap").
 		Connect("VectorMath.helix-bbox.out", "VectorMath.vert-gap.vec_a").
-		Connect("WireGaps.wire-gap.twice-vy", "VectorMath.vert-gap.vec_b").
+		Connect("WireGaps.wire-gap.twice_vy", "VectorMath.vert-gap.vec_b").
 		// define a pair of coils
 		AddNode("MakeComment", nextNodePos(), "comment=This is coil pair #1:").
-		NewGroup("CoilPair.coils-1-2", makeCoilPair, "delta_y=0").
+		NewGroup("CoilPair.coils-1-2", makeCoilPair, "delta_y=0", "start_angle=0").
 		// external controlling connections
 		Connect("MakeScalar.vert-turns.x", "CoilPair.coils-1-2.turns").
 		Connect("MakeScalar.segments.x", "CoilPair.coils-1-2.segments").
 		Connect("VectorMath.vert-gap.out", "CoilPair.coils-1-2.size").
 		Connect("SizedQuad.wire-outline.out_mesh", "CoilPair.coils-1-2.cross_section").
+		Connect("SizedQuad.wire-outline.wire-width", "CoilPair.coils-1-2.wire_width").
+		Connect("WireGaps.wire-gap.wire_gap", "CoilPair.coils-1-2.wire_gap").
 		MergeMesh("CoilPair.coils-1-2.out_mesh")
 
 	lastSizeOut := "VectorMath.vert-gap.out"
@@ -130,6 +132,8 @@ func main() {
 			Connect(coilStartAngleMixerNode+".out", thisCoilPair+".start_angle").
 			Connect(sizeMathNode+".out", thisCoilPair+".size").
 			Connect("SizedQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
+			Connect("SizedQuad.wire-outline.wire-width", thisCoilPair+".wire_width").
+			Connect("WireGaps.wire-gap.wire_gap", thisCoilPair+".wire_gap").
 			MergeMesh(thisCoilPair + ".out_mesh")
 		lastSizeOut = sizeMathNode + ".out"
 	}
@@ -137,8 +141,8 @@ func main() {
 	b = b.
 		AddNode("BFEMCage.cage", fmt.Sprintf("tickness=%v", 3**wireWidth), fmt.Sprintf("num_pairs=%v", *numPairs)).
 		Connect(lastSizeOut, "BFEMCage.cage.size").
-		Connect("SizedQuad.wire-outline.wire-width-x", "BFEMCage.cage.wire_width").
-		Connect("WireGaps.wire-gap.x", "BFEMCage.cage.wire_gap").
+		Connect("SizedQuad.wire-outline.wire-width", "BFEMCage.cage.wire_width").
+		Connect("WireGaps.wire-gap.wire_gap", "BFEMCage.cage.wire_gap").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
 		Connect("MakeScalar.start-angle-shift-mixer.x", "BFEMCage.cage.shift_mixer").
@@ -153,6 +157,8 @@ func main() {
 func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 	return b.
 		AddNode("ScalarMath.add180", "op=Add", "y=180").
+		AddNode("ScalarMath.add-width-gap", "op=Add").
+		AddNode("ScalarMath.mul-delta-y", "op=Mul").
 		AddNode("MakeVector.pos-y").
 		AddNode("Helix.wire-1").
 		AddNode("Helix.wire-2").
@@ -161,6 +167,8 @@ func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 		AddNode("MergeMeshes.wire-1-2").
 		// internal connections
 		Connect("ScalarMath.add180.out", "Helix.wire-1.start_angle").
+		Connect("ScalarMath.add-width-gap.out", "ScalarMath.mul-delta-y.x").
+		Connect("ScalarMath.mul-delta-y.out", "MakeVector.pos-y.y").
 		Connect("MakeVector.pos-y.v", "Helix.wire-1.pos").
 		Connect("MakeVector.pos-y.v", "Helix.wire-2.pos").
 		Connect("Helix.wire-1.out_mesh", "ExtrudeAlongCurve.wire-1.backbone").
@@ -177,7 +185,9 @@ func makeCoilPair(b *nodes.Builder) *nodes.Builder {
 		Input("segments", "Helix.wire-2.segments").
 		Input("start_angle", "ScalarMath.add180.x").
 		Input("start_angle", "Helix.wire-2.start_angle").
-		Input("delta_y", "MakeVector.pos-y.y").
+		Input("delta_y", "ScalarMath.mul-delta-y.y").
+		Input("wire_width", "ScalarMath.add-width-gap.x").
+		Input("wire_gap", "ScalarMath.add-width-gap.y").
 		Output("MergeMeshes.wire-1-2.out_mesh", "out_mesh")
 }
 
@@ -204,7 +214,7 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-half-xz.vec_a").
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-1-xz.vec_a").
 		Connect("MakeVector.wire-width.v", "VectorMath.mul-2-y.vec_a").
-		Output("MakeScalar.wire-width.x", "wire-width-x").
+		Output("MakeScalar.wire-width.x", "wire-width").
 		Output("VectorMath.mul-half-xz.out", "half-wire-width-xz").
 		Output("VectorMath.mul-1-xz.out", "wire-width-xz").
 		Output("VectorMath.mul-2-y.out", "twice-wire-width-y")
@@ -221,8 +231,8 @@ func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builde
 		Connect("MakeScalar.wire-gap.x", "MakeVector.wire-gap-xz.z").
 		AddNode("VectorMath.twice-vy", "op=Mul", "vec_b=vector(0,2,0)").
 		Connect("MakeVector.wire-gap-y.v", "VectorMath.twice-vy.vec_a").
-		Output("MakeScalar.wire-gap.x", "x").
-		Output("VectorMath.twice-vy.out", "twice-vy").
+		Output("MakeScalar.wire-gap.x", "wire_gap").
+		Output("VectorMath.twice-vy.out", "twice_vy").
 		Output("MakeVector.wire-gap-xz.v", "vxz")
 }
 
