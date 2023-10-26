@@ -141,6 +141,7 @@ func main() {
 		Connect("WireGaps.wire-gap.x", "BFEMCage.cage.wire_gap").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
+		Connect("MakeScalar.start-angle-shift-mixer.x", "BFEMCage.cage.shift_mixer").
 		MergeMesh("BFEMCage.cage.out_mesh")
 
 	design, err := b.Build()
