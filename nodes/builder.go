@@ -443,6 +443,7 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 		}
 	}
 
+	validInputNodes := map[string]bool{}
 	for _, origInput := range inputs {
 		// Make deep copy of inputs
 		input := &ast.Input{
@@ -455,6 +456,7 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 			input.Kind.External = &ast.External{Promoted: origInput.Kind.External.Promoted}
 		}
 
+		validInputNodes[input.Name] = true
 		if v, ok := assignments[input.Name]; ok {
 			if err := setInputProp(input, v); err != nil {
 				return nil, err
@@ -466,6 +468,16 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 			continue
 		}
 		result = append(result, input)
+	}
+
+	// Now double-check that all assignments that were made were indeed made to valid input ports.
+	for k := range assignments {
+		if k == "node_position" { // special setting used to control the drawing of the nodes within blackjack_ui.
+			continue
+		}
+		if !validInputNodes[k] {
+			b.errs = append(b.errs, fmt.Errorf("assignment to non-existing input port '%v' on node %q", k, nodeName))
+		}
 	}
 
 	return result, nil

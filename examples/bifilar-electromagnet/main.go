@@ -25,6 +25,7 @@ var (
 	numPairs  = flag.Int("np", 11, "Number of coil pairs (minimum 1)")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	repoDir   = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
+	thickness = flag.Float64("th", 2.0, "Thickness of outer enclosing connecting wires in millimeters")
 	vertTurns = flag.Float64("vt", 5.0, "Vertical turns of wire in electromagnet")
 	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")
 	wireWidth = flag.Float64("ww", 1.0, "Wire width in millimeters")
@@ -85,11 +86,14 @@ func main() {
 		AddNode("MakeComment.vert-turns", nextNodePos(), "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.vert-turns", set("x", *vertTurns)).
 		//
+		AddNode("MakeComment.thickness", nextNodePos(), "comment=This Scalar node controls\nthe thickness of the outer\nenclosing connecting wires\nin millimeters.").
+		AddNode("MakeScalar.thickness", set("x", *thickness)).
+		//
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", set("x", *numSegs)).
 		//
 		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
-		AddNode("MakeScalar.start-angle-shift-mixer", "x=1", "min=-1", "max=1").
+		AddNode("MakeScalar.start-angle-shift-mixer", "x=1").
 		//
 		AddNode("VectorMath.inner-rad-half-ww").
 		Connect("InnerRadius.inner-radius.vxz", "VectorMath.inner-rad-half-ww.vec_a").
@@ -142,13 +146,14 @@ func main() {
 	}
 
 	b = b.
-		AddNode("BFEMCage.cage", set("tickness", 3**wireWidth), set("num_pairs", *numPairs)).
+		AddNode("BFEMCage.cage", set("num_pairs", *numPairs)).
 		Connect(lastSizeOut, "BFEMCage.cage.size").
 		Connect("SizedQuad.wire-outline.wire-width", "BFEMCage.cage.wire_width").
 		Connect("WireGaps.wire-gap.wire_gap", "BFEMCage.cage.wire_gap").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
 		Connect("MakeScalar.start-angle-shift-mixer.x", "BFEMCage.cage.shift_mixer").
+		Connect("MakeScalar.thickness.x", "BFEMCage.cage.thickness").
 		MergeMesh("BFEMCage.cage.out_mesh")
 
 	design, err := b.Build()
@@ -225,7 +230,7 @@ func makeSizedQuad(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 
 func makeWireGapNodes(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 	return b.
-		AddNode("MakeComment.wire-gap", nextNodePos(), "comment=This Scalar node controls\nthe gap between wires\nin mm.").
+		AddNode("MakeComment.wire-gap", nextNodePos(), "comment=This Scalar node controls\nthe gap between wires\nin millimeters.").
 		AddNode("MakeScalar.wire-gap", set("x", *wireGap)).
 		AddNode("MakeVector.wire-gap-y").
 		AddNode("MakeVector.wire-gap-xz").
@@ -250,7 +255,7 @@ func makeWireWidthAndGap(b *nodes.Builder) *nodes.Builder {
 func makeInnerRadius(b *nodes.Builder, nextNodePos func() string) *nodes.Builder {
 	innerRadius := 0.5 * *innerDiam
 	return b.
-		AddNode("MakeComment.inner-radius", nextNodePos(), "comment=This Scalar node controls\nthe radius of the inner-most\ncoil pair in mm.").
+		AddNode("MakeComment.inner-radius", nextNodePos(), "comment=This Scalar node controls\nthe radius of the inner-most\ncoil pair in millimeters.").
 		AddNode("MakeScalar.inner-radius", set("x", innerRadius)).
 		AddNode("MakeVector.inner-radius-xz").
 		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.x").
