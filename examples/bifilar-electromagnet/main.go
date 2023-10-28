@@ -98,9 +98,6 @@ func main() {
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", set("x", *numSegs)).
 		//
-		AddNode("MakeComment.start-angle-shift-mixer", nextNodePos(), "comment=This Scalar node controls\nthe mix from\nno rotation (0) of successive\ncoils to max (1) rotation.").
-		AddNode("MakeScalar.start-angle-shift-mixer", "x=1").
-		//
 		AddNode("VectorMath.inner-rad-half-ww").
 		Connect("InnerRadius.inner-radius.vxz", "VectorMath.inner-rad-half-ww.vec_a").
 		Connect("SizedQuad.wire-outline.half-wire-width-xz", "VectorMath.inner-rad-half-ww.vec_b").
@@ -129,20 +126,16 @@ func main() {
 	for i := 2; i <= *numPairs; i++ {
 		pairName := fmt.Sprintf("pair-%v", i)
 		sizeMathNode := fmt.Sprintf("VectorMath.size-%v", pairName)
-		coilStartAngleMixerNode := fmt.Sprintf("ScalarMath.start-angle-mixer-%v", pairName)
 		thisCoilPair := fmt.Sprintf("CoilPair.%v", pairName)
 		b = b.
 			// second instance of CoilPair
 			AddNode("MakeComment", nextNodePos(), fmt.Sprintf("comment=This is coil pair #%v:", i)).
-			AddNode(coilStartAngleMixerNode, "op=Mul", set("y", 180.0*float64(i-1)/float64(*numPairs))).
 			AddNode(sizeMathNode).
 			Connect("WireWidthAndGap.1.vxz", sizeMathNode+".vec_b").
 			Connect(lastSizeOut, sizeMathNode+".vec_a").
-			AddNode(thisCoilPair, set("delta_y", float64(i-1)/float64(*numPairs-1))).
+			AddNode(thisCoilPair, set("delta_y", float64(i-1)/float64(*numPairs-1)), set("start_angle", 180.0*float64(i-1)/float64(*numPairs))).
 			Connect("MakeScalar.vert-turns.x", thisCoilPair+".turns").
 			Connect("MakeScalar.segments.x", thisCoilPair+".segments").
-			Connect("MakeScalar.start-angle-shift-mixer.x", coilStartAngleMixerNode+".x").
-			Connect(coilStartAngleMixerNode+".out", thisCoilPair+".start_angle").
 			Connect(sizeMathNode+".out", thisCoilPair+".size").
 			Connect("SizedQuad.wire-outline.out_mesh", thisCoilPair+".cross_section").
 			Connect("SizedQuad.wire-outline.wire-width", thisCoilPair+".wire_width").
@@ -158,7 +151,6 @@ func main() {
 		Connect("WireGaps.wire-gap.wire_gap", "BFEMCage.cage.wire_gap").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
-		Connect("MakeScalar.start-angle-shift-mixer.x", "BFEMCage.cage.shift_mixer").
 		Connect("MakeScalar.thickness.x", "BFEMCage.cage.thickness").
 		MergeMesh("BFEMCage.cage.out_mesh")
 
