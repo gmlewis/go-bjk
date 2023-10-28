@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go"; -*-
+// -*- compile-command: "go run main.go -o -"; -*-
 
 // bifilar-electromagnet generates a Blackjack .bjk file that
 // represents a bifilar electromagnet similar to those found
@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
@@ -24,7 +25,9 @@ var (
 	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numPairs  = flag.Int("np", 11, "Number of coil pairs (minimum 1)")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
+	outBJK    = flag.String("o", "bifilar-electromagnet.bjk", "Output filename for BJK file ('-' for stdout)")
 	repoDir   = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
+	stlOut    = flag.String("stl", "", "Output filename for binary STL file")
 	thickness = flag.Float64("th", 2.0, "Thickness of outer enclosing connecting wires in millimeters")
 	vertTurns = flag.Float64("vt", 11.0, "Vertical turns of wire in electromagnet")
 	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")
@@ -49,6 +52,9 @@ func main() {
 	}
 	if *vertTurns < 0 {
 		log.Fatalf("-vt must be at least 0")
+	}
+	if *outBJK == "" && *stlOut == "" {
+		log.Fatalf("nothing to do: must supply -o or -stl or both")
 	}
 
 	homeDir, err := homedir.Dir()
@@ -159,7 +165,19 @@ func main() {
 	design, err := b.Build()
 	must(err)
 
-	fmt.Printf("%v\n", design)
+	if *outBJK == "-" {
+		fmt.Printf("%v\n", design)
+	} else if *outBJK != "" {
+		must(os.WriteFile(*outBJK, []byte(design.String()+"\n"), 0644))
+	}
+
+	if *stlOut != "" {
+		buf, err := c.ToSTL(design)
+		must(err)
+		must(os.WriteFile(*stlOut, buf, 0644))
+	}
+
+	log.Printf("Done.")
 }
 
 func makeCoilPair(b *nodes.Builder) *nodes.Builder {
