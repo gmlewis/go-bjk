@@ -33,8 +33,11 @@ func main() {
 
 	design, err := c.NewBuilder().AddNode("MakeBox").Build()
 	must(err)
-	err = c.Eval(design)
+	mesh, err := c.Eval(design)
 	must(err)
+	log.Printf("Mesh=%#v", mesh)
+
+	log.Printf("Done.")
 }
 
 func must(err error) {

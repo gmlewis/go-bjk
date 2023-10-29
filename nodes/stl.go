@@ -4,6 +4,7 @@ package nodes
 
 import (
 	"errors"
+	"log"
 
 	"github.com/gmlewis/go-bjk/ast"
 )
@@ -14,9 +15,11 @@ func (c *Client) ToSTL(design *ast.BJK) ([]byte, error) {
 		return nil, errors.New("design missing graph")
 	}
 
-	if err := c.Eval(design); err != nil {
+	mesh, err := c.Eval(design)
+	if err != nil {
 		return nil, err
 	}
+	log.Printf("ToSTL: Mesh=%#v", mesh)
 
 	// // assume that the very last node is the "active" node.
 	// nodes := design.Graph.Nodes

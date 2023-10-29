@@ -9,12 +9,13 @@ import (
 
 	"github.com/gmlewis/go-bjk/ast"
 	lua "github.com/yuin/gopher-lua"
+	"golang.org/x/exp/maps"
 )
 
-// Eval "evaluates" a BJK design using lua.
-func (c *Client) Eval(design *ast.BJK) error {
+// Eval "evaluates" a BJK design using lua and returns a Mesh if one was generated.
+func (c *Client) Eval(design *ast.BJK) (*Mesh, error) {
 	if design == nil || design.Graph == nil || len(design.Graph.Nodes) == 0 {
-		return errors.New("design missing nodes")
+		return nil, errors.New("design missing nodes")
 	}
 	nodes := design.Graph.Nodes
 
@@ -28,28 +29,25 @@ func (c *Client) Eval(design *ast.BJK) error {
 	// assume that the very last node is the "active" node.
 	targetNodeIdx := len(nodes) - 1
 	if err := c.runNode(nodes, targetNodeIdx); err != nil {
-		return err
+		return nil, err
 	}
 
-	/*
-			expr := fmt.Sprintf(`local N = require("node_library")
-		local node = N:getNode(%q)
-		print(node.inputs)
-		print(node)
-		return node.op(node.inputs)
-		`, lastNode.OpName)
-			if err := c.ls.DoString(expr); err != nil {
-				return err
-			}
-			defer c.ls.Pop(1)
-			lv := c.ls.Get(-1) // get the value at the top of the stack
-			log.Printf("lv=%#v", lv)
+	targetNode := nodes[targetNodeIdx]
+	outMesh, ok := targetNode.EvalOutputs["out_mesh"]
+	if !ok {
+		log.Printf("WARNING: node %q missing output 'out_mesh', choices are: %+v", targetNode.OpName, maps.Keys(targetNode.EvalOutputs))
+		return nil, nil
+	}
+	ud, ok := outMesh.(*lua.LUserData)
+	if !ok {
+		return nil, fmt.Errorf("'out_mesh' of type %T, expected *LUserData", outMesh)
+	}
+	mesh, ok := ud.Value.(*Mesh)
+	if !ok {
+		return nil, fmt.Errorf("'out_mesh' LUserData of type %T, expected *Mesh", ud.Value)
+	}
 
-			log.Printf("Node(%q) has %v inputs", lastNode.OpName, len(lastNode.Inputs))
-			c.debug = true
-			c.showTop()
-	*/
-	return nil
+	return mesh, nil
 }
 
 func genKey(nodeIdx int, paramName string) string {
@@ -63,6 +61,11 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 	log.Printf("runNode(%v)", targetNodeIdx)
 
 	targetNode := nodes[targetNodeIdx]
+	if targetNode.EvalOutputs != nil {
+		return nil // this node has already been evaluated.
+	}
+	targetNode.EvalOutputs = map[string]lua.LValue{}
+
 	inputsTable := c.ls.NewTable()
 
 	for _, input := range targetNode.Inputs {
@@ -114,6 +117,7 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 	}
 
 	outputs.ForEach(func(k, v lua.LValue) {
+		targetNode.EvalOutputs[k.String()] = v
 		log.Printf("outputs[%q] = %v", k, v)
 	})
 

@@ -4,10 +4,28 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// Vec3 represents a point in 3D space.
 type Vec3 struct {
 	X float64
 	Y float64
 	Z float64
+}
+
+// NewVec3 returns a new Vec3.
+func NewVec3(x, y, z float64) Vec3 {
+	return Vec3{X: x, Y: y, Z: z}
+}
+
+// MulScalar multiplies a Vec3 by a scalar value and returns a new vector.
+// v is not altered.
+func (v Vec3) MulScalar(f float64) Vec3 {
+	return Vec3{X: v.X * f, Y: v.Y * f, Z: v.Z * f}
+}
+
+// Add adds two vectors and returns a new vector.
+// v is not altered.
+func (v Vec3) Add(u Vec3) Vec3 {
+	return Vec3{X: v.X + u.X, Y: v.Y + u.Y, Z: v.Z + u.Z}
 }
 
 const luaVec3TypeName = "Vec3"

@@ -51,9 +51,32 @@ func cube(ls *lua.LState) int {
 
 	log.Printf("cube: center=%#v, size=%#v", center, size)
 
-	// if ls.GetTop() == 2 {
-	// 	center :=
-	// 		size :=
-	// }
-	return 0
+	halfSize := size.MulScalar(0.5)
+
+	v1 := center.Add(NewVec3(-halfSize.X, -halfSize.Y, -halfSize.Z))
+	v2 := center.Add(NewVec3(halfSize.X, -halfSize.Y, -halfSize.Z))
+	v3 := center.Add(NewVec3(halfSize.X, -halfSize.Y, halfSize.Z))
+	v4 := center.Add(NewVec3(-halfSize.X, -halfSize.Y, halfSize.Z))
+
+	v5 := center.Add(NewVec3(-halfSize.X, halfSize.Y, -halfSize.Z))
+	v6 := center.Add(NewVec3(-halfSize.X, halfSize.Y, halfSize.Z))
+	v7 := center.Add(NewVec3(halfSize.X, halfSize.Y, halfSize.Z))
+	v8 := center.Add(NewVec3(halfSize.X, halfSize.Y, -halfSize.Z))
+
+	polygon := NewMeshFromPolygons(
+		[]Vec3{v1, v2, v3, v4, v5, v6, v7, v8},
+		[][]int{
+			{0, 1, 2, 3},
+			{4, 5, 6, 7},
+			{4, 7, 1, 0},
+			{3, 2, 6, 5},
+			{5, 4, 0, 3},
+			{6, 2, 1, 7},
+		})
+
+	ud = ls.NewUserData()
+	ud.Value = polygon
+	ls.Push(ud)
+
+	return 1
 }
