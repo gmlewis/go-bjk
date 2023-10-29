@@ -79,22 +79,6 @@ func newVec3(ls *lua.LState) int {
 	ud := ls.NewUserData()
 	ud.Value = vec3
 	ls.SetMetatable(ud, ls.GetTypeMetatable(luaVec3TypeName))
-	// 	mt, ok := ud.Metatable.(*lua.LTable)
-	// 	if !ok {
-	// 		log.Fatalf("ud.Metatable is of type %T, want *lua.LTable", ud.Metatable)
-	// 	}
-	//
-	// 	mt.RawSetString("x", lua.LNumber(vec3.X))
-	// 	mt.RawSetString("y", lua.LNumber(vec3.Y))
-	// 	mt.RawSetString("z", lua.LNumber(vec3.Z))
-	//
-	// 	// Set up fields
-	// 	fields := ls.NewTable()
-	// 	fields.RawSetString("x", lua.LNumber(vec3.X))
-	// 	fields.RawSetString("y", lua.LNumber(vec3.Y))
-	// 	fields.RawSetString("z", lua.LNumber(vec3.Z))
-	// 	mt.RawSetString("fields", fields)
-	//
 	ls.Push(ud)
 	return 1
 }
@@ -105,11 +89,6 @@ func vec3Index(ls *lua.LState) int {
 		return 0
 	}
 
-	// ud := ls.CheckUserData(1)
-	// mt, ok := ud.Metatable.(*lua.LTable)
-	// if !ok {
-	// 	log.Fatalf("vec3Index - expected metatable type *lua.LTable, got %T", ud.Metatable)
-	// }
 	key := ls.CheckString(2)
 	switch key {
 	case "x":
@@ -126,7 +105,7 @@ func vec3Index(ls *lua.LState) int {
 
 // Checks whether the first lua argument is a *LUserData with *Vec3 and returns this *Vec3.
 func checkVec3(ls *lua.LState, index int) *Vec3 {
-	log.Printf("checkVec3: Get(%v): (%v,%v)", index, ls.Get(index).String(), ls.Get(index).Type())
+	// log.Printf("checkVec3: Get(%v): (%v,%v)", index, ls.Get(index).String(), ls.Get(index).Type())
 	ud := ls.CheckUserData(index)
 	if v, ok := ud.Value.(*Vec3); ok {
 		return v
@@ -145,7 +124,7 @@ func vec3GetSetX(ls *lua.LState) int {
 		p.X = float64(ls.CheckNumber(2))
 		return 0
 	}
-	log.Printf("vec3GetSetX: returning X=%v to lua", p.X)
+	// log.Printf("vec3GetSetX: returning X=%v to lua", p.X)
 	ls.Push(lua.LNumber(p.X))
 	return 1
 }
@@ -160,7 +139,7 @@ func vec3GetSetY(ls *lua.LState) int {
 		p.Y = float64(ls.CheckNumber(2))
 		return 0
 	}
-	log.Printf("vec3GetSetY: returning Y=%v to lua", p.Y)
+	// log.Printf("vec3GetSetY: returning Y=%v to lua", p.Y)
 	ls.Push(lua.LNumber(p.Y))
 	return 1
 }
@@ -175,7 +154,7 @@ func vec3GetSetZ(ls *lua.LState) int {
 		p.Z = float64(ls.CheckNumber(2))
 		return 0
 	}
-	log.Printf("vec3GetSetZ: returning Z=%v to lua", p.Z)
+	// log.Printf("vec3GetSetZ: returning Z=%v to lua", p.Z)
 	ls.Push(lua.LNumber(p.Z))
 	return 1
 }
@@ -208,34 +187,34 @@ func vec3op2(ls *lua.LState, opFn func(v1, v2 Vec3) Vec3) int {
 		log.Fatalf("unhandled vec3op2 between lhs=%q and rhs=%q", lhs, rhs)
 	}
 
-	log.Printf("vec3op2: p1=%v, p2=%v", p1, p2)
+	// log.Printf("vec3op2: p1=%v, p2=%v", p1, p2)
 
 	result := opFn(*p1, *p2)
 	ud := ls.NewUserData()
 	ud.Value = &result
-	log.Printf("vec3op2 result = %v", result)
+	// log.Printf("vec3op2 result = %v", result)
 	ls.SetMetatable(ud, ls.GetTypeMetatable(luaVec3TypeName))
 	ls.Push(ud)
 	return 1
 }
 
 func vec3Add(ls *lua.LState) int {
-	log.Printf("GML: RUNNING vec3Add from Lua")
+	// log.Printf("GML: RUNNING vec3Add from Lua")
 	return vec3op2(ls, Vec3Add)
 }
 
 func vec3Sub(ls *lua.LState) int {
-	log.Printf("GML: RUNNING vec3Sub from Lua")
+	// log.Printf("GML: RUNNING vec3Sub from Lua")
 	return vec3op2(ls, Vec3Sub)
 }
 
 func vec3Mul(ls *lua.LState) int {
-	log.Printf("GML: RUNNING vec3Mul from Lua")
+	// log.Printf("GML: RUNNING vec3Mul from Lua")
 	return vec3op2(ls, Vec3Mul)
 }
 
 func vec3Cross(ls *lua.LState) int {
-	log.Printf("GML: RUNNING vec3Cross from Lua")
+	// log.Printf("GML: RUNNING vec3Cross from Lua")
 	return vec3op2(ls, Vec3Cross)
 }
 
