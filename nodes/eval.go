@@ -84,7 +84,7 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			}
 			lVal, ok := nodes[conn.NodeIdx].EvalOutputs[conn.ParamName]
 			if !ok {
-				return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find node[%v] output param %q", targetNodeIdx, conn.NodeIdx, conn.ParamName)
+				return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find node[%v]('%v') output param %q, choices are: %+v", targetNodeIdx, conn.NodeIdx, nodes[conn.NodeIdx].OpName, conn.ParamName, maps.Keys(nodes[conn.NodeIdx].EvalOutputs))
 			}
 			inputsTable.RawSet(lua.LString(input.Name), lVal)
 			continue
@@ -96,40 +96,67 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 		log.Printf("input.Props=%#v", input.Props)
 
 		var lVal lua.LValue
+		var ok bool
 		switch input.DataType {
 		case "enum":
+			selected, ok := input.Props["selected"].(lua.LNumber)
+			if !ok {
+				return fmt.Errorf("runNode: input.Props['selected'] enum expected lua.LNumber, got %T: %#v", input.Props["selected"], input)
+			}
+			values, ok := input.Props["values"].(*lua.LTable)
+			if !ok {
+				return fmt.Errorf("runNode: input.Props['values'] enum expected *lua.LTable, got %T: %#v", input.Props["values"], input)
+			}
+			lVal = values.RawGet(selected + 1) // Lua is 1-indexed, but Blackjack is 0-indexed!
+			if lVal.String() == "nil" {
+				log.Fatalf("programming error: values.RawGet=(%v,%v), values=%#v", lVal.String(), lVal.Type(), values)
+			}
+			log.Printf("values.RawGet=(%v,%v), values=%#v", lVal.String(), lVal.Type(), values)
 		default:
-			var ok bool
 			if lVal, ok = input.Props["default"]; !ok {
 				return fmt.Errorf("runNode: input.Props['default'] could not be found: %#v", input.Props)
 			}
 		}
 
+		if lVal == nil {
+			return fmt.Errorf("programming error: lVal remains unset for input %#v", *input)
+		}
 		inputsTable.RawSet(lua.LString(input.Name), lVal)
 	}
 
 	log.Printf("runNode: ALL INPUTS ARE RESOLVED - executing function %v.op(inputs)", targetNode.OpName)
 
-	// top := c.ls.GetTop()
+	top := c.ls.GetTop()
 	expr := fmt.Sprintf("return require('node_library'):getNode('%v').op", targetNode.OpName)
 	if err := c.ls.DoString(expr); err != nil {
 		return err
 	}
-	// newTop := c.ls.GetTop()
-	// log.Printf("before push: top=%v, newTop=%v", top, newTop)
+	newTop := c.ls.GetTop()
+	log.Printf("before push: top=%v, newTop=%v", top, newTop)
 	c.ls.Push(inputsTable)
-	// newTop2 := c.ls.GetTop()
-	// log.Printf("after push: newTop2=%v", newTop2)
+	newTop2 := c.ls.GetTop()
+	log.Printf("after push: newTop2=%v", newTop2)
 	c.ls.Call(1, 1)
+	newTop3 := c.ls.GetTop()
+	log.Printf("after push: newTop3=%v", newTop3)
 	outputs := c.ls.CheckTable(1)
 	if outputs == nil {
 		return fmt.Errorf("runNode: expected outputs table, got type %v: %v", c.ls.Get(1).Type(), c.ls.Get(1).String())
 	}
+	log.Printf("lua execution returned table: %#v", *outputs)
 
 	outputs.ForEach(func(k, v lua.LValue) {
 		targetNode.EvalOutputs[k.String()] = v
 		log.Printf("outputs[%q] = %v", k, v)
 	})
+	c.ls.Pop(1) // remove returned table from lua stack
+
+	// Now verify that all the expected outputs have been assigned:
+	for _, output := range targetNode.Outputs {
+		if _, ok := targetNode.EvalOutputs[output.Name]; !ok {
+			log.Fatalf("execution of node '%v' failed to generate expected output name '%v'! Aborting.", targetNode.OpName, output.Name)
+		}
+	}
 
 	return nil
 }

@@ -825,7 +825,7 @@ func getEnumValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 		return nil, fmt.Errorf("getEnumValue: t=%v, valuesLVal=%T, want *lua.LTable", t, valuesLVal)
 	}
 
-	var selected int // 'selected' field is optional - default to 0 - for example, see: EditGeometry
+	var selected int // 'selected' field is optional - default to 0 for Blackjack - for example, see: EditGeometry
 	selectedLVal, ok := input.Props["selected"]
 	if ok {
 		selectedLNum, ok := selectedLVal.(lua.LNumber)
@@ -835,7 +835,7 @@ func getEnumValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
 		selected = int(selectedLNum)
 	}
 
-	val, ok := values.RawGetInt(selected + 1).(lua.LString) // 1-indexed
+	val, ok := values.RawGetInt(selected + 1).(lua.LString) // Lua is 1-indexed, but Blackjack is 0-indexed!
 	if !ok {
 		return nil, fmt.Errorf("getEnumValue: t=%v, values.RawGetInt(%v)=%T, want string", t, selected, values.RawGetInt(selected))
 	}
