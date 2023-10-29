@@ -483,13 +483,9 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 	return result, nil
 }
 
-func deepCopyProps(inProps map[string]any) map[string]any {
-	outProps := map[string]any{}
-	for k, v := range inProps {
-		lv, ok := v.(lua.LValue)
-		if !ok {
-			log.Fatalf("deepCopyProps: key=%q, expected LValue, got %T: %#v", k, v, v)
-		}
+func deepCopyProps(inProps map[string]lua.LValue) map[string]lua.LValue {
+	outProps := map[string]lua.LValue{}
+	for k, lv := range inProps {
 		switch lv.Type() {
 
 		case lua.LTNil, lua.LTBool, lua.LTNumber, lua.LTString:

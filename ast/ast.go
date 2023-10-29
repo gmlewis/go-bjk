@@ -128,7 +128,7 @@ type Input struct {
 	Kind     DependencyKind `"kind" ":" @@ ","*`
 
 	// Props are not preserved in the BJK file.
-	Props map[string]any
+	Props map[string]lua.LValue
 }
 
 // DependencyKind is an enum that represents an input's dependency.

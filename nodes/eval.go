@@ -1,4 +1,4 @@
-// -*- compile-command: "go run ../cmd/make-scalar/main.go"; -*-
+// -*- compile-command: "go run ../cmd/make-box/main.go"; -*-
 
 package nodes
 
@@ -79,7 +79,14 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 		}
 		if conn := input.Kind.Connection; conn != nil {
 			log.Printf("runNode: connection from (%v,%v) to input node %v", conn.NodeIdx, conn.ParamName, input.Name)
-			return fmt.Errorf("TODO: Call runNode recursively to calculate input and add to inputsTable")
+			if err := c.runNode(nodes, int(conn.NodeIdx)); err != nil {
+				return err
+			}
+			lVal, ok := nodes[conn.NodeIdx].EvalOutputs[conn.ParamName]
+			if !ok {
+				return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find node[%v] output param %q", targetNodeIdx, conn.NodeIdx, conn.ParamName)
+			}
+			inputsTable.RawSet(lua.LString(input.Name), lVal)
 			continue
 		}
 		// At this point, this input node has neither an extern parameter setting nor a connection - get the default value.
@@ -87,14 +94,17 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 		log.Printf("c.Nodes[%v]=%#v", targetNode.OpName, targetNode)
 		log.Printf("input=%#v", input)
 		log.Printf("input.Props=%#v", input.Props)
-		defVal, ok := input.Props["default"]
-		if !ok {
-			return fmt.Errorf("runNode: input.Props['default'] could not be found: %#v", input.Props)
+
+		var lVal lua.LValue
+		switch input.DataType {
+		case "enum":
+		default:
+			var ok bool
+			if lVal, ok = input.Props["default"]; !ok {
+				return fmt.Errorf("runNode: input.Props['default'] could not be found: %#v", input.Props)
+			}
 		}
-		lVal, ok := defVal.(lua.LValue)
-		if !ok {
-			return fmt.Errorf("runNode: input.Props['default'] is type %T, want LValue", defVal)
-		}
+
 		inputsTable.RawSet(lua.LString(input.Name), lVal)
 	}
 

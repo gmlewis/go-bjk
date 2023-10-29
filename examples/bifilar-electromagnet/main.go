@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go -o -"; -*-
+// -*- compile-command: "go run main.go -o '' -stl ../../out.stl"; -*-
 
 // bifilar-electromagnet generates a Blackjack .bjk file that
 // represents a bifilar electromagnet similar to those found

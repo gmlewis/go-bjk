@@ -101,7 +101,7 @@ func (c *Client) luaToInput(lv lua.LValue) (*ast.Input, error) {
 		log.Printf("luaToInput: t=%#v", t)
 	}
 
-	props := map[string]any{}
+	props := map[string]lua.LValue{}
 	t.ForEach(func(k, v lua.LValue) {
 		if c.debug {
 			log.Printf("luaToInput: props[%v]=%#v", k, v)
