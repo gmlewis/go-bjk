@@ -25,6 +25,9 @@ type Client struct {
 
 	debug bool
 	ls    *lua.LState
+
+	// used during Eval:
+	extParamsLookup map[string]*ast.ValueEnum
 }
 
 func (c *Client) showTop() {
@@ -43,7 +46,10 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 	}
 
 	registerVec3Type(ls)
-	ls.DoString("vector = Vec3.new")
+	if err := ls.DoString("vector = Vec3.new"); err != nil {
+		log.Fatal(err)
+	}
+	registerPrimitivesType(ls)
 
 	pkg := ls.GetGlobal("package")
 	packagePath := ls.GetField(pkg, "path").String()
