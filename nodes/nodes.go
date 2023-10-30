@@ -46,6 +46,7 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 	}
 
 	registerNativeMathType(ls)
+	registerOpsType(ls)
 	registerPrimitivesType(ls)
 	registerVec3Type(ls)
 	if err := ls.DoString("vector = Vec3.new"); err != nil {

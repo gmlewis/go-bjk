@@ -4,6 +4,7 @@ go 1.21.3
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.0
+	github.com/gmlewis/go3d v0.0.2
 	github.com/google/go-cmp v0.6.0
 	github.com/hexops/valast v1.4.4
 	github.com/mitchellh/go-homedir v1.1.0

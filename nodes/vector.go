@@ -3,7 +3,11 @@ package nodes
 import (
 	"fmt"
 	"log"
+	"math"
 
+	"github.com/gmlewis/go3d/float64/mat4"
+	"github.com/gmlewis/go3d/float64/vec3"
+	"github.com/gmlewis/go3d/float64/vec4"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -17,6 +21,21 @@ type Vec3 struct {
 // NewVec3 returns a new Vec3.
 func NewVec3(x, y, z float64) Vec3 {
 	return Vec3{X: x, Y: y, Z: z}
+}
+
+// Normalize normalizes a vector in-place.
+func (v *Vec3) Normalize() {
+	length := v.Length()
+	if length > 0 {
+		v.X /= length
+		v.Y /= length
+		v.Z /= length
+	}
+}
+
+// Length calculates the length of the vector.
+func (v Vec3) Length() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
 }
 
 // MulScalar multiplies a Vec3 by a scalar value and returns a new vector.
@@ -36,12 +55,15 @@ func Vec3Sub(v1, v2 Vec3) Vec3 {
 	return Vec3{X: v1.X - v2.X, Y: v1.Y - v2.Y, Z: v1.Z - v2.Z}
 }
 
+// Sub subtracts vector v2 from vector v1 and returns a new vector.
+func (v1 Vec3) Sub(v2 Vec3) Vec3 { return Vec3Sub(v1, v2) }
+
 // Vec3Mul multiplies two vectors (element by element) and returns a new vector.
 func Vec3Mul(v1, v2 Vec3) Vec3 {
 	return Vec3{X: v1.X * v2.X, Y: v1.Y * v2.Y, Z: v1.Z * v2.Z}
 }
 
-// Vec3Cross performs the cross product of v1 x v2 and returns a new vectors.
+// Vec3Cross performs the cross product of v1 x v2 and returns a new vector.
 func Vec3Cross(v1, v2 Vec3) Vec3 {
 	return Vec3{
 		X: v1.Y*v2.Z - v1.Z*v2.Y,
@@ -49,6 +71,17 @@ func Vec3Cross(v1, v2 Vec3) Vec3 {
 		Z: v1.X*v2.Y - v1.Y*v2.X,
 	}
 }
+
+// GetRotXYZ gets the x, y, and z rotations for a vector.
+func (v Vec3) GetRotXYZ() (rx, ry, rz float64) {
+	rx = math.Atan2(v.Z, v.Y)
+	ry = math.Atan2(v.Z, v.X)
+	rz = math.Atan2(v.Y, v.X)
+	return rx, ry, rz
+}
+
+// Cross returns the cross product of v1 x v2 and returns a new vector.
+func (v1 Vec3) Cross(v2 *Vec3) Vec3 { return Vec3Cross(v1, *v2) }
 
 const luaVec3TypeName = "Vec3"
 
@@ -103,7 +136,7 @@ func vec3Index(ls *lua.LState) int {
 	return 1
 }
 
-// Checks whether the first lua argument is a *LUserData with *Vec3 and returns this *Vec3.
+// checkVec3 checks whether the first lua argument is a *LUserData with *Vec3 and returns this *Vec3.
 func checkVec3(ls *lua.LState, index int) *Vec3 {
 	// log.Printf("checkVec3: Get(%v): (%v,%v)", index, ls.Get(index).String(), ls.Get(index).Type())
 	ud := ls.CheckUserData(index)
@@ -224,3 +257,30 @@ func vec3Cross(ls *lua.LState) int {
 //     for k, v in pairs(mt) do
 //         print("k=", k, ", v=", v)
 //     end
+
+// GenXform generates a 4x4 transformation matrix by rotating by rx, ry, rz about the origin,
+// then translating it by tr into place.
+func GenXform(rx, ry, rz float64, tr Vec3) *mat4.T {
+	xrot := mat4.T{}
+	xrot.AssignXRotation(rx)
+	yrot := mat4.T{}
+	yrot.AssignXRotation(ry)
+	zrot := mat4.T{}
+	zrot.AssignXRotation(rz)
+	xyzt := mat4.Ident
+	xyzt.Translate(&vec3.T{tr.X, tr.Y, tr.Z})
+	xfrm := mat4.T{}
+	xfrm.AssignMul(&xrot, &yrot)
+	xfrm2 := mat4.T{}
+	xfrm2.AssignMul(&xfrm, &zrot)
+	xfrm3 := mat4.T{}
+	xfrm3.AssignMul(&xfrm2, &xyzt)
+	return &xfrm3
+}
+
+// Xform applies the 4x4 transformation matrix to the provided vector and
+// returns the result.
+func (v Vec3) Xform(xform *mat4.T) Vec3 {
+	result := xform.MulVec4(&vec4.T{v.X, v.Y, v.Z, 1})
+	return Vec3{X: result[0], Y: result[1], Z: result[2]}
+}
