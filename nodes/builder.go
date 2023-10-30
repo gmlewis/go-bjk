@@ -544,9 +544,16 @@ func setInputProp(input *ast.Input, valStr string) error {
 		return setInputEnumValue(t, input, valStr)
 	case "string":
 		return setInputStringValue(t, input, valStr)
+	case "selection":
+		return setInputSelectionValue(t, input, valStr)
 	default:
 		return fmt.Errorf("setInputProp: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
+}
+
+func setInputSelectionValue(t lua.LString, input *ast.Input, valStr string) error {
+	input.Props["default"] = lua.LString(valStr)
+	return nil
 }
 
 func setInputStringValue(t lua.LString, input *ast.Input, valStr string) error {
