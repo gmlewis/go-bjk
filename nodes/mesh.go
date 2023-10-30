@@ -106,6 +106,15 @@ func (dst *Mesh) Merge(src *Mesh) {
 	dst.Faces = faces
 }
 
+// NewPolygonFromPoints creates a new mesh from points.
+func NewPolygonFromPoints(pts []Vec3) *Mesh {
+	m := &Mesh{Verts: pts, Faces: [][]int{make([]int, 0, len(pts))}}
+	for i := 0; i < len(pts); i++ {
+		m.Faces[0] = append(m.Faces[0], i)
+	}
+	return m
+}
+
 // NewMeshFromPolygons creates a new mesh from points.
 func NewMeshFromPolygons(verts []Vec3, faces [][]int) *Mesh {
 	return &Mesh{Verts: verts, Faces: faces}
@@ -118,6 +127,27 @@ func NewMeshFromLineWithNormals(points, normals, tangents []Vec3) *Mesh {
 		Normals:  normals,
 		Tangents: tangents,
 	}
+}
+
+// NewMeshFromLine creates a new mesh from two points, divided into numSegs.
+func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
+	m := &Mesh{
+		Verts: make([]Vec3, 0, numSegs+1),
+	}
+	lerp := func(val1, val2 float64, i int) float64 {
+		t := float64(i) / float64(numSegs)
+		return (val2-val1)*t + val1
+	}
+	for i := 0; i < numSegs; i++ {
+		v := Vec3{
+			X: lerp(v1.X, v2.X, i),
+			Y: lerp(v1.Y, v2.Y, i),
+			Z: lerp(v1.Z, v2.Z, i),
+		}
+		m.Verts = append(m.Verts, v)
+	}
+	m.Verts = append(m.Verts, *v2)
+	return m
 }
 
 // NewMeshFromExtrudeAlongCurve creates a new mesh by extruding the crossSection along the backbone.

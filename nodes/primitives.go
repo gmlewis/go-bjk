@@ -29,7 +29,9 @@ func registerPrimitivesType(ls *lua.LState) {
 
 var primitivesMethods = map[string]lua.LGFunction{
 	"cube":              cube,
+	"line":              line,
 	"line_with_normals": lineWithNormals,
+	"polygon":           polygon,
 	"quad":              quad,
 }
 
@@ -76,6 +78,46 @@ func cube(ls *lua.LState) int {
 
 	ud := ls.NewUserData()
 	ud.Value = polygon
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
+	ls.Push(ud)
+	return 1
+}
+
+func polygon(ls *lua.LState) int {
+	t := ls.CheckTable(1)
+	numPts := t.Len()
+	pts := make([]Vec3, 0, numPts)
+
+	t.ForEach(func(k, v lua.LValue) {
+		ud, ok := v.(*lua.LUserData)
+		if !ok {
+			log.Fatalf("polygon: k=(%v,%v), v=(%v,%v), want *lua.LUserData", k.String(), k.Type(), v.String(), v.Type())
+		}
+		vec3, ok := ud.Value.(*Vec3)
+		if !ok {
+			log.Fatalf("polygon: k=(%v,%v), v=(%v,%v), want *lua.LUserData, got %T", k.String(), k.Type(), v.String(), v.Type(), ud.Value)
+		}
+		pts = append(pts, *vec3)
+	})
+
+	mesh := NewPolygonFromPoints(pts)
+
+	ud := ls.NewUserData()
+	ud.Value = mesh
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
+	ls.Push(ud)
+	return 1
+}
+
+func line(ls *lua.LState) int {
+	v1 := checkVec3(ls, 1)
+	v2 := checkVec3(ls, 2)
+	numSegs := int(ls.CheckNumber(3))
+
+	mesh := NewMeshFromLine(v1, v2, numSegs)
+
+	ud := ls.NewUserData()
+	ud.Value = mesh
 	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
