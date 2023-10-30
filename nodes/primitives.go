@@ -191,15 +191,18 @@ func quad(ls *lua.LState) int {
 	normal.Normalize()
 	right.Normalize()
 	forward := normal.Cross(right)
+	// log.Printf("quad: normal=%v, right=%v, forward=%v", normal, right, forward)
 
 	halfSize := size.MulScalar(0.5)
 	scaledRight := right.MulScalar(halfSize.X)
 	scaledForward := forward.MulScalar(halfSize.Y)
+	// log.Printf("halfSize=%v, scaledRight=%v, scaledForward=%v", halfSize, scaledRight, scaledForward)
 
-	v1 := center.Add(scaledRight.Add(scaledForward))
-	v2 := center.Sub(scaledRight.Add(scaledForward))
-	v3 := center.Sub(scaledRight.Sub(scaledForward))
-	v4 := center.Add(scaledRight.Sub(scaledForward))
+	v1 := center.Add(scaledRight).Add(scaledForward)
+	v2 := center.Sub(scaledRight).Add(scaledForward)
+	v3 := center.Sub(scaledRight).Sub(scaledForward)
+	v4 := center.Add(scaledRight).Sub(scaledForward)
+	// log.Printf("v1=%v, v2=%v, v3=%v, v4=%v", v1, v2, v3, v4)
 
 	polygon := NewMeshFromPolygons(
 		[]Vec3{v1, v2, v3, v4},

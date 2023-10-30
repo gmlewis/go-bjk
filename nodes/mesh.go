@@ -154,6 +154,7 @@ func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
 }
 
 // NewMeshFromExtrudeAlongCurve creates a new mesh by extruding the crossSection along the backbone.
+// Note that extrude along curve in Blackjack does not make a face at the start or end of the curve.
 func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh {
 	if len(backbone.Verts) == 0 || len(crossSection.Verts) == 0 {
 		return &Mesh{}
@@ -170,10 +171,13 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 	}
 
 	baseRotX, baseRotY, baseRotZ := backbone.Tangents[0].GetRotXYZ()
+	// log.Printf("nmfeac: startPos=%v, baseRotX=%v°, baseRotY=%v°, baseRotZ=%v°",
+	//     startPos, baseRotX*math.Pi/180, baseRotY*math.Pi/180, baseRotZ*math.Pi/180)
 
 	// First, make a copy of the crossSection verts positioned in-place at the start of the backbone.
 	for _, v := range crossSection.Verts {
 		m.Verts = append(m.Verts, v.Add(startPos))
+		// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
 	}
 
 	// For each segment, add numVerts to the mesh, rotated and translated into place, and create new faces
@@ -185,8 +189,10 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 		bvert := backbone.Verts[bvi]
 		xform := GenXform(rx, ry, rz, bvert)
 		vIdx := len(m.Verts)
+		// log.Printf("bvi=%v, bvert=%v, xform=%v, vIdx=%v", bvi, bvert, xform, vIdx)
 		for i, v := range crossSection.Verts {
 			m.Verts = append(m.Verts, v.Xform(xform))
+			// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
 			// create a new quad for each extruded crossSection vertex
 			m.Faces = append(m.Faces, []int{
 				vIdx + i - numVerts,
@@ -194,6 +200,7 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 				vIdx + ((i + 1) % numVerts),
 				vIdx + ((i + 1) % numVerts) - numVerts,
 			})
+			// log.Printf("face[%v]=%+v", len(m.Faces)-1, m.Faces[len(m.Faces)-1])
 		}
 	}
 

@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go"; -*-
+// -*- compile-command: "go run main.go -debug -stl ../../extrude-quad.stl"; -*-
 
 // extrude-quad tests the STL output for MakeQuad + extrude
 package main
