@@ -1,6 +1,9 @@
 package nodes
 
 import (
+	"log"
+
+	"github.com/gmlewis/go3d/float64/vec3"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -221,4 +224,17 @@ func (m *Mesh) generateTangents() {
 	}
 	// last tangent doesn't matter, but tangents must be same length as verts.  Copy last one.
 	m.Tangents = append(m.Tangents, m.Tangents[len(m.Tangents)-1])
+}
+
+func (m *Mesh) CalcNormal() Vec3 {
+	if len(m.Verts) < 3 || len(m.Faces) < 1 || len(m.Faces[0]) < 3 {
+		log.Fatalf("CalcNormal want >=3 points >=1 face, got %#v", *m)
+	}
+	face := m.Faces[0]
+	v1, v2, v3 := m.Verts[face[0]], m.Verts[face[1]], m.Verts[face[2]]
+	pt1, pt2, pt3 := vec3.T{v1.X, v1.Y, v1.Z}, vec3.T{v2.X, v2.Y, v2.Z}, vec3.T{v3.X, v3.Y, v3.Z}
+	vec1 := vec3.Sub(&pt2, &pt1)
+	vec2 := vec3.Sub(&pt3, &pt1)
+	cross := vec3.Cross(&vec1, &vec2)
+	return Vec3{X: cross[0], Y: cross[1], Z: cross[2]}
 }
