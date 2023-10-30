@@ -164,9 +164,7 @@ func main() {
 	}
 
 	if *stlOut != "" {
-		buf, err := c.ToSTL(design)
-		must(err)
-		must(os.WriteFile(*stlOut, buf, 0644))
+		must(c.ToSTL(design, *stlOut))
 	}
 
 	log.Printf("Done.")

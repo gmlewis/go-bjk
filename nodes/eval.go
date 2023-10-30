@@ -58,7 +58,9 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 	if targetNodeIdx >= len(nodes) {
 		return fmt.Errorf("Eval: bad target node index %v, want 0..%v", targetNodeIdx, len(nodes))
 	}
-	log.Printf("runNode(%v)", targetNodeIdx)
+	if c.debug {
+		log.Printf("runNode(%v)", targetNodeIdx)
+	}
 
 	targetNode := nodes[targetNodeIdx]
 	if targetNode.EvalOutputs != nil {
@@ -74,11 +76,15 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			if !ok {
 				return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find exteral param %q", targetNodeIdx, input.Name)
 			}
-			log.Printf("runNode: external ValueEnum=%#v", *ve)
+			if c.debug {
+				log.Printf("runNode: external ValueEnum=%#v", *ve)
+			}
 			continue
 		}
 		if conn := input.Kind.Connection; conn != nil {
-			log.Printf("runNode: connection from (%v,%v) to input node %v", conn.NodeIdx, conn.ParamName, input.Name)
+			if c.debug {
+				log.Printf("runNode: connection from (%v,%v) to input node %v", conn.NodeIdx, conn.ParamName, input.Name)
+			}
 			if err := c.runNode(nodes, int(conn.NodeIdx)); err != nil {
 				return err
 			}
@@ -90,10 +96,11 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			continue
 		}
 		// At this point, this input node has neither an extern parameter setting nor a connection - get the default value.
-		log.Printf("runNode: TODO: GET DEFAULT VALUE FOR (%v,%v)", targetNodeIdx, input.Name)
-		log.Printf("c.Nodes[%v]=%#v", targetNode.OpName, targetNode)
-		log.Printf("input=%#v", input)
-		log.Printf("input.Props=%#v", input.Props)
+		if c.debug {
+			log.Printf("c.Nodes[%v]=%#v", targetNode.OpName, targetNode)
+			log.Printf("input=%#v", input)
+			log.Printf("input.Props=%#v", input.Props)
+		}
 
 		var lVal lua.LValue
 		var ok bool
@@ -111,7 +118,9 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			if lVal.String() == "nil" {
 				log.Fatalf("programming error: values.RawGet=(%v,%v), values=%#v", lVal.String(), lVal.Type(), values)
 			}
-			log.Printf("values.RawGet=(%v,%v), values=%#v", lVal.String(), lVal.Type(), values)
+			if c.debug {
+				log.Printf("values.RawGet=(%v,%v), values=%#v", lVal.String(), lVal.Type(), values)
+			}
 		default:
 			if lVal, ok = input.Props["default"]; !ok {
 				return fmt.Errorf("runNode: input.Props['default'] could not be found: %#v", input.Props)
@@ -124,30 +133,29 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 		inputsTable.RawSet(lua.LString(input.Name), lVal)
 	}
 
-	log.Printf("runNode: ALL INPUTS ARE RESOLVED - executing function %v.op(inputs)", targetNode.OpName)
+	if c.debug {
+		log.Printf("runNode: ALL INPUTS ARE RESOLVED - executing function %v.op(inputs)", targetNode.OpName)
+	}
 
-	top := c.ls.GetTop()
 	expr := fmt.Sprintf("return require('node_library'):getNode('%v').op", targetNode.OpName)
 	if err := c.ls.DoString(expr); err != nil {
 		return err
 	}
-	newTop := c.ls.GetTop()
-	log.Printf("before push: top=%v, newTop=%v", top, newTop)
 	c.ls.Push(inputsTable)
-	newTop2 := c.ls.GetTop()
-	log.Printf("after push: newTop2=%v", newTop2)
 	c.ls.Call(1, 1)
-	newTop3 := c.ls.GetTop()
-	log.Printf("after push: newTop3=%v", newTop3)
 	outputs := c.ls.CheckTable(1)
 	if outputs == nil {
 		return fmt.Errorf("runNode: expected outputs table, got type %v: %v", c.ls.Get(1).Type(), c.ls.Get(1).String())
 	}
-	log.Printf("lua execution returned table: %#v", *outputs)
+	if c.debug {
+		log.Printf("lua execution returned table: %#v", *outputs)
+	}
 
 	outputs.ForEach(func(k, v lua.LValue) {
 		targetNode.EvalOutputs[k.String()] = v
-		log.Printf("outputs[%q] = %v", k, v)
+		if c.debug {
+			log.Printf("outputs[%q] = %v", k, v)
+		}
 	})
 	c.ls.Pop(1) // remove returned table from lua stack
 

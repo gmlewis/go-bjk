@@ -42,7 +42,7 @@ func extrudeWithCaps(ls *lua.LState) int {
 	// Currently, only a single face is extruded.
 	face := checkMesh(ls, 3)
 	// Only the first 3 points in the face are used to calculate its normal.
-	faceNormalVec3 := face.CalcNormal().MulScalar(amount)
+	faceNormalVec3 := face.CalcNormal(0).MulScalar(amount)
 	faceNormal := NewMeshFromLine(&Vec3{0, 0, 0}, &faceNormalVec3, 1)
 
 	mesh := NewMeshFromExtrudeAlongCurve(faceNormal, face, 0)
