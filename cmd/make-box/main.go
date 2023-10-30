@@ -15,6 +15,7 @@ import (
 var (
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
+	stlOut  = flag.String("stl", "make-box.stl", "Output filename for binary STL file")
 )
 
 func main() {
@@ -33,9 +34,10 @@ func main() {
 
 	design, err := c.NewBuilder().AddNode("MakeBox").Build()
 	must(err)
-	mesh, err := c.Eval(design)
-	must(err)
-	log.Printf("Mesh=%#v", mesh)
+
+	if *stlOut != "" {
+		must(c.ToSTL(design, *stlOut))
+	}
 
 	log.Printf("Done.")
 }
