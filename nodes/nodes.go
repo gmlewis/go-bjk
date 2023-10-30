@@ -45,9 +45,11 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 		log.Printf("At start: Top=%v", ls.GetTop())
 	}
 
+	registerMeshType(ls)
 	registerNativeMathType(ls)
 	registerOpsType(ls)
 	registerPrimitivesType(ls)
+	registerSelectionExpressionType(ls)
 	registerVec3Type(ls)
 	if err := ls.DoString("vector = Vec3.new"); err != nil {
 		log.Fatal(err)

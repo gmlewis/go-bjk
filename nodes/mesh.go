@@ -12,6 +12,100 @@ type Mesh struct {
 	Faces    [][]int // optional
 }
 
+const luaMeshTypeName = "Mesh"
+
+var meshFuncs = map[string]lua.LGFunction{
+	"clone": meshClone, // mesh_a:clone()
+}
+
+func registerMeshType(ls *lua.LState) {
+	mt := ls.NewTypeMetatable(luaMeshTypeName)
+	ls.SetGlobal(luaMeshTypeName, mt)
+	ls.SetField(mt, "__index", ls.SetFuncs(ls.NewTable(), meshFuncs))
+	// for name, fn := range meshFuncs {
+	// 	mt.RawSetString(name, ls.NewFunction(fn))
+	// }
+}
+
+func meshClone(ls *lua.LState) int {
+	orig := checkMesh(ls, 1)
+	m := &Mesh{
+		Verts:    make([]Vec3, 0, len(orig.Verts)),
+		Normals:  make([]Vec3, 0, len(orig.Normals)),
+		Tangents: make([]Vec3, 0, len(orig.Tangents)),
+		Faces:    make([][]int, 0, len(orig.Faces)),
+	}
+
+	for _, v := range orig.Verts {
+		m.Verts = append(m.Verts, v)
+	}
+	for _, v := range orig.Normals {
+		m.Normals = append(m.Normals, v)
+	}
+	for _, v := range orig.Tangents {
+		m.Tangents = append(m.Tangents, v)
+	}
+	for _, v := range orig.Faces {
+		m.Faces = append(m.Faces, append([]int{}, v...))
+	}
+
+	ud := ls.NewUserData()
+	ud.Value = m
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
+	ls.Push(ud)
+	return 1
+}
+
+// Merge merges src into dst for Ops.merge(dst, src).
+func (dst *Mesh) Merge(src *Mesh) {
+	// Currently, a naive merge is performed by not checking if any Verts are shared.
+	verts := make([]Vec3, 0, len(dst.Verts)+len(src.Verts))
+	normals := make([]Vec3, 0, len(dst.Normals)+len(src.Normals))
+	tangents := make([]Vec3, 0, len(dst.Tangents)+len(src.Tangents))
+	faces := make([][]int, 0, len(dst.Faces)+len(src.Faces))
+
+	for _, v := range dst.Verts {
+		verts = append(verts, v)
+	}
+	for _, v := range src.Verts {
+		verts = append(verts, v)
+	}
+
+	for _, v := range dst.Normals {
+		normals = append(normals, v)
+	}
+	for _, v := range src.Normals {
+		normals = append(normals, v)
+	}
+
+	for _, v := range dst.Tangents {
+		tangents = append(tangents, v)
+	}
+	for _, v := range src.Tangents {
+		tangents = append(tangents, v)
+	}
+
+	for _, v := range dst.Faces {
+		faces = append(faces, append([]int{}, v...))
+	}
+	numVerts := len(dst.Verts)
+	adjFace := func(src []int) []int {
+		result := make([]int, 0, len(src))
+		for _, f := range src {
+			result = append(result, f+numVerts)
+		}
+		return result
+	}
+	for _, v := range src.Faces {
+		faces = append(faces, adjFace(v))
+	}
+
+	dst.Verts = verts
+	dst.Normals = normals
+	dst.Tangents = tangents
+	dst.Faces = faces
+}
+
 // NewMeshFromPolygons creates a new mesh from points.
 func NewMeshFromPolygons(verts []Vec3, faces [][]int) *Mesh {
 	return &Mesh{Verts: verts, Faces: faces}

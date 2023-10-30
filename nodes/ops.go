@@ -8,6 +8,7 @@ const luaOpsTypeName = "Ops"
 
 var opsFuncs = map[string]lua.LGFunction{
 	"extrude_along_curve": extrudeAlongCurve,
+	"merge":               mergeMeshes,
 }
 
 func registerOpsType(ls *lua.LState) {
@@ -27,6 +28,17 @@ func extrudeAlongCurve(ls *lua.LState) int {
 
 	ud := ls.NewUserData()
 	ud.Value = mesh
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
+}
+
+// mergeMeshes merges src into dst for Ops.merge(dst, src).
+// It returns nothing on the stack.
+func mergeMeshes(ls *lua.LState) int {
+	dst := checkMesh(ls, 1)
+	src := checkMesh(ls, 2)
+
+	dst.Merge(src)
+	return 0
 }

@@ -102,7 +102,7 @@ func registerVec3Type(ls *lua.LState) {
 	}
 }
 
-// Constructor
+// constructor
 func newVec3(ls *lua.LState) int {
 	vec3 := &Vec3{
 		X: float64(ls.CheckNumber(1)),
@@ -251,13 +251,6 @@ func vec3Cross(ls *lua.LState) int {
 	return vec3op2(ls, Vec3Cross)
 }
 
-// Useful for debugging lua:
-//     print("GML: VectorMath: op=", inputs.op, ", vec_a=", inputs.vec_a, ", vec_b=", inputs.vec_b)
-//     local mt = getmetatable(inputs.vec_a)
-//     for k, v in pairs(mt) do
-//         print("k=", k, ", v=", v)
-//     end
-
 // GenXform generates a 4x4 transformation matrix by rotating by rx, ry, rz about the origin,
 // then translating it by tr into place.
 func GenXform(rx, ry, rz float64, tr Vec3) *mat4.T {
@@ -284,3 +277,10 @@ func (v Vec3) Xform(xform *mat4.T) Vec3 {
 	result := xform.MulVec4(&vec4.T{v.X, v.Y, v.Z, 1})
 	return Vec3{X: result[0], Y: result[1], Z: result[2]}
 }
+
+// Useful for debugging lua:
+//     print("GML: VectorMath: op=", inputs.op, ", vec_a=", inputs.vec_a, ", vec_b=", inputs.vec_b)
+//     local mt = getmetatable(inputs.vec_a)
+//     for k, v in pairs(mt) do
+//         print("k=", k, ", v=", v)
+//     end

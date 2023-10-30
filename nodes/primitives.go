@@ -76,6 +76,7 @@ func cube(ls *lua.LState) int {
 
 	ud := ls.NewUserData()
 	ud.Value = polygon
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
 }
@@ -115,6 +116,7 @@ func lineWithNormals(ls *lua.LState) int {
 
 	ud := ls.NewUserData()
 	ud.Value = mesh
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
 }
@@ -165,6 +167,7 @@ func quad(ls *lua.LState) int {
 
 	ud := ls.NewUserData()
 	ud.Value = polygon
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
 }
