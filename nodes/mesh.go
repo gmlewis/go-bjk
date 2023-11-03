@@ -167,9 +167,11 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 	}
 	startPos := backbone.Verts[0]
 	if len(backbone.Tangents) < len(backbone.Verts) {
+		log.Printf("GML: NewMeshFromExtrudeAlongCurve - calling generateTangents() - #Tangents=%v, #Verts=%v", len(backbone.Tangents), len(backbone.Verts))
 		backbone.generateTangents()
 	}
 
+	log.Printf("GML: nmfeac: backbone.Tangents[0]=%v", backbone.Tangents[0])
 	baseRotX, baseRotY, baseRotZ := backbone.Tangents[0].GetRotXYZ()
 	// log.Printf("nmfeac: startPos=%v, baseRotX=%v°, baseRotY=%v°, baseRotZ=%v°",
 	//     startPos, baseRotX*math.Pi/180, baseRotY*math.Pi/180, baseRotZ*math.Pi/180)

@@ -151,7 +151,7 @@ func lineWithNormals(ls *lua.LState) int {
 		v = getVec3(normalsTbl, i)
 		normals = append(normals, *v)
 		v = getVec3(tangentsTbl, i)
-		normals = append(normals, *v)
+		tangents = append(tangents, *v)
 	}
 
 	mesh := NewMeshFromLineWithNormals(points, normals, tangents)

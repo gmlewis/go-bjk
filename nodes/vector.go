@@ -77,6 +77,7 @@ func (v Vec3) GetRotXYZ() (rx, ry, rz float64) {
 	rx = math.Atan2(v.Z, v.Y)
 	ry = math.Atan2(v.Z, v.X)
 	rz = math.Atan2(v.Y, v.X)
+	log.Printf("GetRotXYZ: %v => rx=%v, ry=%v, rz=%v", v, rx, ry, rz)
 	return rx, ry, rz
 }
 
@@ -268,6 +269,7 @@ func GenXform(rx, ry, rz float64, tr Vec3) *mat4.T {
 	xfrm2.AssignMul(&xfrm, &zrot)
 	xfrm3 := mat4.T{}
 	xfrm3.AssignMul(&xfrm2, &xyzt)
+	log.Printf("GenXForm: rx=%v,ry=%v,rz=%v,tr=%v: xfrm3=%v", rx, ry, rz, tr, xfrm3)
 	return &xfrm3
 }
 
@@ -275,6 +277,7 @@ func GenXform(rx, ry, rz float64, tr Vec3) *mat4.T {
 // returns the result.
 func (v Vec3) Xform(xform *mat4.T) Vec3 {
 	result := xform.MulVec4(&vec4.T{v.X, v.Y, v.Z, 1})
+	log.Printf("Xform: v=%v, result=%v", v, result)
 	return Vec3{X: result[0], Y: result[1], Z: result[2]}
 }
 
