@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go -debug -stl ../../extrude-helix.stl"; -*-
+// -*- compile-command: "go run main.go -stl ../../extrude-helix.stl"; -*-
 
 // extrude-helix tests the STL output for MakeQuad + Helix + extrude
 package main
@@ -15,6 +15,7 @@ import (
 
 var (
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
+	numSegs = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut  = flag.String("stl", "extrude-helix.stl", "Output filename for binary STL file")
 )
@@ -35,7 +36,7 @@ func main() {
 
 	design, err := c.NewBuilder().
 		AddNode("MakeQuad.1", "normal=vector(0,0,1)").
-		AddNode("Helix.1", "segments=8").
+		AddNode("Helix.1", set("segments", *numSegs)).
 		AddNode("ExtrudeAlongCurve.1", "flip=1").
 		Connect("MakeQuad.1.out_mesh", "ExtrudeAlongCurve.1.cross_section").
 		Connect("Helix.1.out_mesh", "ExtrudeAlongCurve.1.backbone").
@@ -49,6 +50,10 @@ func main() {
 	}
 
 	log.Printf("Done.")
+}
+
+func set(key string, value any) string {
+	return fmt.Sprintf("%v=%v", key, value)
 }
 
 func must(err error) {

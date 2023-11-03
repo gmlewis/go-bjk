@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"github.com/gmlewis/go3d/float64/mat4"
-	"github.com/gmlewis/go3d/float64/vec3"
+	"github.com/gmlewis/go3d/float64/quaternion"
 	"github.com/gmlewis/go3d/float64/vec4"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -72,13 +72,22 @@ func Vec3Cross(v1, v2 Vec3) Vec3 {
 	}
 }
 
-// GetRotXYZ gets the x, y, and z rotations for a vector.
-func (v Vec3) GetRotXYZ() (rx, ry, rz float64) {
-	rx = math.Atan2(v.Z, v.Y)
-	ry = math.Atan2(v.Z, v.X)
-	rz = math.Atan2(v.Y, v.X)
-	log.Printf("GetRotXYZ: %v => rx=%v, ry=%v, rz=%v", v, rx, ry, rz)
-	return rx, ry, rz
+// Vec3Dot performs the dot product of v1 x v2 and returns a new vector.
+func Vec3Dot(v1, v2 Vec3) float64 {
+	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
+}
+
+// Rotation calculates the rotation between two normalized vectors.
+// From: https://physicsforgames.blogspot.com/2010/03/quaternion-tricks.html
+func Rotation(from, to Vec3) quaternion.T {
+	h := Vec3Add(from, to)
+	h.Normalize()
+	result := quaternion.T{}
+	result[3] = Vec3Dot(from, h)
+	result[0] = from.Y*h.X - from.Z*h.Y
+	result[1] = from.Z*h.X - from.X*h.Z
+	result[2] = from.X*h.Y - from.Y*h.X
+	return result
 }
 
 // Cross returns the cross product of v1 x v2 and returns a new vector.
@@ -252,32 +261,43 @@ func vec3Cross(ls *lua.LState) int {
 	return vec3op2(ls, Vec3Cross)
 }
 
-// GenXform generates a 4x4 transformation matrix by rotating by rx, ry, rz about the origin,
-// then translating it by tr into place.
-func GenXform(rx, ry, rz float64, tr Vec3) *mat4.T {
-	xrot := mat4.T{}
-	xrot.AssignXRotation(rx)
-	yrot := mat4.T{}
-	yrot.AssignXRotation(ry)
-	zrot := mat4.T{}
-	zrot.AssignXRotation(rz)
-	xyzt := mat4.Ident
-	xyzt.Translate(&vec3.T{tr.X, tr.Y, tr.Z})
-	xfrm := mat4.T{}
-	xfrm.AssignMul(&xrot, &yrot)
-	xfrm2 := mat4.T{}
-	xfrm2.AssignMul(&xfrm, &zrot)
-	xfrm3 := mat4.T{}
-	xfrm3.AssignMul(&xfrm2, &xyzt)
-	log.Printf("GenXForm: rx=%v,ry=%v,rz=%v,tr=%v: xfrm3=%v", rx, ry, rz, tr, xfrm3)
-	return &xfrm3
+type Xform struct {
+	rot quaternion.T
+	tr  Vec3
+}
+
+// GenXform represents a rotation by rot about the origin, then translating it by tr into place.
+func GenXform(rot quaternion.T, tr Vec3) *Xform {
+	// log.Printf("GenXForm: rot=%v, tr=%v", rot, tr)
+	return &Xform{
+		rot: rot,
+		tr:  tr,
+	}
+}
+
+// Do performs the transform and returns a Vec3.
+// From: https://physicsforgames.blogspot.com/2010/03/quaternion-tricks.html
+func (xf *Xform) Do(v Vec3) Vec3 {
+	x1 := xf.rot[1]*v.Z - xf.rot[2]*v.Y
+	y1 := xf.rot[2]*v.X - xf.rot[0]*v.Z
+	z1 := xf.rot[0]*v.Y - xf.rot[1]*v.X
+
+	x2 := xf.rot[3]*x1 + xf.rot[1]*z1 - xf.rot[2]*y1
+	y2 := xf.rot[3]*y1 + xf.rot[2]*x1 - xf.rot[0]*z1
+	z2 := xf.rot[3]*z1 + xf.rot[0]*y1 - xf.rot[1]*x1
+
+	return Vec3{
+		X: v.X + 2*x2 + xf.tr.X,
+		Y: v.Y + 2*y2 + xf.tr.Y,
+		Z: v.Z + 2*z2 + xf.tr.Z,
+	}
 }
 
 // Xform applies the 4x4 transformation matrix to the provided vector and
 // returns the result.
 func (v Vec3) Xform(xform *mat4.T) Vec3 {
 	result := xform.MulVec4(&vec4.T{v.X, v.Y, v.Z, 1})
-	log.Printf("Xform: v=%v, result=%v", v, result)
+	// log.Printf("Xform: v=%v, result=%v", v, result)
 	return Vec3{X: result[0], Y: result[1], Z: result[2]}
 }
 

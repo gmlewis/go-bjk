@@ -129,9 +129,9 @@ func lineWithNormals(ls *lua.LState) int {
 	tangentsTbl := ls.CheckTable(3)
 	numSegments := int(ls.CheckNumber(4))
 
-	points := make([]Vec3, 0, numSegments)
-	normals := make([]Vec3, 0, numSegments)
-	tangents := make([]Vec3, 0, numSegments)
+	points := make([]Vec3, 0, numSegments+1)
+	normals := make([]Vec3, 0, numSegments+1)
+	tangents := make([]Vec3, 0, numSegments+1)
 
 	getVec3 := func(tbl *lua.LTable, index int) *Vec3 {
 		ud, ok := tbl.RawGetInt(index).(*lua.LUserData)
@@ -145,7 +145,7 @@ func lineWithNormals(ls *lua.LState) int {
 		return v
 	}
 
-	for i := 1; i <= numSegments; i++ {
+	for i := 1; i <= numSegments+1; i++ {
 		v := getVec3(pointsTbl, i)
 		points = append(points, *v)
 		v = getVec3(normalsTbl, i)

@@ -120,11 +120,13 @@ func NewPolygonFromPoints(pts []Vec3) *Mesh {
 
 // NewMeshFromPolygons creates a new mesh from points.
 func NewMeshFromPolygons(verts []Vec3, faces [][]int) *Mesh {
+	// log.Printf("NewMeshFromPolygons: %v verts, %v faces", len(verts), len(faces))
 	return &Mesh{Verts: verts, Faces: faces}
 }
 
 // NewMeshFromLineWithNormals creates a new mesh from points, normals, and tangents.
 func NewMeshFromLineWithNormals(points, normals, tangents []Vec3) *Mesh {
+	// log.Printf("NewMeshFromLineWithNormals: %v points, %v normals, %v tangents", len(points), len(normals), len(tangents))
 	return &Mesh{
 		Verts:    points,
 		Normals:  normals,
@@ -134,6 +136,7 @@ func NewMeshFromLineWithNormals(points, normals, tangents []Vec3) *Mesh {
 
 // NewMeshFromLine creates a new mesh from two points, divided into numSegs.
 func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
+	// log.Printf("NewMeshFromLine: 2 points, %v segments", numSegs)
 	m := &Mesh{
 		Verts: make([]Vec3, 0, numSegs+1),
 	}
@@ -159,6 +162,7 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 	if len(backbone.Verts) == 0 || len(crossSection.Verts) == 0 {
 		return &Mesh{}
 	}
+	// log.Printf("GML: nmfeac: len(backbone.Verts)=%v, len(backbone.Tangents)=%v", len(backbone.Verts), len(backbone.Tangents))
 
 	numVerts := len(crossSection.Verts)
 	m := &Mesh{
@@ -167,33 +171,29 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 	}
 	startPos := backbone.Verts[0]
 	if len(backbone.Tangents) < len(backbone.Verts) {
-		log.Printf("GML: NewMeshFromExtrudeAlongCurve - calling generateTangents() - #Tangents=%v, #Verts=%v", len(backbone.Tangents), len(backbone.Verts))
 		backbone.generateTangents()
 	}
 
-	log.Printf("GML: nmfeac: backbone.Tangents[0]=%v", backbone.Tangents[0])
-	baseRotX, baseRotY, baseRotZ := backbone.Tangents[0].GetRotXYZ()
-	// log.Printf("nmfeac: startPos=%v, baseRotX=%v°, baseRotY=%v°, baseRotZ=%v°",
-	//     startPos, baseRotX*math.Pi/180, baseRotY*math.Pi/180, baseRotZ*math.Pi/180)
+	// log.Printf("GML: nmfeac: backbone.Verts[0]=%v, backbone.Tangents[0]=%v", startPos, backbone.Tangents[0])
 
 	// First, make a copy of the crossSection verts positioned in-place at the start of the backbone.
 	for _, v := range crossSection.Verts {
 		m.Verts = append(m.Verts, v.Add(startPos))
-		// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
+		// log.Printf("1st: verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
 	}
 
 	// For each segment, add numVerts to the mesh, rotated and translated into place, and create new faces
 	// that connect to the last set of numVerts.
 	for bvi := 1; bvi < len(backbone.Verts); bvi++ {
-		rotX, rotY, rotZ := backbone.Tangents[bvi].GetRotXYZ()
-		rx, ry, rz := rotX-baseRotX, rotY-baseRotY, rotZ-baseRotZ
+		rot := Rotation(backbone.Tangents[0], backbone.Tangents[bvi])
 
 		bvert := backbone.Verts[bvi]
-		xform := GenXform(rx, ry, rz, bvert)
+		// log.Printf("nmfeac: backbone.Verts[%v]=%v, rot=%v", bvi, bvert, rot)
+		xform := GenXform(rot, bvert)
 		vIdx := len(m.Verts)
 		// log.Printf("bvi=%v, bvert=%v, xform=%v, vIdx=%v", bvi, bvert, xform, vIdx)
 		for i, v := range crossSection.Verts {
-			m.Verts = append(m.Verts, v.Xform(xform))
+			m.Verts = append(m.Verts, xform.Do(v))
 			// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
 			// create a new quad for each extruded crossSection vertex
 			m.Faces = append(m.Faces, []int{
