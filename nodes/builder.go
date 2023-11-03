@@ -783,13 +783,27 @@ func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 		log.Printf("getValueEnum: WARNING: value of type '%v' not supported yet.", t)
 		return &ast.ValueEnum{StrVal: &ast.StringValue{S: "TODO"}}, nil
 	case "selection":
-		log.Printf("getValueEnum: WARNING: value of type '%v' not supported yet.", t)
-		return &ast.ValueEnum{Selection: &ast.SelectionValue{Selection: "TODO"}}, nil
+		return getSelectionValue(t, input)
 	case "mesh":
 		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)
 	default:
 		return nil, fmt.Errorf("getValueEnum: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
+}
+
+func getSelectionValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {
+	defLVal, ok := input.Props["default"]
+	if !ok {
+		return nil, fmt.Errorf("getSelectionValue: t=%v, could not find 'default' for input %q: props=%#v", t, input.Name, input.Props)
+	}
+	val, ok := defLVal.(lua.LString)
+	if !ok {
+		return nil, fmt.Errorf("getSelectionValue: defVal.Value=%T, want lua.LString", defLVal)
+	}
+
+	return &ast.ValueEnum{
+		Selection: &ast.SelectionValue{Selection: string(val)},
+	}, nil
 }
 
 func getStringValue(t lua.LString, input *ast.Input) (*ast.ValueEnum, error) {

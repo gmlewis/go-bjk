@@ -133,11 +133,12 @@ func dataTypeToBJK(dt string) string {
 }
 
 var dataTypeLookup = map[string]string{
-	"enum":   "BJK_STRING",
-	"mesh":   "BJK_MESH",
-	"scalar": "BJK_SCALAR",
-	"string": "BJK_STRING",
-	"vec3":   "BJK_VECTOR",
+	"enum":      "BJK_STRING",
+	"mesh":      "BJK_MESH",
+	"scalar":    "BJK_SCALAR",
+	"selection": "BJK_SELECTION",
+	"string":    "BJK_STRING",
+	"vec3":      "BJK_VECTOR",
 }
 
 func (ui *UIData) String() string {
