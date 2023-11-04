@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"log"
 	"slices"
 
 	lua "github.com/yuin/gopher-lua"
@@ -39,36 +40,43 @@ func extrudeAlongCurve(ls *lua.LState) int {
 func extrudeWithCaps(ls *lua.LState) int {
 	// Currently, the SelectionExpression (first arg) is assumed to be '*'.
 	amount := float64(ls.CheckNumber(2))
-	// log.Printf("extrudeWithCaps: amount=%v", amount)
+	log.Printf("extrudeWithCaps: amount=%v", amount)
 	// Currently, only a single face is extruded.
-	face := checkMesh(ls, 3)
-	// log.Printf("extrudeWithCaps: face=%v", face)
-	// Only the first 3 points in the face are used to calculate its normal.
-	faceNormalVec3 := face.CalcNormal(0).MulScalar(amount)
-	// log.Printf("extrudeWithCaps: faceNormalVec3=%v", faceNormalVec3)
-	faceNormal := NewMeshFromLine(&Vec3{0, 0, 0}, &faceNormalVec3, 1)
-	// log.Printf("extrudeWithCaps: faceNormal=%v", faceNormal)
+	faceMesh := checkMesh(ls, 3)
+	log.Printf("extrudeWithCaps: faceMesh=%v", faceMesh)
+	// Only the first 3 points in the face are used to calculate its normal and tangent.
+	segmentNormal, segmentTangent := faceMesh.CalcNormalAndTangent(0)
+	log.Printf("extrudeWithCaps: segmentNormal=%v, segmentTangent=%v", segmentNormal, segmentTangent)
+	startPos := Vec3{0, 0, 0}
+	endPos := segmentNormal.MulScalar(amount)
+	log.Printf("extrudeWithCaps: endPos=%v", endPos)
+	points := []Vec3{startPos, endPos}
+	normals := []Vec3{segmentNormal, segmentNormal}
+	tangents := []Vec3{segmentTangent, segmentTangent}
+	faceNormal := NewMeshFromLineWithNormals(points, normals, tangents)
+	log.Printf("extrudeWithCaps: faceNormal=%v", faceNormal)
 
-	mesh := NewMeshFromExtrudeAlongCurve(faceNormal, face, 0)
+	mesh := NewMeshFromExtrudeAlongCurve(faceNormal, faceMesh, 0)
+	log.Printf("extrudeWithCaps: extruded mesh=%v", mesh)
 	// Because extrude_along_curve does not make a face at the start or end
 	// of the curve, we need to move the initial face to the end of the extrusion
 	// before we reverse the original face.
-	numVerts := len(face.Verts)
+	numVerts := len(faceMesh.Verts)
 	meshVerts := len(mesh.Verts)
 	movedFace := make([]int, 0, numVerts)
 	for i := 0; i < numVerts; i++ {
-		movedFace = append(movedFace, face.Faces[0][i]+meshVerts-numVerts)
+		movedFace = append(movedFace, faceMesh.Faces[0][i]+meshVerts-numVerts)
 	}
-	// log.Printf("extrudeWithCaps: numVerts=%v, meshVerts=%v, movedFace=%v", numVerts, meshVerts, movedFace)
+	log.Printf("extrudeWithCaps: numVerts=%v, meshVerts=%v, movedFace=%v", numVerts, meshVerts, movedFace)
 	mesh.Faces = append(mesh.Faces, movedFace)
 
 	// face is altered in-place - so reverse the order of its face[0] vertex indices,
 	// then merge the new mesh into it.
-	// log.Printf("extrudeWithCaps: before face reversal=%v", face)
-	slices.Reverse(face.Faces[0])
-	// log.Printf("extrudeWithCaps: after face reversal=%v", face)
-	face.Merge(mesh)
-	// log.Printf("extrudeWithCaps: after merge=%v", face)
+	log.Printf("extrudeWithCaps: before face reversal=%v", faceMesh)
+	slices.Reverse(faceMesh.Faces[0])
+	log.Printf("extrudeWithCaps: after face reversal=%v", faceMesh)
+	faceMesh.Merge(mesh)
+	log.Printf("extrudeWithCaps: after merge=%v", faceMesh)
 
 	return 0
 }

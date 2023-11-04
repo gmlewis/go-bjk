@@ -159,7 +159,9 @@ func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
 // NewMeshFromExtrudeAlongCurve creates a new mesh by extruding the crossSection along the backbone.
 // Note that extrude along curve in Blackjack does not make a face at the start or end of the curve.
 func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh {
-	if len(backbone.Verts) == 0 || len(crossSection.Verts) == 0 {
+	if len(backbone.Verts) == 0 || len(crossSection.Verts) == 0 || len(backbone.Normals) < len(backbone.Verts) {
+		log.Printf("NewMeshFromExtrudeAlongCurve not enough verts(%v/%v) or normals(%v) to extrude",
+			len(backbone.Verts), len(crossSection.Verts), len(backbone.Normals))
 		return &Mesh{}
 	}
 	// log.Printf("GML: nmfeac: len(backbone.Verts)=%v, len(backbone.Tangents)=%v", len(backbone.Verts), len(backbone.Tangents))
@@ -169,33 +171,31 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 		Verts: make([]Vec3, 0, numVerts*len(backbone.Verts)),
 		Faces: make([][]int, 0, numVerts*(len(backbone.Verts)-1)),
 	}
-	startPos := backbone.Verts[0]
+
 	if len(backbone.Tangents) < len(backbone.Verts) {
 		backbone.generateTangents()
 	}
 
 	// log.Printf("GML: nmfeac: backbone.Verts[0]=%v, backbone.Tangents[0]=%v", startPos, backbone.Tangents[0])
 
-	// First, make a copy of the crossSection verts positioned in-place at the start of the backbone.
-	for _, v := range crossSection.Verts {
-		m.Verts = append(m.Verts, v.Add(startPos))
-		// log.Printf("1st: verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
-	}
-
 	// For each segment, add numVerts to the mesh, rotated and translated into place, and create new faces
 	// that connect to the last set of numVerts.
-	for bvi := 1; bvi < len(backbone.Verts); bvi++ {
-		rot := Rotation(backbone.Tangents[0], backbone.Tangents[bvi])
+	for bvi := 0; bvi < len(backbone.Verts); bvi++ {
+		// rot := Rotation(backbone.Tangents[0], backbone.Tangents[bvi])
 
 		bvert := backbone.Verts[bvi]
 		// log.Printf("nmfeac: backbone.Verts[%v]=%v, rot=%v", bvi, bvert, rot)
-		xform := GenXform(rot, bvert)
+		xform := GenXform(backbone.Normals[bvi], backbone.Tangents[bvi], bvert)
 		vIdx := len(m.Verts)
 		// log.Printf("bvi=%v, bvert=%v, xform=%v, vIdx=%v", bvi, bvert, xform, vIdx)
 		for i, v := range crossSection.Verts {
 			m.Verts = append(m.Verts, xform.Do(v))
 			// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
 			// create a new quad for each extruded crossSection vertex
+			if bvi == 0 {
+				continue
+			}
+
 			m.Faces = append(m.Faces, []int{
 				vIdx + i - numVerts,
 				vIdx + i,
@@ -235,15 +235,20 @@ func (m *Mesh) generateTangents() {
 	m.Tangents = append(m.Tangents, m.Tangents[len(m.Tangents)-1])
 }
 
-func (m *Mesh) CalcNormal(faceIndex int) Vec3 {
+func (m *Mesh) CalcNormalAndTangent(faceIndex int) (normal, tangent Vec3) {
 	if len(m.Verts) < 3 || len(m.Faces) <= faceIndex || len(m.Faces[faceIndex]) < 3 {
-		log.Fatalf("CalcNormal want >=3 points >=1 face, got %#v", *m)
+		log.Fatalf("CalcNormalAndTangent: want >=3 points >=1 face, got %#v", *m)
 	}
 	face := m.Faces[faceIndex]
 	v1, v2, v3 := m.Verts[face[0]], m.Verts[face[1]], m.Verts[face[2]]
 	pt1, pt2, pt3 := vec3.T{v1.X, v1.Y, v1.Z}, vec3.T{v2.X, v2.Y, v2.Z}, vec3.T{v3.X, v3.Y, v3.Z}
-	vec1 := vec3.Sub(&pt2, &pt1)
+	tangentVec := vec3.Sub(&pt2, &pt1)
+	tangentVec.Normalize()
 	vec2 := vec3.Sub(&pt3, &pt1)
-	cross := vec3.Cross(&vec1, &vec2)
-	return Vec3{X: cross[0], Y: cross[1], Z: cross[2]}
+	vec2.Normalize()
+	cross := vec3.Cross(&tangentVec, &vec2)
+	cross.Normalize()
+	normal = Vec3{X: cross[0], Y: cross[1], Z: cross[2]}
+	tangent = Vec3{X: tangentVec[0], Y: tangentVec[1], Z: tangentVec[2]}
+	return normal, tangent
 }

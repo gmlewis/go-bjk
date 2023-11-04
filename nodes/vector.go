@@ -7,6 +7,7 @@ import (
 
 	"github.com/gmlewis/go3d/float64/mat4"
 	"github.com/gmlewis/go3d/float64/quaternion"
+	"github.com/gmlewis/go3d/float64/vec3"
 	"github.com/gmlewis/go3d/float64/vec4"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -266,9 +267,18 @@ type Xform struct {
 	tr  Vec3
 }
 
-// GenXform represents a rotation by rot about the origin, then translating it by tr into place.
-func GenXform(rot quaternion.T, tr Vec3) *Xform {
-	// log.Printf("GenXForm: rot=%v, tr=%v", rot, tr)
+// GenXform represents a rotation (defined by the normal and tangent vectors) about the origin,
+// then translating it by tr into place.
+func GenXform(normal, tangent, tr Vec3) *Xform {
+	normal.Normalize()
+	tangent.Normalize()
+	cotangent := normal.Cross(&tangent)
+
+	xAxis := vec3.T{cotangent.X, cotangent.Y, cotangent.Z}
+	yAxis := vec3.T{normal.X, normal.Y, normal.Z}
+	zAxis := vec3.T{tangent.X, tangent.Y, tangent.Z}
+	rot := quaternion.FromRotationAxes(xAxis, yAxis, zAxis)
+
 	return &Xform{
 		rot: rot,
 		tr:  tr,
