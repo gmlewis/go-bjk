@@ -16,7 +16,7 @@ import (
 var (
 	debug    = flag.Bool("debug", false, "Turn on debugging info")
 	repoDir  = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
-	segments = flag.Int("ns", 6, "Number of segments")
+	segments = flag.Int("ns", 36, "Number of segments")
 	stlOut   = flag.String("stl", "make-bfem-cage.stl", "Output filename for binary STL file")
 )
 

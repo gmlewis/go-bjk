@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"log"
 	"slices"
 
 	lua "github.com/yuin/gopher-lua"
@@ -40,21 +39,21 @@ func extrudeAlongCurve(ls *lua.LState) int {
 func extrudeWithCaps(ls *lua.LState) int {
 	// Currently, the SelectionExpression (first arg) is assumed to be '*'.
 	amount := float64(ls.CheckNumber(2))
-	log.Printf("\n\nextrudeWithCaps: amount=%v", amount)
+	// log.Printf("\n\nextrudeWithCaps: amount=%v", amount)
 
 	faceMesh := checkMesh(ls, 3)
-	log.Printf("extrudeWithCaps: BEFORE: faceMesh=%v", faceMesh)
+	// log.Printf("extrudeWithCaps: BEFORE: faceMesh=%v", faceMesh)
 
 	var newFaces [][]int
 	for faceIdx, face := range faceMesh.Faces {
 		if len(face) < 3 {
-			log.Printf("extrudeWithCaps: Attempted to extrude a face with only %v vertices. Skipping.", len(face))
+			// log.Printf("extrudeWithCaps: Attempted to extrude a face with only %v vertices. Skipping.", len(face))
 			continue
 		}
 
 		extrusionNormal := faceMesh.CalcFaceNormal(faceIdx)
 		extrudeVec := extrusionNormal.MulScalar(amount)
-		log.Printf("face[%v]: extrudeVec=%v", faceIdx, extrudeVec)
+		// log.Printf("face[%v]: extrudeVec=%v", faceIdx, extrudeVec)
 
 		// For this face, make another copy of all its vertices at the extruded distance.
 		numVerts := len(face)
@@ -80,7 +79,7 @@ func extrudeWithCaps(ls *lua.LState) int {
 	}
 
 	faceMesh.Faces = append(faceMesh.Faces, newFaces...)
-	log.Printf("extrudeWithCaps: AFTER: faceMesh=%v", faceMesh)
+	// log.Printf("extrudeWithCaps: AFTER: faceMesh=%v", faceMesh)
 
 	return 0
 }

@@ -262,7 +262,7 @@ func GenXform(normal, tangent, tr Vec3) *Xform {
 func (xf Xform) Do(v Vec3) Vec3 {
 	qv := quaternion.T{v.X, v.Y, v.Z, 0}
 	q := quaternion.Mul3(&xf.rot, &qv, &xf.inv)
-	log.Printf("xform.Do: xform=%v, v=%v, q=%v, tr=%v", xf, v, q, xf.tr)
+	// log.Printf("xform.Do: xform=%v, v=%v, q=%v, tr=%v", xf, v, q, xf.tr)
 	v.X = q[0] + xf.tr.X
 	v.Y = q[1] + xf.tr.Y
 	v.Z = q[2] + xf.tr.Z

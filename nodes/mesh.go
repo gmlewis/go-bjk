@@ -235,9 +235,9 @@ func (m *Mesh) CalcFaceNormal(faceIndex int) Vec3 {
 		va := m.Verts[vIdx]
 		vb := m.Verts[face[(i+1)%numVerts]]
 		vc := m.Verts[face[(i-1+numVerts)%numVerts]]
-		log.Printf("i=%v, va=%v, vb=%v, vc=%v", i, va, vb, vc)
+		// log.Printf("i=%v, va=%v, vb=%v, vc=%v", i, va, vb, vc)
 		n := (vb.Sub(va)).Cross(vc.Sub(va)).Normalized()
-		log.Printf("(vb-va)x(vc-va)=%v", n)
+		// log.Printf("(vb-va)x(vc-va)=%v", n)
 		votes[n]++
 	}
 
