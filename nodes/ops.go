@@ -41,42 +41,46 @@ func extrudeWithCaps(ls *lua.LState) int {
 	// Currently, the SelectionExpression (first arg) is assumed to be '*'.
 	amount := float64(ls.CheckNumber(2))
 	log.Printf("\n\nextrudeWithCaps: amount=%v", amount)
-	// Currently, only a single face is extruded.
+
 	faceMesh := checkMesh(ls, 3)
-	log.Printf("extrudeWithCaps: faceMesh=%v", faceMesh)
-	// Only the first 3 points in the face are used to calculate its normal and tangent.
-	segmentNormal, segmentTangent := faceMesh.CalcNormalAndTangent(0)
-	log.Printf("extrudeWithCaps: segmentNormal=%v, segmentTangent=%v", segmentNormal, segmentTangent)
-	startPos := Vec3{0, 0, 0}
-	endPos := segmentNormal.MulScalar(amount)
-	log.Printf("extrudeWithCaps: startPos=%v, endPos=%v", startPos, endPos)
-	points := []Vec3{startPos, endPos}
-	normals := []Vec3{segmentNormal, segmentNormal}
-	tangents := []Vec3{segmentTangent, segmentTangent}
-	faceNormal := NewMeshFromLineWithNormals(points, normals, tangents)
-	log.Printf("extrudeWithCaps: faceNormal=%v", faceNormal)
+	log.Printf("extrudeWithCaps: BEFORE: faceMesh=%v", faceMesh)
 
-	mesh := NewMeshFromExtrudeAlongCurve(faceNormal, faceMesh, 0)
-	log.Printf("extrudeWithCaps: extruded mesh=%v", mesh)
-	// Because extrude_along_curve does not make a face at the start or end
-	// of the curve, we need to move the initial face to the end of the extrusion
-	// before we reverse the original face.
-	numVerts := len(faceMesh.Verts)
-	meshVerts := len(mesh.Verts)
-	movedFace := make([]int, 0, numVerts)
-	for i := 0; i < numVerts; i++ {
-		movedFace = append(movedFace, faceMesh.Faces[0][i]+meshVerts-numVerts)
+	var newFaces [][]int
+	for faceIdx, face := range faceMesh.Faces {
+		if len(face) < 3 {
+			log.Printf("extrudeWithCaps: Attempted to extrude a face with only %v vertices. Skipping.", len(face))
+			continue
+		}
+
+		extrusionNormal := faceMesh.CalcFaceNormal(faceIdx)
+		extrudeVec := extrusionNormal.MulScalar(amount)
+		log.Printf("face[%v]: extrudeVec=%v", faceIdx, extrudeVec)
+
+		// For this face, make another copy of all its vertices at the extruded distance.
+		numVerts := len(face)
+		vIdx := len(faceMesh.Verts)
+		extrudedFace := make([]int, 0, numVerts)
+		for i, vertIdx := range face {
+			faceMesh.Verts = append(faceMesh.Verts, faceMesh.Verts[vertIdx].Add(extrudeVec))
+			newFaces = append(newFaces, []int{
+				vIdx + i - numVerts,
+				vIdx + i,
+				vIdx + ((i + 1) % numVerts),
+				vIdx + ((i + 1) % numVerts) - numVerts,
+			})
+			extrudedFace = append(extrudedFace, vIdx+i)
+		}
+
+		// Copy the initial face to the end of the extrusion and make new quads
+		// before we reverse the original face.
+		newFaces = append(newFaces, extrudedFace)
+
+		// face is altered in-place - so reverse the order of its face[faceIdx] vertex indices.
+		slices.Reverse(faceMesh.Faces[faceIdx])
 	}
-	log.Printf("extrudeWithCaps: numVerts=%v, meshVerts=%v, movedFace=%v", numVerts, meshVerts, movedFace)
-	mesh.Faces = append(mesh.Faces, movedFace)
 
-	// face is altered in-place - so reverse the order of its face[0] vertex indices,
-	// then merge the new mesh into it.
-	log.Printf("extrudeWithCaps: before face reversal=%v", faceMesh)
-	slices.Reverse(faceMesh.Faces[0])
-	log.Printf("extrudeWithCaps: after face reversal=%v", faceMesh)
-	faceMesh.Merge(mesh)
-	log.Printf("extrudeWithCaps: after merge=%v", faceMesh)
+	faceMesh.Faces = append(faceMesh.Faces, newFaces...)
+	log.Printf("extrudeWithCaps: AFTER: faceMesh=%v", faceMesh)
 
 	return 0
 }

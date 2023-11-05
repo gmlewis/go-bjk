@@ -38,6 +38,13 @@ func (v *Vec3) Normalize() {
 	}
 }
 
+// Normalized returns a new normalized Vec3.
+func (v Vec3) Normalized() Vec3 {
+	vp := &v
+	vp.Normalize()
+	return v
+}
+
 // Length calculates the length of the vector.
 func (v Vec3) Length() float64 {
 	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)

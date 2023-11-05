@@ -3,7 +3,6 @@ package nodes
 import (
 	"log"
 
-	"github.com/gmlewis/go3d/float64/vec3"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -215,20 +214,15 @@ func (m *Mesh) generateTangents() {
 	m.Tangents = append(m.Tangents, m.Tangents[len(m.Tangents)-1])
 }
 
-func (m *Mesh) CalcNormalAndTangent(faceIndex int) (normal, tangent Vec3) {
+func (m *Mesh) CalcFaceNormal(faceIndex int) Vec3 {
 	if len(m.Verts) < 3 || len(m.Faces) <= faceIndex || len(m.Faces[faceIndex]) < 3 {
 		log.Fatalf("CalcNormalAndTangent: want >=3 points >=1 face, got %#v", *m)
 	}
 	face := m.Faces[faceIndex]
-	v1, v2, v3 := m.Verts[face[0]], m.Verts[face[1]], m.Verts[face[2]]
-	pt1, pt2, pt3 := vec3.T{v1.X, v1.Y, v1.Z}, vec3.T{v2.X, v2.Y, v2.Z}, vec3.T{v3.X, v3.Y, v3.Z}
-	tangentVec := vec3.Sub(&pt2, &pt1)
-	tangentVec.Normalize()
-	vec2 := vec3.Sub(&pt3, &pt1)
-	vec2.Normalize()
-	cross := vec3.Cross(&tangentVec, &vec2)
-	cross.Normalize()
-	normal = Vec3{X: cross[0], Y: cross[1], Z: cross[2]}
-	tangent = Vec3{X: tangentVec[0], Y: tangentVec[1], Z: tangentVec[2]}
-	return normal, tangent
+	v01 := m.Verts[face[0]].Sub(m.Verts[face[1]])
+	log.Printf("CalcFaceNormal(%v): v01=%v-%v=%v", faceIndex, m.Verts[face[0]], m.Verts[face[1]], v01)
+	v12 := m.Verts[face[1]].Sub(m.Verts[face[2]])
+	log.Printf("CalcFaceNormal(%v): v12=%v-%v=%v", faceIndex, m.Verts[face[1]], m.Verts[face[2]], v12)
+	log.Printf("CalcFaceNormal(%v): v01.Cross(&v12).Normalized()=%v", faceIndex, v01.Cross(&v12).Normalized())
+	return v01.Cross(&v12).Normalized()
 }

@@ -39,7 +39,7 @@ func tesselateFace(out *stl.Client, mesh *Mesh, faceIndex int) error {
 	if len(face) < 3 {
 		return fmt.Errorf("face <3 verts: %+v", face)
 	}
-	faceNormal, _ := mesh.CalcNormalAndTangent(faceIndex)
+	faceNormal := mesh.CalcFaceNormal(faceIndex)
 	n := [3]float32{float32(faceNormal.X), float32(faceNormal.Y), float32(faceNormal.Z)}
 	pt1 := mesh.Verts[face[0]]
 	v1 := [3]float32{float32(pt1.X), float32(pt1.Y), float32(pt1.Z)}
