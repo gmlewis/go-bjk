@@ -39,15 +39,9 @@ func meshClone(ls *lua.LState) int {
 		Faces:    make([][]int, 0, len(orig.Faces)),
 	}
 
-	for _, v := range orig.Verts {
-		m.Verts = append(m.Verts, v)
-	}
-	for _, v := range orig.Normals {
-		m.Normals = append(m.Normals, v)
-	}
-	for _, v := range orig.Tangents {
-		m.Tangents = append(m.Tangents, v)
-	}
+	m.Verts = append(m.Verts, orig.Verts...)
+	m.Normals = append(m.Normals, orig.Normals...)
+	m.Tangents = append(m.Tangents, orig.Tangents...)
 	for _, v := range orig.Faces {
 		m.Faces = append(m.Faces, append([]int{}, v...))
 	}
@@ -67,26 +61,12 @@ func (dst *Mesh) Merge(src *Mesh) {
 	tangents := make([]Vec3, 0, len(dst.Tangents)+len(src.Tangents))
 	faces := make([][]int, 0, len(dst.Faces)+len(src.Faces))
 
-	for _, v := range dst.Verts {
-		verts = append(verts, v)
-	}
-	for _, v := range src.Verts {
-		verts = append(verts, v)
-	}
-
-	for _, v := range dst.Normals {
-		normals = append(normals, v)
-	}
-	for _, v := range src.Normals {
-		normals = append(normals, v)
-	}
-
-	for _, v := range dst.Tangents {
-		tangents = append(tangents, v)
-	}
-	for _, v := range src.Tangents {
-		tangents = append(tangents, v)
-	}
+	verts = append(verts, dst.Verts...)
+	verts = append(verts, src.Verts...)
+	normals = append(normals, dst.Normals...)
+	normals = append(normals, src.Normals...)
+	tangents = append(tangents, dst.Tangents...)
+	tangents = append(tangents, src.Tangents...)
 
 	for _, v := range dst.Faces {
 		faces = append(faces, append([]int{}, v...))

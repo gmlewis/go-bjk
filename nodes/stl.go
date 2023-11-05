@@ -22,6 +22,10 @@ func (c *Client) ToSTL(design *ast.BJK, filename string) error {
 	}
 
 	out, err := stl.New(filename)
+	if err != nil {
+		return err
+	}
+
 	for faceIndex := range mesh.Faces {
 		if err := tesselateFace(out, mesh, faceIndex); err != nil {
 			return err

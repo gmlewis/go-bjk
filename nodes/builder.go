@@ -134,7 +134,7 @@ func (b *Builder) instantiateGroup(groupName string, group *Builder, args ...str
 	}
 
 	errFn := func(i int, step *recorder, msg string) error {
-		return fmt.Errorf("Group '%v' step #%v of %v: %v: %v('%v')", groupName, i+1, len(group.groupRecorder), msg, step.action, strings.Join(step.args, "', '"))
+		return fmt.Errorf("error: Group '%v' step #%v of %v: %v: %v('%v')", groupName, i+1, len(group.groupRecorder), msg, step.action, strings.Join(step.args, "', '"))
 	}
 
 	// First pass - make sure we know all possible valid new node names (after instantiating) for this group
@@ -398,13 +398,13 @@ func (b *Builder) Connect(from, to string) *Builder {
 	}
 
 	if v, ok := b.InputsAlreadyConnected[to]; ok {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) - 'to' node '%[2]v' already connected OR statically assigned to %q!", from, to, v))
+		b.errs = append(b.errs, fmt.Errorf("error: Connect(%q, %q) - 'to' node '%[2]v' already connected OR statically assigned to %q", from, to, v))
 		return b
 	}
 	b.InputsAlreadyConnected[to] = from
 
 	if toInput.DataType != fromOutput.DataType {
-		b.errs = append(b.errs, fmt.Errorf("Connect(%q, %q) - 'from' node type '%v' not compatible with 'to' node type '%v'.", from, to, fromOutput.DataType, toInput.DataType))
+		b.errs = append(b.errs, fmt.Errorf("error: Connect(%q, %q) - 'from' node type '%v' not compatible with 'to' node type '%v'", from, to, fromOutput.DataType, toInput.DataType))
 	}
 
 	return b
@@ -432,7 +432,7 @@ func (b *Builder) setInputValues(nodeName string, inputs []*ast.Input, args ...s
 
 		fullInputName := fmt.Sprintf("%v.%v", nodeName, k)
 		if v, ok := b.InputsAlreadyConnected[fullInputName]; ok {
-			return nil, fmt.Errorf("input '%v' already assigned to %q!", fullInputName, v)
+			return nil, fmt.Errorf("input '%v' already assigned to %q", fullInputName, v)
 		}
 		v := strings.TrimSpace(rhs)
 		b.InputsAlreadyConnected[fullInputName] = v

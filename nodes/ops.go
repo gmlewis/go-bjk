@@ -40,7 +40,7 @@ func extrudeAlongCurve(ls *lua.LState) int {
 func extrudeWithCaps(ls *lua.LState) int {
 	// Currently, the SelectionExpression (first arg) is assumed to be '*'.
 	amount := float64(ls.CheckNumber(2))
-	log.Printf("extrudeWithCaps: amount=%v", amount)
+	log.Printf("\n\nextrudeWithCaps: amount=%v", amount)
 	// Currently, only a single face is extruded.
 	faceMesh := checkMesh(ls, 3)
 	log.Printf("extrudeWithCaps: faceMesh=%v", faceMesh)
@@ -49,7 +49,7 @@ func extrudeWithCaps(ls *lua.LState) int {
 	log.Printf("extrudeWithCaps: segmentNormal=%v, segmentTangent=%v", segmentNormal, segmentTangent)
 	startPos := Vec3{0, 0, 0}
 	endPos := segmentNormal.MulScalar(amount)
-	log.Printf("extrudeWithCaps: endPos=%v", endPos)
+	log.Printf("extrudeWithCaps: startPos=%v, endPos=%v", startPos, endPos)
 	points := []Vec3{startPos, endPos}
 	normals := []Vec3{segmentNormal, segmentNormal}
 	tangents := []Vec3{segmentTangent, segmentTangent}

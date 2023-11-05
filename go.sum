@@ -6,8 +6,8 @@ github.com/alecthomas/repr v0.2.0 h1:HAzS41CIzNW5syS8Mf9UwXhNH1J9aix/BvDRf1Ml2Yk
 github.com/alecthomas/repr v0.2.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/frankban/quicktest v1.14.3/go.mod h1:mgiwOwqx65TmIk1wJ6Q7wvnVMocbUorkibMOrVTHZps=
-github.com/gmlewis/go3d v0.0.3 h1:277Evu5P4tZaShe3UmWJzlmXAi04UvBFVAawAwcW5zQ=
-github.com/gmlewis/go3d v0.0.3/go.mod h1:NQ7fN6W+8Nu+SEsFWMpMhy6IZlRBMb4hAwItuxqNMz0=
+github.com/gmlewis/go3d v0.0.4 h1:2ymApzgFXKZJ0nFgItUAAXt2z8n5tPOz5Wtu/SGZ1As=
+github.com/gmlewis/go3d v0.0.4/go.mod h1:kmNbdpGuKWLQCUigppF9tBmoHDLrsymSy6se+eBUOVk=
 github.com/gmlewis/irmf-slicer/v3 v3.5.0 h1:h+KamvyzOVYjduDrQHGgyj2TfJgjxVjafVh/t9nwDpY=
 github.com/gmlewis/irmf-slicer/v3 v3.5.0/go.mod h1:uFvBpKumvobIohLmLNlVO7GZYqGznfnMQX0n3D/abh8=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=

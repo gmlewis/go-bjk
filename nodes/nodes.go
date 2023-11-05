@@ -15,10 +15,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-const (
-	luaEngineDir = "blackjack_engine/src/lua_engine"
-)
-
 // Client represents all the known nodes in Blackjack from its Luau bindings.
 type Client struct {
 	Nodes map[string]*ast.Node
@@ -28,13 +24,6 @@ type Client struct {
 
 	// used during Eval:
 	extParamsLookup map[string]*ast.ValueEnum
-}
-
-func (c *Client) showTop() {
-	if !c.debug {
-		return
-	}
-	log.Printf("\n\nshowTop: Top=%v type: %v", c.ls.GetTop(), c.ls.Get(-1).Type())
 }
 
 // New creates a new instance of nodes.Client.

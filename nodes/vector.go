@@ -19,6 +19,10 @@ type Vec3 struct {
 	Z float64
 }
 
+func (v Vec3) String() string {
+	return fmt.Sprintf("{%0.2f %0.2f %0.2f}", v.X, v.Y, v.Z)
+}
+
 // NewVec3 returns a new Vec3.
 func NewVec3(x, y, z float64) Vec3 {
 	return Vec3{X: x, Y: y, Z: z}
@@ -158,51 +162,6 @@ func checkVec3(ls *lua.LState, index int) *Vec3 {
 	return nil
 }
 
-// Getter and setter for the Vec3#x
-func vec3GetSetX(ls *lua.LState) int {
-	p := checkVec3(ls, 1)
-	if p == nil {
-		return 0
-	}
-	if ls.GetTop() == 2 {
-		p.X = float64(ls.CheckNumber(2))
-		return 0
-	}
-	// log.Printf("vec3GetSetX: returning X=%v to lua", p.X)
-	ls.Push(lua.LNumber(p.X))
-	return 1
-}
-
-// Getter and setter for the Vec3#y
-func vec3GetSetY(ls *lua.LState) int {
-	p := checkVec3(ls, 1)
-	if p == nil {
-		return 0
-	}
-	if ls.GetTop() == 2 {
-		p.Y = float64(ls.CheckNumber(2))
-		return 0
-	}
-	// log.Printf("vec3GetSetY: returning Y=%v to lua", p.Y)
-	ls.Push(lua.LNumber(p.Y))
-	return 1
-}
-
-// Getter and setter for the Vec3#z
-func vec3GetSetZ(ls *lua.LState) int {
-	p := checkVec3(ls, 1)
-	if p == nil {
-		return 0
-	}
-	if ls.GetTop() == 2 {
-		p.Z = float64(ls.CheckNumber(2))
-		return 0
-	}
-	// log.Printf("vec3GetSetZ: returning Z=%v to lua", p.Z)
-	ls.Push(lua.LNumber(p.Z))
-	return 1
-}
-
 func vec3String(ls *lua.LState) int {
 	p := checkVec3(ls, 1)
 	if p == nil {
@@ -264,7 +223,12 @@ func vec3Cross(ls *lua.LState) int {
 
 type Xform struct {
 	rot quaternion.T
+	inv quaternion.T
 	tr  Vec3
+}
+
+func (xf Xform) String() string {
+	return fmt.Sprintf("{rot=%v inv=%v tr=%v}", xf.rot, xf.inv, xf.tr)
 }
 
 // GenXform represents a rotation (defined by the normal and tangent vectors) about the origin,
@@ -278,29 +242,24 @@ func GenXform(normal, tangent, tr Vec3) *Xform {
 	yAxis := vec3.T{normal.X, normal.Y, normal.Z}
 	zAxis := vec3.T{tangent.X, tangent.Y, tangent.Z}
 	rot := quaternion.FromRotationAxes(xAxis, yAxis, zAxis)
+	inv := rot.Inverted()
 
 	return &Xform{
 		rot: rot,
+		inv: inv,
 		tr:  tr,
 	}
 }
 
 // Do performs the transform and returns a Vec3.
-// From: https://physicsforgames.blogspot.com/2010/03/quaternion-tricks.html
-func (xf *Xform) Do(v Vec3) Vec3 {
-	x1 := xf.rot[1]*v.Z - xf.rot[2]*v.Y
-	y1 := xf.rot[2]*v.X - xf.rot[0]*v.Z
-	z1 := xf.rot[0]*v.Y - xf.rot[1]*v.X
-
-	x2 := xf.rot[3]*x1 + xf.rot[1]*z1 - xf.rot[2]*y1
-	y2 := xf.rot[3]*y1 + xf.rot[2]*x1 - xf.rot[0]*z1
-	z2 := xf.rot[3]*z1 + xf.rot[0]*y1 - xf.rot[1]*x1
-
-	return Vec3{
-		X: v.X + 2*x2 + xf.tr.X,
-		Y: v.Y + 2*y2 + xf.tr.Y,
-		Z: v.Z + 2*z2 + xf.tr.Z,
-	}
+func (xf Xform) Do(v Vec3) Vec3 {
+	qv := quaternion.T{v.X, v.Y, v.Z, 0}
+	q := quaternion.Mul3(&xf.rot, &qv, &xf.inv)
+	log.Printf("xform.Do: xform=%v, v=%v, q=%v, tr=%v", xf, v, q, xf.tr)
+	v.X = q[0] + xf.tr.X
+	v.Y = q[1] + xf.tr.Y
+	v.Z = q[2] + xf.tr.Z
+	return v
 }
 
 // Xform applies the 4x4 transformation matrix to the provided vector and
