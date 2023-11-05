@@ -145,7 +145,6 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 			len(backbone.Verts), len(crossSection.Verts), len(backbone.Normals))
 		return &Mesh{}
 	}
-	// log.Printf("GML: nmfeac: len(backbone.Verts)=%v, len(backbone.Tangents)=%v", len(backbone.Verts), len(backbone.Tangents))
 
 	numVerts := len(crossSection.Verts)
 	m := &Mesh{
@@ -157,26 +156,23 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 		backbone.generateTangents()
 	}
 
-	// log.Printf("GML: nmfeac: backbone.Verts[0]=%v, backbone.Tangents[0]=%v", startPos, backbone.Tangents[0])
-
 	// For each segment, add numVerts to the mesh, rotated and translated into place, and create new faces
 	// that connect to the last set of numVerts.
 	for bvi := 0; bvi < len(backbone.Verts); bvi++ {
-		// rot := Rotation(backbone.Tangents[0], backbone.Tangents[bvi])
 
-		bvert := backbone.Verts[bvi]
-		// log.Printf("nmfeac: backbone.Verts[%v]=%v, rot=%v", bvi, bvert, rot)
-		xform := GenXform(backbone.Normals[bvi], backbone.Tangents[bvi], bvert)
+		normal, tangent, bvert := backbone.Normals[bvi], backbone.Tangents[bvi], backbone.Verts[bvi]
+		xform := GenXform(normal, tangent, bvert)
 		vIdx := len(m.Verts)
-		// log.Printf("bvi=%v, bvert=%v, xform=%v, vIdx=%v", bvi, bvert, xform, vIdx)
+		// log.Printf("nmfeac: bvi=%v, normal=%v, tangent=%v, bvert=%v, xform=%v, vIdx=%v", bvi, backbone.Normals[bvi], backbone.Tangents[bvi], bvert, xform, vIdx)
 		for i, v := range crossSection.Verts {
-			m.Verts = append(m.Verts, xform.Do(v))
+			// m.Verts = append(m.Verts, xform.Do(v))
+			m.Verts = append(m.Verts, v.Xform(xform))
 			// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
-			// create a new quad for each extruded crossSection vertex
 			if bvi == 0 {
 				continue
 			}
 
+			// create a new quad for each extruded crossSection vertex
 			m.Faces = append(m.Faces, []int{
 				vIdx + i - numVerts,
 				vIdx + i,

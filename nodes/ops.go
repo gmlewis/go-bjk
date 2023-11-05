@@ -24,10 +24,13 @@ func registerOpsType(ls *lua.LState) {
 
 func extrudeAlongCurve(ls *lua.LState) int {
 	backbone := checkMesh(ls, 1)
+	// log.Printf("extrudeAlongCurve: backbone=%v", backbone)
 	crossSection := checkMesh(ls, 2)
+	// log.Printf("extrudeAlongCurve: crossSection=%v", crossSection)
 	flip := int(ls.CheckNumber(3))
 
 	mesh := NewMeshFromExtrudeAlongCurve(backbone, crossSection, flip)
+	// log.Printf("extrudeAlongCurve: mesh=%v", mesh)
 
 	ud := ls.NewUserData()
 	ud.Value = mesh

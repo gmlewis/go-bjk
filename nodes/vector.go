@@ -228,45 +228,41 @@ func vec3Cross(ls *lua.LState) int {
 	return vec3op2(ls, Vec3Cross)
 }
 
-type Xform struct {
-	rot quaternion.T
-	inv quaternion.T
-	tr  Vec3
-}
-
-func (xf Xform) String() string {
-	return fmt.Sprintf("{rot=%v inv=%v tr=%v}", xf.rot, xf.inv, xf.tr)
-}
-
 // GenXform represents a rotation (defined by the normal and tangent vectors) about the origin,
 // then translating it by tr into place.
-func GenXform(normal, tangent, tr Vec3) *Xform {
+// func GenXform(normal, tangent, tr Vec3) *Xform {
+func GenXform(normal, tangent, tr Vec3) *mat4.T {
 	normal.Normalize()
 	tangent.Normalize()
 	cotangent := normal.Cross(tangent)
+	cotangent.Normalize()
+	// log.Printf("normal=%v, tangent=%v, cotangent=%v", normal, tangent, cotangent)
 
 	xAxis := vec3.T{cotangent.X, cotangent.Y, cotangent.Z}
 	yAxis := vec3.T{normal.X, normal.Y, normal.Z}
 	zAxis := vec3.T{tangent.X, tangent.Y, tangent.Z}
 	rot := quaternion.FromRotationAxes(xAxis, yAxis, zAxis)
-	inv := rot.Inverted()
 
-	return &Xform{
-		rot: rot,
-		inv: inv,
-		tr:  tr,
+	// Convert to 4x4 transformation matrix:
+	x2 := 2 * rot[0]
+	y2 := 2 * rot[1]
+	z2 := 2 * rot[2]
+	xx := rot[0] * x2
+	xy := rot[0] * y2
+	xz := rot[0] * z2
+	yy := rot[1] * y2
+	yz := rot[1] * z2
+	zz := rot[2] * z2
+	wx := rot[3] * x2
+	wy := rot[3] * y2
+	wz := rot[3] * z2
+
+	return &mat4.T{ // note column order due to MulVec4 ordering.
+		vec4.T{1.0 - (yy + zz), xy + wz, xz - wy, 0},
+		vec4.T{xy - wz, 1.0 - (xx + zz), yz + wx, 0},
+		vec4.T{xz + wy, yz - wx, 1.0 - (xx + yy), 0},
+		vec4.T{tr.X, tr.Y, tr.Z, 1},
 	}
-}
-
-// Do performs the transform and returns a Vec3.
-func (xf Xform) Do(v Vec3) Vec3 {
-	qv := quaternion.T{v.X, v.Y, v.Z, 0}
-	q := quaternion.Mul3(&xf.rot, &qv, &xf.inv)
-	// log.Printf("xform.Do: xform=%v, v=%v, q=%v, tr=%v", xf, v, q, xf.tr)
-	v.X = q[0] + xf.tr.X
-	v.Y = q[1] + xf.tr.Y
-	v.Z = q[2] + xf.tr.Z
-	return v
 }
 
 // Xform applies the 4x4 transformation matrix to the provided vector and

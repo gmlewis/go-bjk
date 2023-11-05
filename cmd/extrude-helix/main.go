@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go -stl ../../extrude-helix.stl"; -*-
+// -*- compile-command: "go run main.go -stl ../../extrude-helix.stl > ../../extrude-helix.bjk"; -*-
 
 // extrude-helix tests the STL output for MakeQuad + Helix + extrude
 package main
