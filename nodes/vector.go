@@ -103,7 +103,7 @@ func Rotation(from, to Vec3) quaternion.T {
 }
 
 // Cross returns the cross product of v1 x v2 and returns a new vector.
-func (v1 Vec3) Cross(v2 *Vec3) Vec3 { return Vec3Cross(v1, *v2) }
+func (v1 Vec3) Cross(v2 Vec3) Vec3 { return Vec3Cross(v1, v2) }
 
 const luaVec3TypeName = "Vec3"
 
@@ -243,7 +243,7 @@ func (xf Xform) String() string {
 func GenXform(normal, tangent, tr Vec3) *Xform {
 	normal.Normalize()
 	tangent.Normalize()
-	cotangent := normal.Cross(&tangent)
+	cotangent := normal.Cross(tangent)
 
 	xAxis := vec3.T{cotangent.X, cotangent.Y, cotangent.Z}
 	yAxis := vec3.T{normal.X, normal.Y, normal.Z}

@@ -5,6 +5,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"path/filepath"
 
@@ -13,9 +14,10 @@ import (
 )
 
 var (
-	debug   = flag.Bool("debug", false, "Turn on debugging info")
-	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
-	stlOut  = flag.String("stl", "make-bfem-cage.stl", "Output filename for binary STL file")
+	debug    = flag.Bool("debug", false, "Turn on debugging info")
+	repoDir  = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
+	segments = flag.Int("ns", 6, "Number of segments")
+	stlOut   = flag.String("stl", "make-bfem-cage.stl", "Output filename for binary STL file")
 )
 
 func main() {
@@ -32,7 +34,7 @@ func main() {
 	}
 	defer c.Close()
 
-	design, err := c.NewBuilder().AddNode("BFEMCage").Build()
+	design, err := c.NewBuilder().AddNode("BFEMCage", set("segments", *segments)).Build()
 	must(err)
 
 	if *stlOut != "" {
@@ -40,6 +42,10 @@ func main() {
 	}
 
 	log.Printf("Done.")
+}
+
+func set(key string, value any) string {
+	return fmt.Sprintf("%v=%v", key, value)
 }
 
 func must(err error) {

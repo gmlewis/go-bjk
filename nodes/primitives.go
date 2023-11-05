@@ -190,7 +190,7 @@ func quad(ls *lua.LState) int {
 
 	normal.Normalize()
 	right.Normalize()
-	forward := normal.Cross(right)
+	forward := normal.Cross(*right)
 	// log.Printf("quad: normal=%v, right=%v, forward=%v", normal, right, forward)
 
 	halfSize := size.MulScalar(0.5)

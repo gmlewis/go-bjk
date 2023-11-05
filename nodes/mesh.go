@@ -2,8 +2,10 @@ package nodes
 
 import (
 	"log"
+	"sort"
 
 	lua "github.com/yuin/gopher-lua"
+	"golang.org/x/exp/maps"
 )
 
 // Mesh represents a mesh of points, edges, and faces.
@@ -214,15 +216,35 @@ func (m *Mesh) generateTangents() {
 	m.Tangents = append(m.Tangents, m.Tangents[len(m.Tangents)-1])
 }
 
+// CalcFaceNormal calculates the normal of a face.
+// Note that concave polygons are problematic if the wrong vertices are chosen.
+//
+// One way to solve this "correctly" would be to see if any edge used to create the normal
+// lies outside the polygon, but this is computationally and algorithmically complex.
+// This implementation uses a simple heuristic using a voting mechanism.
 func (m *Mesh) CalcFaceNormal(faceIndex int) Vec3 {
 	if len(m.Verts) < 3 || len(m.Faces) <= faceIndex || len(m.Faces[faceIndex]) < 3 {
 		log.Fatalf("CalcNormalAndTangent: want >=3 points >=1 face, got %#v", *m)
 	}
+
+	votes := map[Vec3]int{}
+
 	face := m.Faces[faceIndex]
-	v01 := m.Verts[face[0]].Sub(m.Verts[face[1]])
-	log.Printf("CalcFaceNormal(%v): v01=%v-%v=%v", faceIndex, m.Verts[face[0]], m.Verts[face[1]], v01)
-	v12 := m.Verts[face[1]].Sub(m.Verts[face[2]])
-	log.Printf("CalcFaceNormal(%v): v12=%v-%v=%v", faceIndex, m.Verts[face[1]], m.Verts[face[2]], v12)
-	log.Printf("CalcFaceNormal(%v): v01.Cross(&v12).Normalized()=%v", faceIndex, v01.Cross(&v12).Normalized())
-	return v01.Cross(&v12).Normalized()
+	numVerts := len(face)
+	for i, vIdx := range face {
+		va := m.Verts[vIdx]
+		vb := m.Verts[face[(i+1)%numVerts]]
+		vc := m.Verts[face[(i-1+numVerts)%numVerts]]
+		log.Printf("i=%v, va=%v, vb=%v, vc=%v", i, va, vb, vc)
+		n := (vb.Sub(va)).Cross(vc.Sub(va)).Normalized()
+		log.Printf("(vb-va)x(vc-va)=%v", n)
+		votes[n]++
+	}
+
+	keys := maps.Keys(votes)
+	sort.Slice(keys, func(i, j int) bool {
+		return votes[keys[i]] > votes[keys[j]]
+	})
+
+	return keys[0]
 }
