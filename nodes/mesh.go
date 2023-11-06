@@ -14,9 +14,6 @@ type Mesh struct {
 	Normals  []Vec3  // optional - per-vert normals
 	Tangents []Vec3  // optional - per-vert tangents
 	Faces    [][]int // optional - when used, Normals and Tangents are unused.
-
-	// FaceNormals are per-face unlike Normals above.
-	FaceNormals []Vec3 // optional - computed during Merge operations.
 }
 
 const luaMeshTypeName = "Mesh"
@@ -120,15 +117,6 @@ func (dst *Mesh) Merge(src *Mesh) {
 	for _, face := range src.Faces {
 		faces = append(faces, adjFace(face, numOrigDstVerts))
 	}
-
-	dst.Faces = faces
-	dst.FaceNormals = make([]Vec3, 0, len(dst.Faces)+len(src.Faces))
-	for i := range dst.Faces {
-		dst.FaceNormals = append(dst.FaceNormals, dst.CalcFaceNormal(i))
-	}
-
-	// Finally, for each shared vertex, analyze its faces to fix STL errors.
-	// TODO...
 }
 
 // NewPolygonFromPoints creates a new mesh from points.

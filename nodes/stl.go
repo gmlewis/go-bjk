@@ -48,12 +48,7 @@ func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int) error {
 		return fmt.Errorf("face <3 verts: %+v", face)
 	}
 
-	var faceNormal Vec3
-	if faceIndex < len(mesh.FaceNormals) {
-		faceNormal = mesh.FaceNormals[faceIndex]
-	} else {
-		faceNormal = mesh.CalcFaceNormal(faceIndex)
-	}
+	faceNormal := mesh.CalcFaceNormal(faceIndex)
 	n := faceNormal.tof32arr()
 	// v1 := mesh.Verts[face[0]].tof32arr()
 
