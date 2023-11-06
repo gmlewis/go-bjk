@@ -117,6 +117,8 @@ func (dst *Mesh) Merge(src *Mesh) {
 	for _, face := range src.Faces {
 		faces = append(faces, adjFace(face, numOrigDstVerts))
 	}
+
+	dst.Faces = faces
 }
 
 // NewPolygonFromPoints creates a new mesh from points.
