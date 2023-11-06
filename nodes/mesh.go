@@ -56,37 +56,68 @@ func meshClone(ls *lua.LState) int {
 
 // Merge merges src into dst for Ops.merge(dst, src).
 func (dst *Mesh) Merge(src *Mesh) {
-	// Currently, a naive merge is performed by not checking if any Verts are shared.
+	// First, a naive merge is performed by not checking if any Verts are shared.
 	verts := make([]Vec3, 0, len(dst.Verts)+len(src.Verts))
-	normals := make([]Vec3, 0, len(dst.Normals)+len(src.Normals))
-	tangents := make([]Vec3, 0, len(dst.Tangents)+len(src.Tangents))
-	faces := make([][]int, 0, len(dst.Faces)+len(src.Faces))
-
 	verts = append(verts, dst.Verts...)
 	verts = append(verts, src.Verts...)
-	normals = append(normals, dst.Normals...)
-	normals = append(normals, src.Normals...)
-	tangents = append(tangents, dst.Tangents...)
-	tangents = append(tangents, src.Tangents...)
 
-	for _, v := range dst.Faces {
-		faces = append(faces, append([]int{}, v...))
+	// If there are no faces, then simply concatenate the verts/normals/tangents and return.
+	if len(dst.Faces) == 0 && len(src.Faces) == 0 {
+		normals := make([]Vec3, 0, len(dst.Normals)+len(src.Normals))
+		tangents := make([]Vec3, 0, len(dst.Tangents)+len(src.Tangents))
+
+		normals = append(normals, dst.Normals...)
+		normals = append(normals, src.Normals...)
+		tangents = append(tangents, dst.Tangents...)
+		tangents = append(tangents, src.Tangents...)
+
+		dst.Verts = verts
+		dst.Normals = normals
+		dst.Tangents = tangents
+		return
 	}
-	numVerts := len(dst.Verts)
-	adjFace := func(src []int) []int {
-		result := make([]int, 0, len(src))
-		for _, f := range src {
-			result = append(result, f+numVerts)
+
+	// However, if there are faces, the normals and tangents are no longer usable; delete them.
+	numOrigDstVerts := len(dst.Verts)
+	dst.Normals = nil
+	dst.Tangents = nil
+
+	// Next, a map is made of unique verts with a mapping of old indices to new ones.
+	uniqueVertsMap := map[string]int{}
+	vertsOldToNew := make([]int, 0, len(verts))
+	uniqueVerts := make([]Vec3, 0, len(verts)) // this estimate is too large, but it is order-of-ballpark correct.
+	for _, vert := range verts {
+		s := vert.String()
+		if idx, ok := uniqueVertsMap[s]; ok {
+			vertsOldToNew = append(vertsOldToNew, idx)
+			continue
+		}
+		newIdx := len(uniqueVerts)
+		vertsOldToNew = append(vertsOldToNew, newIdx)
+		uniqueVertsMap[s] = newIdx
+		uniqueVerts = append(uniqueVerts, vert)
+	}
+	dst.Verts = uniqueVerts
+	// if len(verts) != len(uniqueVerts) {
+	// 	log.Printf("Merge: reduced verts from %v to %v", len(verts), len(uniqueVerts))
+	// }
+
+	adjFace := func(face []int, offset int) []int {
+		result := make([]int, 0, len(face))
+		for _, vIdx := range face {
+			result = append(result, vertsOldToNew[vIdx+offset])
 		}
 		return result
 	}
-	for _, v := range src.Faces {
-		faces = append(faces, adjFace(v))
+
+	faces := make([][]int, 0, len(dst.Faces)+len(src.Faces))
+	for _, face := range dst.Faces {
+		faces = append(faces, adjFace(face, 0))
+	}
+	for _, face := range src.Faces {
+		faces = append(faces, adjFace(face, numOrigDstVerts))
 	}
 
-	dst.Verts = verts
-	dst.Normals = normals
-	dst.Tangents = tangents
 	dst.Faces = faces
 }
 
