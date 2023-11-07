@@ -21,6 +21,10 @@ func (c *Client) ToSTL(design *ast.BJK, filename string) error {
 		return err
 	}
 
+	if err := mesh.MakeManifold(); err != nil {
+		return err
+	}
+
 	out, err := stl.New(filename)
 	if err != nil {
 		return err
