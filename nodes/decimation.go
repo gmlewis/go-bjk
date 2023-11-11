@@ -3,9 +3,14 @@ package nodes
 import (
 	"fmt"
 	"log"
+	"math"
 	"sort"
 
 	"golang.org/x/exp/maps"
+)
+
+const (
+	epsilon = 1e-5
 )
 
 // decimateFaces focuses on a single vertex, finds all faces attached to it,
@@ -28,7 +33,7 @@ func (fi *faceInfoT) decimatePhase1(vertIdx int) {
 	faceIdxes := fi.facesFromVert[vertIdx]
 	log.Printf("\n\ndecimatePhase1: vertIdx=%v {%0.2f %0.2f %0.2f}, faceIdxes=%+v", vertIdx, v.X, v.Y, v.Z, faceIdxes)
 	for _, faceIdx := range faceIdxes {
-		log.Printf("face[%v]=%v", faceIdx, fi.m.dumpFace(faceIdx))
+		log.Printf("face[%v]=%+v=%v", faceIdx, fi.m.Faces[faceIdx], fi.m.dumpFace(faceIdx))
 	}
 	for _, faceIdx := range faceIdxes {
 		log.Printf("faceNormal[%v]=%v", faceIdx, fi.faceNormals[faceIdx])
@@ -38,16 +43,19 @@ func (fi *faceInfoT) decimatePhase1(vertIdx int) {
 	// fi.m.Faces[10] = nil // DEBUGGING ONLY!!!
 	// fi.m.Faces[9] = nil  // DEBUGGING ONLY!!!
 
-	// step 1 - find all edge unit vectors (and their ending vertex indices)
-	// with respect to this vertex.
 	for {
-		nonManiVerts := fi.nextNonManifoldVerts(vertIdx)
-		for i, nmv := range nonManiVerts {
-			log.Printf("fromVertIdx=%v, nonManiVerts[%v] = %v, (toVert=%v)", vertIdx, i, nmv, fi.m.Verts[nmv.toVertIdx])
+		// step 1 - find all non-manifold halfEdges with respect to this vertex.
+		nonManis := fi.nextNonManifoldHalfEdges(vertIdx)
+		if len(nonManis) == 0 {
+			return
 		}
-		log.Fatalf("nonManiVerts: got %v", len(nonManiVerts))
-	}
 
+		// step 2 - decimate the longest faces common to this vertex along with
+		// all connected topology to these faces.
+		fi.decimateFacesBy(vertIdx, nonManis)
+
+		log.Fatalf("nonManis: got %v", len(nonManis))
+	}
 }
 
 type halfEdgeT struct {
@@ -61,10 +69,10 @@ func (h *halfEdgeT) String() string {
 	return fmt.Sprintf("{n: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitNormal, h.toVertIdx, h.length, h.onFaces)
 }
 
-// nextNonManifoldVerts finds the next collection of halfEdges that
+// nextNonManifoldHalfEdges finds the next collection of halfEdges that
 // are non-manifold and returns them (sorted by edge length descending),
 // or nil if none are found.
-func (fi *faceInfoT) nextNonManifoldVerts(vertIdx int) []*halfEdgeT {
+func (fi *faceInfoT) nextNonManifoldHalfEdges(vertIdx int) []*halfEdgeT {
 	seenNormals := map[string]map[int]*halfEdgeT{}
 	var resultKey string
 	for _, faceIdx := range fi.facesFromVert[vertIdx] {
@@ -85,7 +93,7 @@ func (fi *faceInfoT) nextNonManifoldVerts(vertIdx int) []*halfEdgeT {
 		}
 	}
 
-	result := maps.Values(seenNormals[resultKey])
+	result := maps.Values(seenNormals[resultKey]) // will be nil if resultKey==""
 	sort.Slice(result, func(i, j int) bool { return result[i].length > result[j].length })
 
 	return result
@@ -117,6 +125,164 @@ func (fi *faceInfoT) getHalfEdges(vertIdx, faceIdx int) []*halfEdgeT {
 				onFaces:        []int{faceIdx},
 			},
 		}
+	}
+	return nil
+}
+
+func (fi *faceInfoT) decimateFacesBy(vertIdx int, nonManis []*halfEdgeT) {
+	for i, nmv := range nonManis {
+		log.Printf("fromVertIdx=%v, nonManis[%v] = %v, (toVert=%v)", vertIdx, i, nmv, fi.m.Verts[nmv.toVertIdx])
+	}
+	if len(nonManis) > 2 {
+		log.Fatalf("TODO: decimateFacesBy not yet implemented for %v nonManis", len(nonManis))
+	}
+
+	facesToCut := nonManis[0].onFaces
+	cuttingVertIdx := nonManis[1].toVertIdx
+	cuttingFaces := nonManis[1].onFaces
+	for _, faceIdx := range facesToCut {
+		fi.cutFaceBy(faceIdx, cuttingVertIdx, cuttingFaces)
+	}
+}
+
+func (fi *faceInfoT) cutFaceBy(cutFaceIdx, cuttingVertIdx int, cuttingFaces []int) {
+	log.Printf("cutFaceBy: cutFaceIdx=%v, cuttingVertIdx=%v, cuttingFaces=%+v", cutFaceIdx, cuttingVertIdx, cuttingFaces)
+
+	myVerts := map[int]bool{}
+	for _, vertIdx := range fi.m.Faces[cutFaceIdx] {
+		myVerts[vertIdx] = true
+	}
+
+	// step 1 - see if any of the cutting faces have any other verts that also lie on
+	// (but are not shared by) this face  (in addition to the cuttingVertIdx).
+	seenVertIdxes := map[int]bool{cuttingVertIdx: true}
+	var vertsToCheck []int
+	for _, cuttingFaceIdx := range cuttingFaces {
+		cuttingFace := fi.m.Faces[cuttingFaceIdx]
+		for _, vertIdx := range cuttingFace {
+			if myVerts[vertIdx] || seenVertIdxes[vertIdx] {
+				continue
+			}
+			seenVertIdxes[vertIdx] = true
+			vertsToCheck = append(vertsToCheck, vertIdx)
+		}
+	}
+
+	cuttingVertIdxes := fi.vertsLieOnFaceEdge(vertsToCheck, cutFaceIdx)
+	if len(cuttingVertIdxes) == 0 {
+		return
+	}
+
+	for _, vertIdx := range cuttingVertIdxes {
+		log.Printf("Found cutting vert: verts[%v]=%v", vertIdx, fi.m.Verts[vertIdx])
+	}
+	log.Fatalf("Found cutting verts: %+v", cuttingVertIdxes)
+}
+
+func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
+	var result []int
+
+	face := fi.m.Faces[faceIdx]
+	seenVertIdxes := map[int]bool{}
+	for _, vertIdx := range face {
+		seenVertIdxes[vertIdx] = true
+	}
+
+	for i, vertIdx := range face {
+		p1 := fi.m.Verts[face[(i+1)%len(face)]].Sub(fi.m.Verts[vertIdx])
+		pOnP1 := genPOnP1Func(p1)
+
+		for _, pIdx := range vertsToCheck {
+			if seenVertIdxes[pIdx] {
+				continue
+			}
+			seenVertIdxes[pIdx] = true
+
+			p := fi.m.Verts[pIdx].Sub(fi.m.Verts[vertIdx])
+			if pOnP1(p) {
+				log.Printf("Found vert[%v]=%v on face[%v]=%+v!!!", pIdx, fi.m.Verts[pIdx], faceIdx, face)
+				result = append(result, pIdx)
+			}
+		}
+	}
+
+	return result
+}
+
+func aboutEq(a, b float64) bool { return math.Abs(a-b) < epsilon }
+
+func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
+	switch {
+	case p1.X != 0 && p1.Y != 0 && p1.Z != 0:
+		return func(p Vec3) bool {
+			tx := p.X / p1.X
+			ty := p.Y / p1.Y
+			tz := p.Z / p1.Z
+			v := p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(tx, ty) && aboutEq(ty, tz)
+			if v {
+				log.Printf("pOnP1: A: p=%v, p1=%v, tx=%v, ty=%v, tz=%v, true", p, p1, tx, ty, tz)
+			}
+			return v
+		}
+	case p1.X != 0 && p1.Z != 0:
+		return func(p Vec3) bool {
+			tx := p.X / p1.X
+			tz := p.Z / p1.Z
+			v := p.X > 0 && tx < 1 && p.Z > 0 && tz < 1 && aboutEq(p.Y, 0) && aboutEq(tx, tz)
+			if v {
+				log.Printf("pOnP1: B: p=%v, p1=%v, tx=%v, tz=%v, true", p, p1, tx, tz)
+			}
+			return v
+		}
+	case p1.X != 0 && p1.Y != 0:
+		return func(p Vec3) bool {
+			tx := p.X / p1.X
+			ty := p.Y / p1.Y
+			v := p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && aboutEq(p.Z, 0) && aboutEq(tx, ty)
+			if v {
+				log.Printf("pOnP1: C: p=%v, p1=%v, tx=%v, ty=%v, true", p, p1, tx, ty)
+			}
+			return v
+		}
+	case p1.Y != 0 && p1.Z != 0:
+		return func(p Vec3) bool {
+			ty := p.Y / p1.Y
+			tz := p.Z / p1.Z
+			v := p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(ty, tz)
+			if v {
+				log.Printf("pOnP1: D: p=%v, p1=%v, ty=%v, tz=%v, true", p, p1, ty, tz)
+			}
+			return v
+		}
+	case p1.X != 0:
+		return func(p Vec3) bool {
+			tx := p.X / p1.X
+			v := p.X > 0 && tx < 1 && aboutEq(p.Y, 0) && aboutEq(p.Z, 0)
+			if v {
+				log.Printf("pOnP1: E: p=%v, p1=%v, tx=%v, true", p, p1, tx)
+			}
+			return v
+		}
+	case p1.Y != 0:
+		return func(p Vec3) bool {
+			ty := p.Y / p1.Y
+			v := p.Y > 0 && ty < 1 && aboutEq(p.X, 0) && aboutEq(p.Z, 0)
+			if v {
+				log.Printf("pOnP1: F: p=%v, p1=%v, ty=%v, true", p, p1, ty)
+			}
+			return v
+		}
+	case p1.Z != 0:
+		return func(p Vec3) bool {
+			tz := p.Z / p1.Z
+			v := p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(p.Y, 0)
+			if v {
+				log.Printf("pOnP1: G: p=%v, p1=%v, tz=%v, true", p, p1, tz)
+			}
+			return v
+		}
+	default:
+		log.Fatalf("programming error: p1=%v", p1)
 	}
 	return nil
 }
