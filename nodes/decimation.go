@@ -199,7 +199,6 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
 			}
 
 			p := fi.m.Verts[pIdx].Sub(fi.m.Verts[vertIdx])
-			log.Printf("vertsLieOnFaceEdge: Looking at: IS vert[%v]=%v between %v and %v? p1=%v, p=%v", pIdx, fi.m.Verts[pIdx], fi.m.Verts[vertIdx], fi.m.Verts[face[(i+1)%len(face)]], p1, p)
 			if pOnP1(p) {
 				log.Printf("Found vert[%v]=%v on face[%v]=%+v!!!", pIdx, fi.m.Verts[pIdx], faceIdx, face)
 				result = append(result, pIdx)
@@ -219,68 +218,40 @@ func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			v := p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(tx, ty) && aboutEq(ty, tz)
-			if v {
-				log.Printf("pOnP1: A: p=%v, p1=%v, tx=%v, ty=%v, tz=%v, true", p, p1, tx, ty, tz)
-			}
-			return v
+			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(tx, ty) && aboutEq(ty, tz)
 		}
 	case p1.X != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			tz := p.Z / p1.Z
-			v := p.X > 0 && tx < 1 && p.Z > 0 && tz < 1 && aboutEq(p.Y, 0) && aboutEq(tx, tz)
-			if v {
-				log.Printf("pOnP1: B: p=%v, p1=%v, tx=%v, tz=%v, true", p, p1, tx, tz)
-			}
-			return v
+			return p.X > 0 && tx < 1 && p.Z > 0 && tz < 1 && aboutEq(p.Y, 0) && aboutEq(tx, tz)
 		}
 	case p1.X != 0 && p1.Y != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
-			v := p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && aboutEq(p.Z, 0) && aboutEq(tx, ty)
-			if v {
-				log.Printf("pOnP1: C: p=%v, p1=%v, tx=%v, ty=%v, true", p, p1, tx, ty)
-			}
-			return v
+			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && aboutEq(p.Z, 0) && aboutEq(tx, ty)
 		}
 	case p1.Y != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			v := p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(ty, tz)
-			if v {
-				log.Printf("pOnP1: D: p=%v, p1=%v, ty=%v, tz=%v, true", p, p1, ty, tz)
-			}
-			return v
+			return p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(ty, tz)
 		}
 	case p1.X != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
-			v := p.X > 0 && tx < 1 && aboutEq(p.Y, 0) && aboutEq(p.Z, 0)
-			if v {
-				log.Printf("pOnP1: E: p=%v, p1=%v, tx=%v, true", p, p1, tx)
-			}
-			return v
+			return p.X > 0 && tx < 1 && aboutEq(p.Y, 0) && aboutEq(p.Z, 0)
 		}
 	case p1.Y != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
-			v := p.Y > 0 && ty < 1 && aboutEq(p.X, 0) && aboutEq(p.Z, 0)
-			if v {
-				log.Printf("pOnP1: F: p=%v, p1=%v, ty=%v, true", p, p1, ty)
-			}
-			return v
+			return p.Y > 0 && ty < 1 && aboutEq(p.X, 0) && aboutEq(p.Z, 0)
 		}
 	case p1.Z != 0:
 		return func(p Vec3) bool {
 			tz := p.Z / p1.Z
-			v := p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(p.Y, 0)
-			if v {
-				log.Printf("pOnP1: G: p=%v, p1=%v, tz=%v, true", p, p1, tz)
-			}
-			return v
+			return p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(p.Y, 0)
 		}
 	default:
 		log.Fatalf("programming error: p1=%v", p1)
@@ -305,6 +276,11 @@ decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
 2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
 2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
 2023/11/11 11:47:32 nonManiVerts: got 2
+2023/11/11 18:18:44 cutFaceBy: cutFaceIdx=3, cuttingVertIdx=11, cuttingFaces=[9 10]
+2023/11/11 18:18:44 cutFaceBy: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
+2023/11/11 18:18:44 Found vert[10]={0.50000 0.50000 3.50000} on face[5]=[6 2 1 7]!!!
+2023/11/11 18:18:44 Found cutting vert: verts[10]={0.50000 0.50000 3.50000}
+2023/11/11 18:18:44 Found cutting verts: [10]
 
 with faces[5]=nil:
 2023/11/11 11:56:55 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
