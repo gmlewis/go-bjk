@@ -54,11 +54,11 @@ type halfEdgeT struct {
 	edgeUnitNormal Vec3
 	toVertIdx      int
 	length         float64
-	onFaceIdx      int
+	onFaces        []int
 }
 
 func (h *halfEdgeT) String() string {
-	return fmt.Sprintf("{n: %v, toVertIdx: %v, length=%v, onFaceIdx: %v}", h.edgeUnitNormal, h.toVertIdx, h.length, h.onFaceIdx)
+	return fmt.Sprintf("{n: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitNormal, h.toVertIdx, h.length, h.onFaces)
 }
 
 // nextNonManifoldVerts finds the next collection of halfEdges that
@@ -70,10 +70,15 @@ func (fi *faceInfoT) nextNonManifoldVerts(vertIdx int) []*halfEdgeT {
 	for _, faceIdx := range fi.facesFromVert[vertIdx] {
 		for _, halfEdge := range fi.getHalfEdges(vertIdx, faceIdx) {
 			key := halfEdge.edgeUnitNormal.String()
-			if _, ok := seenNormals[key]; !ok {
-				seenNormals[key] = map[int]*halfEdgeT{}
+			if sn, ok := seenNormals[key]; ok {
+				if oldHalfEdge, ok := sn[halfEdge.toVertIdx]; ok {
+					oldHalfEdge.onFaces = append(oldHalfEdge.onFaces, faceIdx)
+				} else {
+					sn[halfEdge.toVertIdx] = halfEdge
+				}
+			} else {
+				seenNormals[key] = map[int]*halfEdgeT{halfEdge.toVertIdx: halfEdge}
 			}
-			seenNormals[key][halfEdge.toVertIdx] = halfEdge
 			if resultKey == "" && len(seenNormals[key]) > 1 {
 				resultKey = key
 			}
@@ -103,13 +108,13 @@ func (fi *faceInfoT) getHalfEdges(vertIdx, faceIdx int) []*halfEdgeT {
 				edgeUnitNormal: nextEdge.Normalized(),
 				toVertIdx:      nextVertIdx,
 				length:         nextEdge.Length(),
-				onFaceIdx:      faceIdx,
+				onFaces:        []int{faceIdx},
 			},
 			{
 				edgeUnitNormal: lastEdge.Normalized(),
 				toVertIdx:      lastVertIdx,
 				length:         lastEdge.Length(),
-				onFaceIdx:      faceIdx,
+				onFaces:        []int{faceIdx},
 			},
 		}
 	}
@@ -130,18 +135,18 @@ decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
 2023/11/11 11:47:32 faceNormal[6]={0.00000 -1.00000 0.00000}
 2023/11/11 11:47:32 faceNormal[9]={-0.00000 0.00000 1.00000}
 2023/11/11 11:47:32 faceNormal[10]={-1.00000 0.00000 0.00000}
-2023/11/11 12:11:28 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaceIdx: 5}, (toVert={0.50000 1.50000 4.50000})
-2023/11/11 12:11:28 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaceIdx: 10}, (toVert={0.50000 0.50000 4.50000})
+2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
+2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
 2023/11/11 11:47:32 nonManiVerts: got 2
 
 with faces[5]=nil:
-2023/11/11 11:56:55 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaceIdx: 3}, (toVert={0.50000 1.50000 4.50000})
-2023/11/11 11:56:55 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaceIdx: 10}, (toVert={0.50000 0.50000 4.50000})
+2023/11/11 11:56:55 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
+2023/11/11 11:56:55 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
 2023/11/11 11:56:55 nonManiVerts: got 2
 
 with faces[5]=nil and faces[10]=nil:
-2023/11/11 11:58:23 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaceIdx: 3}, (toVert={0.50000 1.50000 4.50000})
-2023/11/11 11:58:23 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaceIdx: 9}, (toVert={0.50000 0.50000 4.50000})
+2023/11/11 11:58:23 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
+2023/11/11 11:58:23 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
 2023/11/11 11:58:23 nonManiVerts: got 2
 
 with faces[5]=nil and faces[10]=nil and faces[9]=nil:
