@@ -3,7 +3,6 @@ package nodes
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -14,10 +13,32 @@ func (m *Mesh) MakeManifold() error {
 		return errors.New("no faces in mesh")
 	}
 
-	// First, calculate the face normals for every face and generate a mapping
-	// from every vertex to a list of face indices that use that vertex.
+	faceInfo := m.genFaceInfo()
+
+	for vertIdx := range m.Verts {
+		// DEBUGGING ONLY!!!
+		if vertIdx != 2 {
+			continue
+		}
+
+		faceInfo.decimateFaces(vertIdx)
+	}
+
+	return nil
+}
+
+type faceInfoT struct {
+	m             *Mesh
+	faceNormals   []Vec3
+	facesFromVert map[int][]int
+}
+
+// genFaceInfo calculates the face normals for every face and generate a mapping
+// from every vertex to a list of face indices that use that vertex.
+func (m *Mesh) genFaceInfo() *faceInfoT {
 	faceNormals := make([]Vec3, 0, len(m.Faces))
 	facesFromVert := map[int][]int{} // key=vertIdx, value=[]faceIdx
+
 	for faceIdx, face := range m.Faces {
 		faceNormals = append(faceNormals, m.CalcFaceNormal(faceIdx))
 		for _, vertIdx := range face {
@@ -25,19 +46,10 @@ func (m *Mesh) MakeManifold() error {
 		}
 	}
 
-	// For every vertex, test the intersections of its faces and take action if needed.
-	for vertIdx := range m.Verts {
-		m.testManifoldFaces(vertIdx, facesFromVert[vertIdx])
-	}
-
-	return nil
-}
-
-func (m *Mesh) testManifoldFaces(vertIdx int, faceIdxes []int) {
-	v := m.Verts[vertIdx]
-	log.Printf("\n\ntestManifoldFaces: vertIdx=%v {%0.2f %0.2f %0.2f}, faceIdxes=%+v", vertIdx, v.X, v.Y, v.Z, faceIdxes)
-	for _, faceIdx := range faceIdxes {
-		log.Printf("face[%v]=%v", faceIdx, m.dumpFace(faceIdx))
+	return &faceInfoT{
+		m:             m,
+		faceNormals:   faceNormals,
+		facesFromVert: facesFromVert,
 	}
 }
 

@@ -5,7 +5,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"path/filepath"
 
@@ -63,7 +62,7 @@ func main() {
 		Build()
 	must(err)
 
-	fmt.Printf("%v\n", design)
+	// fmt.Printf("%v\n", design)
 
 	if *stlOut != "" {
 		must(c.ToSTL(design, *stlOut))
