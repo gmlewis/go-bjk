@@ -149,6 +149,12 @@ func (fi *faceInfoT) decimateFacesBy(vertIdx int, nonManis []*halfEdgeT) {
 	}
 }
 
+func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx int, edgeToCut, cuttingEdge *halfEdgeT) {
+	log.Printf("splitOppositeFaceEdge: cutFaceIdx=%v, cuttingVertIdx=%v, fromVertIdx=%v\nedgeToCut=%v\ncuttingEdge=%v", cutFaceIdx, cuttingVertIdx, fromVertIdx, edgeToCut, cuttingEdge)
+	cutVector := Vec3Cross(fi.faceNormals[cutFaceIdx], fi.m.Verts[edgeToCut.toVertIdx].Sub(fi.m.Verts[fromVertIdx])).Normalized()
+	log.Printf("cutVector from vert[%v]=%v: %v", cuttingVertIdx, fi.m.Verts[cuttingVertIdx], cutVector)
+}
+
 // cutFaceUsing attempts to cut a face by reusing existing vertices.
 // It returns true on success.
 func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces []int) bool {
@@ -185,11 +191,6 @@ func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces [
 	log.Fatalf("Found cutting verts: %+v", cuttingVertIdxes)
 	// TODO
 	return true
-}
-
-func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx int, edgeToCut, cuttingEdge *halfEdgeT) {
-	log.Printf("splitOppositeFaceEdge: cutFaceIdx=%v, cuttingVertIdx=%v, fromVertIdx=%v\nedgeToCut=%v\ncuttingEdge=%v", cutFaceIdx, cuttingVertIdx, fromVertIdx, edgeToCut, cuttingEdge)
-	// cutVector :=
 }
 
 func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
