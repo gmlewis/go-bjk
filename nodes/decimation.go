@@ -170,6 +170,7 @@ func (fi *faceInfoT) cutFaceBy(cutFaceIdx, cuttingVertIdx int, cuttingFaces []in
 
 	cuttingVertIdxes := fi.vertsLieOnFaceEdge(vertsToCheck, cutFaceIdx)
 	if len(cuttingVertIdxes) == 0 {
+		// TODO - cut face by splitting opposite edge of quad or polygon (!)
 		return
 	}
 
@@ -183,9 +184,9 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
 	var result []int
 
 	face := fi.m.Faces[faceIdx]
-	seenVertIdxes := map[int]bool{}
+	ignoreVerts := map[int]bool{}
 	for _, vertIdx := range face {
-		seenVertIdxes[vertIdx] = true
+		ignoreVerts[vertIdx] = true
 	}
 
 	for i, vertIdx := range face {
@@ -193,12 +194,12 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
 		pOnP1 := genPOnP1Func(p1)
 
 		for _, pIdx := range vertsToCheck {
-			if seenVertIdxes[pIdx] {
+			if ignoreVerts[pIdx] {
 				continue
 			}
-			seenVertIdxes[pIdx] = true
 
 			p := fi.m.Verts[pIdx].Sub(fi.m.Verts[vertIdx])
+			log.Printf("vertsLieOnFaceEdge: Looking at: IS vert[%v]=%v between %v and %v? p1=%v, p=%v", pIdx, fi.m.Verts[pIdx], fi.m.Verts[vertIdx], fi.m.Verts[face[(i+1)%len(face)]], p1, p)
 			if pOnP1(p) {
 				log.Printf("Found vert[%v]=%v on face[%v]=%+v!!!", pIdx, fi.m.Verts[pIdx], faceIdx, face)
 				result = append(result, pIdx)
