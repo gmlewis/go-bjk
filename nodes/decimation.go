@@ -66,7 +66,7 @@ type halfEdgeT struct {
 }
 
 func (h *halfEdgeT) String() string {
-	return fmt.Sprintf("{n: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitNormal, h.toVertIdx, h.length, h.onFaces)
+	return fmt.Sprintf("{edgeUnitNormal: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitNormal, h.toVertIdx, h.length, h.onFaces)
 }
 
 // nextNonManifoldHalfEdges finds the next collection of halfEdges that
@@ -141,12 +141,18 @@ func (fi *faceInfoT) decimateFacesBy(vertIdx int, nonManis []*halfEdgeT) {
 	cuttingVertIdx := nonManis[1].toVertIdx
 	cuttingFaces := nonManis[1].onFaces
 	for _, faceIdx := range facesToCut {
-		fi.cutFaceBy(faceIdx, cuttingVertIdx, cuttingFaces)
+		if fi.cutFaceUsing(faceIdx, cuttingVertIdx, cuttingFaces) {
+			continue
+		}
+
+		fi.splitOppositeFaceEdge(faceIdx, cuttingVertIdx, vertIdx, nonManis[0], nonManis[1])
 	}
 }
 
-func (fi *faceInfoT) cutFaceBy(cutFaceIdx, cuttingVertIdx int, cuttingFaces []int) {
-	log.Printf("cutFaceBy: cutFaceIdx=%v, cuttingVertIdx=%v, cuttingFaces=%+v", cutFaceIdx, cuttingVertIdx, cuttingFaces)
+// cutFaceUsing attempts to cut a face by reusing existing vertices.
+// It returns true on success.
+func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces []int) bool {
+	log.Printf("cutFaceUsing: cutFaceIdx=%v, cuttingVertIdx=%v, cuttingFaces=%+v", cutFaceIdx, cuttingVertIdx, cuttingFaces)
 
 	myVerts := map[int]bool{}
 	for _, vertIdx := range fi.m.Faces[cutFaceIdx] {
@@ -170,14 +176,20 @@ func (fi *faceInfoT) cutFaceBy(cutFaceIdx, cuttingVertIdx int, cuttingFaces []in
 
 	cuttingVertIdxes := fi.vertsLieOnFaceEdge(vertsToCheck, cutFaceIdx)
 	if len(cuttingVertIdxes) == 0 {
-		// TODO - cut face by splitting opposite edge of quad or polygon (!)
-		return
+		return false
 	}
 
 	for _, vertIdx := range cuttingVertIdxes {
 		log.Printf("Found cutting vert: verts[%v]=%v", vertIdx, fi.m.Verts[vertIdx])
 	}
 	log.Fatalf("Found cutting verts: %+v", cuttingVertIdxes)
+	// TODO
+	return true
+}
+
+func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx int, edgeToCut, cuttingEdge *halfEdgeT) {
+	log.Printf("splitOppositeFaceEdge: cutFaceIdx=%v, cuttingVertIdx=%v, fromVertIdx=%v\nedgeToCut=%v\ncuttingEdge=%v", cutFaceIdx, cuttingVertIdx, fromVertIdx, edgeToCut, cuttingEdge)
+	// cutVector :=
 }
 
 func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
@@ -276,8 +288,8 @@ decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
 2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
 2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
 2023/11/11 11:47:32 nonManiVerts: got 2
-2023/11/11 18:18:44 cutFaceBy: cutFaceIdx=3, cuttingVertIdx=11, cuttingFaces=[9 10]
-2023/11/11 18:18:44 cutFaceBy: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
+2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=3, cuttingVertIdx=11, cuttingFaces=[9 10]
+2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
 2023/11/11 18:18:44 Found vert[10]={0.50000 0.50000 3.50000} on face[5]=[6 2 1 7]!!!
 2023/11/11 18:18:44 Found cutting vert: verts[10]={0.50000 0.50000 3.50000}
 2023/11/11 18:18:44 Found cutting verts: [10]
