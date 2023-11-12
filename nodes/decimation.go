@@ -166,8 +166,8 @@ func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertI
 	}
 
 	oldFace := fi.m.Faces[cutFaceIdx]
-	newFace1, newFace2 := fi.newFacesFromOld(oldFace, cuttingVertIdx, fromVertIdx, newVertIdx, cutInfo)
-	log.Printf("newFace1=%v, newFace2=%v", newFace1, newFace2)
+	newFace1, newFace2 := fi.newFacesFromOld(oldFace, cuttingVertIdx, fromVertIdx, newVertIdx, cutInfo.fromVertIdx)
+	log.Printf("\n\nsplitOppositeFaceEdge: newFace1=%v, newFace2=%v", newFace1, newFace2)
 
 	fi.m.Faces[cutFaceIdx] = newFace1
 	newFaceIdx := len(fi.m.Faces)
@@ -176,7 +176,7 @@ func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertI
 	fi.facesFromVert[newVertIdx] = []int{cutFaceIdx, newFaceIdx}
 }
 
-func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx, newVertIdx int, cutInfo *cutInfoT) (f1, f2 []int) {
+func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx, newVertIdx, toCutFromVertIdx int) (f1, f2 []int) {
 	for i, vertIdx := range oldFace {
 		f1 = append(f1, vertIdx)
 
@@ -192,14 +192,14 @@ func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx,
 				} else {
 					f1 = append(f1, vertIdx)
 				}
-				if vertIdx == cutInfo.fromVertIdx {
+				if vertIdx == toCutFromVertIdx {
 					f2 = append(f2, newVertIdx)
 					addToF2 = false
 				}
 			}
 			return f1, f2
 		}
-		if vertIdx == cutInfo.fromVertIdx {
+		if vertIdx == toCutFromVertIdx {
 			f1 = append(f1, newVertIdx)
 			f1 = append(f1, cuttingVertIdx)
 			f2 = append(f2, newVertIdx)
@@ -284,8 +284,9 @@ func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces [
 
 	// step 1 - see if any of the cutting faces have any other verts that also lie on
 	// (but are not shared by) this face  (in addition to the cuttingVertIdx).
+	// Also determine the 'fromVertIdx' of the cuttingVertIdx.
 	seenVertIdxes := map[int]bool{cuttingVertIdx: true}
-	var vertsToCheck []int
+	vertsToCheck := []int{cuttingVertIdx}
 	for _, cuttingFaceIdx := range cuttingFaces {
 		cuttingFace := fi.m.Faces[cuttingFaceIdx]
 		for _, vertIdx := range cuttingFace {
@@ -297,21 +298,50 @@ func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces [
 		}
 	}
 
-	cuttingVertIdxes := fi.vertsLieOnFaceEdge(vertsToCheck, cutFaceIdx)
-	if len(cuttingVertIdxes) == 0 {
+	vertsOnEdgesInfo := fi.vertsLieOnFaceEdge(vertsToCheck, cutFaceIdx)
+	if len(vertsOnEdgesInfo) < 1 {
+		log.Fatalf("programming error: expected 1 result from vertsLieOnFaceEdge, got none")
+	}
+
+	if len(vertsOnEdgesInfo) == 1 {
 		return false
 	}
 
-	for _, vertIdx := range cuttingVertIdxes {
-		log.Printf("Found cutting vert: verts[%v]=%v", vertIdx, fi.m.Verts[vertIdx])
+	if len(vertsOnEdgesInfo) > 2 {
+		log.Fatalf("cutFaceUsing: unhandled case: found cutting verts: %+v", vertsOnEdgesInfo)
 	}
-	log.Fatalf("Found cutting verts: %+v", cuttingVertIdxes)
-	// TODO
+
+	log.Printf("cutFaceUsing: vertsOnEdgesInfo[0]=%v, vertsOnEdgesInfo[1]=%v", vertsOnEdgesInfo[0], vertsOnEdgesInfo[1])
+
+	fromVertIdx := vertsOnEdgesInfo[0].fromVertIdx
+	if vertsOnEdgesInfo[0].vertOnEdgeIdx != cuttingVertIdx {
+		log.Fatalf("cutFaceUsing: programming error: vertsOnEdgesInfo[0]=%v", vertsOnEdgesInfo[0])
+	}
+
+	newVertIdx := vertsOnEdgesInfo[1].vertOnEdgeIdx
+	toCutFromVertIdx := vertsOnEdgesInfo[1].fromVertIdx
+	log.Printf("cutFaceUsing: Found cutting vert: verts[%v]=%v", newVertIdx, fi.m.Verts[newVertIdx])
+
+	oldFace := fi.m.Faces[cutFaceIdx]
+	newFace1, newFace2 := fi.newFacesFromOld(oldFace, cuttingVertIdx, fromVertIdx, newVertIdx, toCutFromVertIdx)
+	log.Printf("\n\ncutFaceUsing: newFace1=%v, newFace2=%v", newFace1, newFace2)
+
+	fi.m.Faces[cutFaceIdx] = newFace1
+	newFaceIdx := len(fi.m.Faces)
+	fi.m.Faces = append(fi.m.Faces, newFace2)
+	fi.faceNormals = append(fi.faceNormals, fi.faceNormals[cutFaceIdx]) // copy identical face normal
+	fi.facesFromVert[newVertIdx] = []int{cutFaceIdx, newFaceIdx}
+
 	return true
 }
 
-func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
-	var result []int
+type vertOnEdgeInfoT struct {
+	vertOnEdgeIdx int
+	fromVertIdx   int
+}
+
+func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []*vertOnEdgeInfoT {
+	var result []*vertOnEdgeInfoT
 
 	face := fi.m.Faces[faceIdx]
 	ignoreVerts := map[int]bool{}
@@ -320,18 +350,27 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
 	}
 
 	for i, vertIdx := range face {
-		p1 := fi.m.Verts[face[(i+1)%len(face)]].Sub(fi.m.Verts[vertIdx])
+		nextVertIdx := face[(i+1)%len(face)]
+		log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v to v[%v]=%v",
+			i, vertIdx, fi.m.Verts[vertIdx], nextVertIdx, fi.m.Verts[nextVertIdx])
+		p1 := fi.m.Verts[nextVertIdx].Sub(fi.m.Verts[vertIdx])
 		pOnP1 := genPOnP1Func(p1)
 
 		for _, pIdx := range vertsToCheck {
 			if ignoreVerts[pIdx] {
+				log.Printf("vertsLieOnFaceEdge: ignoring vert[%v]=%v", pIdx, fi.m.Verts[pIdx])
 				continue
 			}
+			log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v on line segment?",
+				i, pIdx, fi.m.Verts[pIdx])
 
 			p := fi.m.Verts[pIdx].Sub(fi.m.Verts[vertIdx])
 			if pOnP1(p) {
-				log.Printf("Found vert[%v]=%v on face[%v]=%+v!!!", pIdx, fi.m.Verts[pIdx], faceIdx, face)
-				result = append(result, pIdx)
+				log.Printf("vertsLieOnFaceEdge: Found vert[%v]=%v on face[%v]=%+v!!!", pIdx, fi.m.Verts[pIdx], faceIdx, face)
+				result = append(result, &vertOnEdgeInfoT{
+					vertOnEdgeIdx: pIdx,
+					fromVertIdx:   vertIdx,
+				})
 			}
 		}
 	}
@@ -346,40 +385,54 @@ func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && AboutEq(tx, ty) && AboutEq(ty, tz)
+			v := tx > 0 && tx < 1 && ty > 0 && ty < 1 && tz > 0 && tz < 1 && AboutEq(tx, ty) && AboutEq(ty, tz)
+			log.Printf("A: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	case p1.X != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			tz := p.Z / p1.Z
-			return p.X > 0 && tx < 1 && p.Z > 0 && tz < 1 && AboutEq(p.Y, 0) && AboutEq(tx, tz)
+			v := tx > 0 && tx < 1 && tz > 0 && tz < 1 && AboutEq(p.Y, 0) && AboutEq(tx, tz)
+			log.Printf("B: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	case p1.X != 0 && p1.Y != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
-			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && AboutEq(p.Z, 0) && AboutEq(tx, ty)
+			v := tx > 0 && tx < 1 && ty > 0 && ty < 1 && AboutEq(p.Z, 0) && AboutEq(tx, ty)
+			log.Printf("C: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	case p1.Y != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			return p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(ty, tz)
+			v := ty > 0 && ty < 1 && tz > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(ty, tz)
+			log.Printf("D: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	case p1.X != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
-			return p.X > 0 && tx < 1 && AboutEq(p.Y, 0) && AboutEq(p.Z, 0)
+			v := tx > 0 && tx < 1 && AboutEq(p.Y, 0) && AboutEq(p.Z, 0)
+			log.Printf("E: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	case p1.Y != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
-			return p.Y > 0 && ty < 1 && AboutEq(p.X, 0) && AboutEq(p.Z, 0)
+			v := ty > 0 && ty < 1 && AboutEq(p.X, 0) && AboutEq(p.Z, 0)
+			log.Printf("F: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	case p1.Z != 0:
 		return func(p Vec3) bool {
 			tz := p.Z / p1.Z
-			return p.Z > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(p.Y, 0)
+			v := tz > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(p.Y, 0)
+			log.Printf("G: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			return v
 		}
 	default:
 		log.Fatalf("programming error: p1=%v", p1)
@@ -389,32 +442,32 @@ func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 
 /*
 decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
-2023/11/11 11:47:32 face[0]={{-0.50 -0.50 3.50} {0.50 -0.50 3.50} {0.50 -0.50 4.50} {-0.50 -0.50 4.50}}
-2023/11/11 11:47:32 face[3]={{-0.50 -0.50 4.50} {0.50 -0.50 4.50} {0.50 1.50 4.50} {-0.50 1.50 4.50}}
-2023/11/11 11:47:32 face[5]={{0.50 1.50 4.50} {0.50 -0.50 4.50} {0.50 -0.50 3.50} {0.50 1.50 3.50}}
-2023/11/11 11:47:32 face[6]={{0.50 -0.50 3.50} {2.50 -0.50 3.50} {2.50 -0.50 4.50} {0.50 -0.50 4.50}}
-2023/11/11 11:47:32 face[9]={{0.50 -0.50 4.50} {2.50 -0.50 4.50} {2.50 0.50 4.50} {0.50 0.50 4.50}}
-2023/11/11 11:47:32 face[10]={{0.50 0.50 4.50} {0.50 0.50 3.50} {0.50 -0.50 3.50} {0.50 -0.50 4.50}}
-2023/11/11 11:47:32 faceNormal[0]={0.00000 -1.00000 0.00000}
-2023/11/11 11:47:32 faceNormal[3]={-0.00000 0.00000 1.00000}
-2023/11/11 11:47:32 faceNormal[5]={1.00000 0.00000 -0.00000}
-2023/11/11 11:47:32 faceNormal[6]={0.00000 -1.00000 0.00000}
-2023/11/11 11:47:32 faceNormal[9]={-0.00000 0.00000 1.00000}
-2023/11/11 11:47:32 faceNormal[10]={-1.00000 0.00000 0.00000}
-2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
-2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
-2023/11/11 11:47:32 nonManiVerts: got 2
-2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=3, cuttingVertIdx=11, cuttingFaces=[9 10]
+face[0]={{-0.50 -0.50 3.50} {0.50 -0.50 3.50} {0.50 -0.50 4.50} {-0.50 -0.50 4.50}}
+face[3]={{-0.50 -0.50 4.50} {0.50 -0.50 4.50} {0.50 1.50 4.50} {-0.50 1.50 4.50}}
+face[5]={{0.50 1.50 4.50} {0.50 -0.50 4.50} {0.50 -0.50 3.50} {0.50 1.50 3.50}}
+face[6]={{0.50 -0.50 3.50} {2.50 -0.50 3.50} {2.50 -0.50 4.50} {0.50 -0.50 4.50}}
+face[9]={{0.50 -0.50 4.50} {2.50 -0.50 4.50} {2.50 0.50 4.50} {0.50 0.50 4.50}}
+face[10]={{0.50 0.50 4.50} {0.50 0.50 3.50} {0.50 -0.50 3.50} {0.50 -0.50 4.50}}
+faceNormal[0]={0.00000 -1.00000 0.00000}
+faceNormal[3]={-0.00000 0.00000 1.00000}
+faceNormal[5]={1.00000 0.00000 -0.00000}
+faceNormal[6]={0.00000 -1.00000 0.00000}
+faceNormal[9]={-0.00000 0.00000 1.00000}
+faceNormal[10]={-1.00000 0.00000 0.00000}
+fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
+fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
+nonManiVerts: got 2
+cutFaceUsing: cutFaceIdx=3, cuttingVertIdx=11, cuttingFaces=[9 10]
 
-2023/11/11 19:44:47 splitOppositeFaceEdge: cutFaceIdx=3, cuttingVertIdx=11, fromVertIdx=2, toVertIdx=6
-2023/11/11 19:44:47 cutVector from vert[11]={0.50000 0.50000 4.50000}: {-1.00000 0.00000 -0.00000}
-2023/11/11 19:44:47 found opposite edge: i=3, p1=5={-0.50000 1.50000 4.50000}: lhs={0.00000 0.00000 -2.00000}, rhs={0.00000 0.00000 -1.00000}, ratio=0.5
-2023/11/11 19:44:47 splitting face: cutInfo=&{5 {-0.5 0.5 4.5} 3}
+splitOppositeFaceEdge: cutFaceIdx=3, cuttingVertIdx=11, fromVertIdx=2, toVertIdx=6
+cutVector from vert[11]={0.50000 0.50000 4.50000}: {-1.00000 0.00000 -0.00000}
+found opposite edge: i=3, p1=5={-0.50000 1.50000 4.50000}: lhs={0.00000 0.00000 -2.00000}, rhs={0.00000 0.00000 -1.00000}, ratio=0.5
+splitting face: cutInfo=&{5 {-0.5 0.5 4.5} 3}
 
-2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
-2023/11/11 18:18:44 Found vert[10]={0.50000 0.50000 3.50000} on face[5]=[6 2 1 7]!!!
-2023/11/11 18:18:44 Found cutting vert: verts[10]={0.50000 0.50000 3.50000}
-2023/11/11 18:18:44 Found cutting verts: [10]
+cutFaceUsing: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
+Found vert[10]={0.50000 0.50000 3.50000} on face[5]=[6 2 1 7]!!!
+Found cutting vert: verts[10]={0.50000 0.50000 3.50000}
+Found cutting verts: [10]
 
 with faces[5]=nil:
 2023/11/11 11:56:55 fromVertIdx=2, nonManiVerts[0] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 6, length=2, onFaces: [3 5]}, (toVert={0.50000 1.50000 4.50000})
