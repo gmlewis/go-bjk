@@ -12,6 +12,11 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+const (
+	// Epsilon is a small number.
+	Epsilon = 1e-5
+)
+
 // Vec3 represents a point in 3D space.
 type Vec3 struct {
 	X float64
@@ -26,6 +31,14 @@ func (v Vec3) String() string {
 // NewVec3 returns a new Vec3.
 func NewVec3(x, y, z float64) Vec3 {
 	return Vec3{X: x, Y: y, Z: z}
+}
+
+// AboutEq returns true if a is within Epsilon of b.
+func AboutEq(a, b float64) bool { return math.Abs(a-b) < Epsilon }
+
+// AboutZero returns if entire vector is within Epsilon of (0,0,0)
+func (v *Vec3) AboutZero() bool {
+	return AboutEq(v.X, 0) && AboutEq(v.Y, 0) && AboutEq(v.Z, 0)
 }
 
 // Normalize normalizes a vector in-place.

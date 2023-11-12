@@ -3,14 +3,9 @@ package nodes
 import (
 	"fmt"
 	"log"
-	"math"
 	"sort"
 
 	"golang.org/x/exp/maps"
-)
-
-const (
-	epsilon = 1e-5
 )
 
 // decimateFaces focuses on a single vertex, finds all faces attached to it,
@@ -59,14 +54,14 @@ func (fi *faceInfoT) decimatePhase1(vertIdx int) {
 }
 
 type halfEdgeT struct {
-	edgeUnitNormal Vec3
+	edgeUnitVector Vec3
 	toVertIdx      int
 	length         float64
 	onFaces        []int
 }
 
 func (h *halfEdgeT) String() string {
-	return fmt.Sprintf("{edgeUnitNormal: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitNormal, h.toVertIdx, h.length, h.onFaces)
+	return fmt.Sprintf("{edgeUnitVector: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitVector, h.toVertIdx, h.length, h.onFaces)
 }
 
 // nextNonManifoldHalfEdges finds the next collection of halfEdges that
@@ -77,7 +72,7 @@ func (fi *faceInfoT) nextNonManifoldHalfEdges(vertIdx int) []*halfEdgeT {
 	var resultKey string
 	for _, faceIdx := range fi.facesFromVert[vertIdx] {
 		for _, halfEdge := range fi.getHalfEdges(vertIdx, faceIdx) {
-			key := halfEdge.edgeUnitNormal.String()
+			key := halfEdge.edgeUnitVector.String()
 			if sn, ok := seenNormals[key]; ok {
 				if oldHalfEdge, ok := sn[halfEdge.toVertIdx]; ok {
 					oldHalfEdge.onFaces = append(oldHalfEdge.onFaces, faceIdx)
@@ -113,13 +108,13 @@ func (fi *faceInfoT) getHalfEdges(vertIdx, faceIdx int) []*halfEdgeT {
 		lastEdge := fi.m.Verts[lastVertIdx].Sub(v)
 		return []*halfEdgeT{
 			{
-				edgeUnitNormal: nextEdge.Normalized(),
+				edgeUnitVector: nextEdge.Normalized(),
 				toVertIdx:      nextVertIdx,
 				length:         nextEdge.Length(),
 				onFaces:        []int{faceIdx},
 			},
 			{
-				edgeUnitNormal: lastEdge.Normalized(),
+				edgeUnitVector: lastEdge.Normalized(),
 				toVertIdx:      lastVertIdx,
 				length:         lastEdge.Length(),
 				onFaces:        []int{faceIdx},
@@ -145,14 +140,69 @@ func (fi *faceInfoT) decimateFacesBy(vertIdx int, nonManis []*halfEdgeT) {
 			continue
 		}
 
-		fi.splitOppositeFaceEdge(faceIdx, cuttingVertIdx, vertIdx, nonManis[0], nonManis[1])
+		fi.splitOppositeFaceEdge(faceIdx, cuttingVertIdx, vertIdx, nonManis[0].toVertIdx)
 	}
 }
 
-func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx int, edgeToCut, cuttingEdge *halfEdgeT) {
-	log.Printf("splitOppositeFaceEdge: cutFaceIdx=%v, cuttingVertIdx=%v, fromVertIdx=%v\nedgeToCut=%v\ncuttingEdge=%v", cutFaceIdx, cuttingVertIdx, fromVertIdx, edgeToCut, cuttingEdge)
-	cutVector := Vec3Cross(fi.faceNormals[cutFaceIdx], fi.m.Verts[edgeToCut.toVertIdx].Sub(fi.m.Verts[fromVertIdx])).Normalized()
+func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx, toVertIdx int) {
+	log.Printf("splitOppositeFaceEdge: cutFaceIdx=%v, cuttingVertIdx=%v, fromVertIdx=%v, toVertIdx=%v", cutFaceIdx, cuttingVertIdx, fromVertIdx, toVertIdx)
+	cutVector := Vec3Cross(fi.faceNormals[cutFaceIdx], fi.m.Verts[toVertIdx].Sub(fi.m.Verts[fromVertIdx])).Normalized()
 	log.Printf("cutVector from vert[%v]=%v: %v", cuttingVertIdx, fi.m.Verts[cuttingVertIdx], cutVector)
+
+	secondEdgeToCut := fi.findOppositeEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx, cutVector)
+	if secondEdgeToCut == nil {
+		log.Fatalf("splitOppositeFaceEdge: unable to find opposite face edge")
+	}
+
+	log.Printf("splitting face: secondEdgeToCut=%v", secondEdgeToCut)
+}
+
+type cutInfoT struct {
+	fromVertIdx int
+	newCutVert  Vec3
+	toVertIdx   int
+}
+
+func (fi *faceInfoT) findOppositeEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx int, cutVector Vec3) *cutInfoT {
+	cuttingVert := fi.m.Verts[cuttingVertIdx]
+
+	face := fi.m.Faces[cutFaceIdx]
+	for i, vertIdx := range face {
+		if vertIdx == fromVertIdx {
+			continue
+		}
+
+		// https://web.archive.org/web/20180927042445/http://mathforum.org/library/drmath/view/62814.html
+		p1 := fi.m.Verts[vertIdx]
+		nextVertIdx := face[(i+1)%len(face)]
+		edgeVector := fi.m.Verts[nextVertIdx].Sub(p1)
+		lhs := Vec3Cross(edgeVector, cutVector)
+		if lhs.AboutZero() {
+			continue
+		}
+		rhs := Vec3Cross(cuttingVert.Sub(p1), cutVector)
+
+		var ratio float64
+		switch {
+		case AboutEq(lhs.X, 0) && AboutEq(lhs.Y, 0):
+			ratio = rhs.Z / lhs.Z
+		case AboutEq(lhs.X, 0) && AboutEq(lhs.Z, 0):
+			ratio = rhs.Y / lhs.Y
+		case AboutEq(lhs.Y, 0) && AboutEq(lhs.Z, 0):
+			ratio = rhs.X / lhs.X
+		default:
+			log.Fatalf("findOppositeEdge: unhandled case: lhs=%v, rhs=%v", lhs, rhs)
+		}
+
+		log.Printf("found opposite edge: i=%v, p1=%v=%v: lhs=%v, rhs=%v, ratio=%v", i, vertIdx, p1, lhs, rhs, ratio)
+		return &cutInfoT{
+			fromVertIdx: vertIdx,
+			newCutVert:  p1.Add(edgeVector.MulScalar(ratio)),
+			toVertIdx:   nextVertIdx,
+		}
+	}
+
+	return nil
 }
 
 // cutFaceUsing attempts to cut a face by reusing existing vertices.
@@ -222,8 +272,6 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []int {
 	return result
 }
 
-func aboutEq(a, b float64) bool { return math.Abs(a-b) < epsilon }
-
 func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 	switch {
 	case p1.X != 0 && p1.Y != 0 && p1.Z != 0:
@@ -231,40 +279,40 @@ func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(tx, ty) && aboutEq(ty, tz)
+			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && AboutEq(tx, ty) && AboutEq(ty, tz)
 		}
 	case p1.X != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			tz := p.Z / p1.Z
-			return p.X > 0 && tx < 1 && p.Z > 0 && tz < 1 && aboutEq(p.Y, 0) && aboutEq(tx, tz)
+			return p.X > 0 && tx < 1 && p.Z > 0 && tz < 1 && AboutEq(p.Y, 0) && AboutEq(tx, tz)
 		}
 	case p1.X != 0 && p1.Y != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
-			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && aboutEq(p.Z, 0) && aboutEq(tx, ty)
+			return p.X > 0 && tx < 1 && p.Y > 0 && ty < 1 && AboutEq(p.Z, 0) && AboutEq(tx, ty)
 		}
 	case p1.Y != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			return p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(ty, tz)
+			return p.Y > 0 && ty < 1 && p.Z > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(ty, tz)
 		}
 	case p1.X != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
-			return p.X > 0 && tx < 1 && aboutEq(p.Y, 0) && aboutEq(p.Z, 0)
+			return p.X > 0 && tx < 1 && AboutEq(p.Y, 0) && AboutEq(p.Z, 0)
 		}
 	case p1.Y != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
-			return p.Y > 0 && ty < 1 && aboutEq(p.X, 0) && aboutEq(p.Z, 0)
+			return p.Y > 0 && ty < 1 && AboutEq(p.X, 0) && AboutEq(p.Z, 0)
 		}
 	case p1.Z != 0:
 		return func(p Vec3) bool {
 			tz := p.Z / p1.Z
-			return p.Z > 0 && tz < 1 && aboutEq(p.X, 0) && aboutEq(p.Y, 0)
+			return p.Z > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(p.Y, 0)
 		}
 	default:
 		log.Fatalf("programming error: p1=%v", p1)
@@ -290,6 +338,12 @@ decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
 2023/11/11 12:31:22 fromVertIdx=2, nonManiVerts[1] = {n: {0.00000 1.00000 0.00000}, toVertIdx: 11, length=1, onFaces: [9 10]}, (toVert={0.50000 0.50000 4.50000})
 2023/11/11 11:47:32 nonManiVerts: got 2
 2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=3, cuttingVertIdx=11, cuttingFaces=[9 10]
+
+2023/11/11 19:44:47 splitOppositeFaceEdge: cutFaceIdx=3, cuttingVertIdx=11, fromVertIdx=2, toVertIdx=6
+2023/11/11 19:44:47 cutVector from vert[11]={0.50000 0.50000 4.50000}: {-1.00000 0.00000 -0.00000}
+2023/11/11 19:44:47 found opposite edge: i=3, p1=5={-0.50000 1.50000 4.50000}: lhs={0.00000 0.00000 -2.00000}, rhs={0.00000 0.00000 -1.00000}, ratio=0.5
+2023/11/11 19:44:47 splitting face: secondEdgeToCut=&{5 {-0.5 0.5 4.5} 3}
+
 2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
 2023/11/11 18:18:44 Found vert[10]={0.50000 0.50000 3.50000} on face[5]=[6 2 1 7]!!!
 2023/11/11 18:18:44 Found cutting vert: verts[10]={0.50000 0.50000 3.50000}
