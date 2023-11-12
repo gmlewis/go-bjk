@@ -143,6 +143,15 @@ func (fi *faceInfoT) decimateFacesBy(vertIdx int, nonManis []*halfEdgeT) {
 }
 
 func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx, toVertIdx int) {
+	// first, verify that fromVertIdx -> toVertIdx matches the winding order of the face being cut:
+	if !fi.fromToVertIdxMatchesFace(cutFaceIdx, fromVertIdx, toVertIdx) {
+		fromVertIdx, toVertIdx = toVertIdx, fromVertIdx
+		if !fi.fromToVertIdxMatchesFace(cutFaceIdx, fromVertIdx, toVertIdx) {
+			log.Fatalf("unable to match winding order of face %+v: fromVertIdx=%v, toVertIdx=%v",
+				fi.m.Faces[cutFaceIdx], fromVertIdx, toVertIdx)
+		}
+	}
+
 	log.Printf("splitOppositeFaceEdge: cutFaceIdx=%v, cuttingVertIdx=%v, fromVertIdx=%v, toVertIdx=%v", cutFaceIdx, cuttingVertIdx, fromVertIdx, toVertIdx)
 	cutVector := Vec3Cross(fi.faceNormals[cutFaceIdx], fi.m.Verts[toVertIdx].Sub(fi.m.Verts[fromVertIdx])).Normalized()
 	log.Printf("cutVector from vert[%v]=%v: %v", cuttingVertIdx, fi.m.Verts[cuttingVertIdx], cutVector)
@@ -172,6 +181,7 @@ func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertI
 	fi.m.Faces = append(fi.m.Faces, newFace2)
 	fi.faceNormals = append(fi.faceNormals, fi.faceNormals[cutFaceIdx]) // copy identical face normal
 	fi.facesFromVert[newVertIdx] = []int{cutFaceIdx, newFaceIdx}
+	fi.changesMade = true
 }
 
 func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx, newVertIdx, toCutFromVertIdx int) (f1, f2 []int) {
@@ -195,7 +205,7 @@ func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx,
 					addToF2 = false
 				}
 			}
-			return f1, f2
+			return fi.validateNewFaces(f1, f2)
 		}
 		if vertIdx == toCutFromVertIdx {
 			f1 = append(f1, newVertIdx)
@@ -214,12 +224,28 @@ func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx,
 					addToF2 = false
 				}
 			}
-			return f1, f2
+			return fi.validateNewFaces(f1, f2)
 		}
 	}
 
-	log.Fatalf("programming error: newFacesFromOld(oldFace=%+v), f1=%+v, f2=%+v", oldFace, f1, f2)
+	log.Fatalf("newFacesFromOld: programming error: oldFace=%+v, f1=%+v, f2=%+v", oldFace, f1, f2)
 	return nil, nil
+}
+
+func (fi *faceInfoT) validateNewFaces(f1, f2 []int) ([]int, []int) {
+	fi.validateNewFace(f1)
+	fi.validateNewFace(f2)
+	return f1, f2
+}
+
+func (fi *faceInfoT) validateNewFace(face []int) {
+	seenVertIdxes := map[int]bool{}
+	for _, vertIdx := range face {
+		if seenVertIdxes[vertIdx] {
+			log.Fatalf("validateNewFaces: %+v failed validation", face)
+		}
+		seenVertIdxes[vertIdx] = true
+	}
 }
 
 type cutInfoT struct {
@@ -298,7 +324,7 @@ func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces [
 
 	vertsOnEdgesInfo := fi.vertsLieOnFaceEdge(vertsToCheck, cutFaceIdx)
 	if len(vertsOnEdgesInfo) < 1 {
-		log.Fatalf("programming error: expected 1 result from vertsLieOnFaceEdge, got none")
+		log.Fatalf("cutFaceUsing: programming error: expected 1 result from vertsLieOnFaceEdge, got none")
 	}
 
 	if len(vertsOnEdgesInfo) == 1 {
@@ -311,10 +337,15 @@ func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces [
 
 	log.Printf("cutFaceUsing: vertsOnEdgesInfo[0]=%v, vertsOnEdgesInfo[1]=%v", vertsOnEdgesInfo[0], vertsOnEdgesInfo[1])
 
-	fromVertIdx := vertsOnEdgesInfo[0].fromVertIdx
 	if vertsOnEdgesInfo[0].vertOnEdgeIdx != cuttingVertIdx {
-		log.Fatalf("cutFaceUsing: programming error: vertsOnEdgesInfo[0]=%v", vertsOnEdgesInfo[0])
+		// swap results
+		vertsOnEdgesInfo[0], vertsOnEdgesInfo[1] = vertsOnEdgesInfo[1], vertsOnEdgesInfo[0]
+		if vertsOnEdgesInfo[0].vertOnEdgeIdx != cuttingVertIdx {
+			log.Fatalf("cutFaceUsing: programming error: vertsOnEdgesInfo[0]=%v", vertsOnEdgesInfo[0])
+		}
 	}
+
+	fromVertIdx := vertsOnEdgesInfo[0].fromVertIdx
 
 	newVertIdx := vertsOnEdgesInfo[1].vertOnEdgeIdx
 	toCutFromVertIdx := vertsOnEdgesInfo[1].fromVertIdx
@@ -329,6 +360,7 @@ func (fi *faceInfoT) cutFaceUsing(cutFaceIdx, cuttingVertIdx int, cuttingFaces [
 	fi.m.Faces = append(fi.m.Faces, newFace2)
 	fi.faceNormals = append(fi.faceNormals, fi.faceNormals[cutFaceIdx]) // copy identical face normal
 	fi.facesFromVert[newVertIdx] = []int{cutFaceIdx, newFaceIdx}
+	fi.changesMade = true
 
 	return true
 }
@@ -352,6 +384,10 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []*vert
 		// log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v to v[%v]=%v",
 		//   i, vertIdx, fi.m.Verts[vertIdx], nextVertIdx, fi.m.Verts[nextVertIdx])
 		p1 := fi.m.Verts[nextVertIdx].Sub(fi.m.Verts[vertIdx])
+		if p1.AboutZero() {
+			log.Fatalf("vertsLieOnFaceEdge: programming error: v[%v]=%v, v[%v]=%v, p1=(0,0,0)", vertIdx, fi.m.Verts[vertIdx], nextVertIdx, fi.m.Verts[nextVertIdx])
+		}
+
 		pOnP1 := genPOnP1Func(p1)
 
 		for _, pIdx := range vertsToCheck {
@@ -433,9 +469,23 @@ func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 			// return v
 		}
 	default:
-		log.Fatalf("programming error: p1=%v", p1)
+		log.Fatalf("genPOnP1Func: programming error: p1=%v", p1)
 	}
 	return nil
+}
+
+func (fi *faceInfoT) fromToVertIdxMatchesFace(cutFaceIdx, fromVertIdx, toVertIdx int) bool {
+	face := fi.m.Faces[cutFaceIdx]
+	for i, vertIdx := range face {
+		nextVertIdx := face[(i+1)%len(face)]
+		if vertIdx == fromVertIdx && nextVertIdx == toVertIdx {
+			return true
+		}
+		if vertIdx == toVertIdx && nextVertIdx == fromVertIdx {
+			return false
+		}
+	}
+	return false
 }
 
 /*

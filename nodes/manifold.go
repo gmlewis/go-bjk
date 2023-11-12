@@ -15,13 +15,15 @@ func (m *Mesh) MakeManifold() error {
 
 	faceInfo := m.genFaceInfo()
 
-	for vertIdx := range m.Verts {
-		// DEBUGGING ONLY!!!
-		if vertIdx != 2 {
-			continue
+	for {
+		faceInfo.changesMade = false
+		for vertIdx := range m.Verts {
+			faceInfo.decimateFaces(vertIdx)
 		}
 
-		faceInfo.decimateFaces(vertIdx)
+		if !faceInfo.changesMade {
+			break
+		}
 	}
 
 	return nil
@@ -32,6 +34,8 @@ type faceInfoT struct {
 	allVertIdxes  map[string]int
 	faceNormals   []Vec3
 	facesFromVert map[int][]int
+
+	changesMade bool
 }
 
 // genFaceInfo calculates the face normals for every face and generate a mapping
