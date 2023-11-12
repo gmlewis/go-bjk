@@ -8,19 +8,32 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+type halfEdgeT struct {
+	edgeUnitVector Vec3
+	toVertIdx      int
+	length         float64
+	onFaces        []int
+}
+
+func (h *halfEdgeT) String() string {
+	return fmt.Sprintf("{edgeUnitVector: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitVector, h.toVertIdx, h.length, h.onFaces)
+}
+
 // decimateFaces focuses on a single vertex, finds all faces attached to it,
 // then decimates any faces whose topology is non-manifold.
 //
-// It does this in two phases:
+// It does this in three phases:
 //
 //  1. decimate all faces where an edge unit vector points to two other faces
 //     that do not share the same ending vertex.
 //  2. decimate all faces where an edge unit vector lies directly on an unrelated face.
+//  3. find all degenerate edges that are shared by n faces where n != 2.
 //
 // Note that faceInfo is updated throughout the process to keep it self-consistent.
 func (fi *faceInfoT) decimateFaces(vertIdx int) {
 	fi.decimatePhase1(vertIdx)
 	fi.decimatePhase2(vertIdx)
+	fi.decimatePhase3(vertIdx)
 }
 
 func (fi *faceInfoT) decimatePhase1(vertIdx int) {
@@ -49,17 +62,6 @@ func (fi *faceInfoT) decimatePhase1(vertIdx int) {
 		// all connected topology to these faces.
 		fi.decimateFacesBy(vertIdx, nonManis)
 	}
-}
-
-type halfEdgeT struct {
-	edgeUnitVector Vec3
-	toVertIdx      int
-	length         float64
-	onFaces        []int
-}
-
-func (h *halfEdgeT) String() string {
-	return fmt.Sprintf("{edgeUnitVector: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitVector, h.toVertIdx, h.length, h.onFaces)
 }
 
 // nextNonManifoldHalfEdges finds the next collection of halfEdges that
@@ -532,4 +534,38 @@ NONE FOUND - MAKES SENSE!!!
 */
 
 func (fi *faceInfoT) decimatePhase2(vertIdx int) {
+}
+
+func (fi *faceInfoT) decimatePhase3(vertIdx int) {
+	// step 1 - make a map of all edges to their faces
+	facesFromEdge := map[[2]int][]int{}
+	seenFaces := map[int]bool{}
+	addEdge := func(v1Idx, v2Idx, faceIdx int) {
+		if seenFaces[faceIdx] {
+			return
+		}
+		seenFaces[faceIdx] = true
+		if v1Idx == v2Idx {
+			log.Fatalf("decimatePhase3: programming error: face[%v]=%+v", faceIdx, fi.m.Faces[faceIdx])
+		}
+		if v1Idx > v2Idx {
+			v1Idx, v2Idx = v2Idx, v1Idx
+		}
+		key := [2]int{v1Idx, v2Idx}
+		facesFromEdge[key] = append(facesFromEdge[key], faceIdx)
+	}
+
+	for _, faceIdx := range fi.facesFromVert[vertIdx] {
+		face := fi.m.Faces[faceIdx]
+		for i, vertIdx := range face {
+			nextVertIdx := face[(i+1)%len(face)]
+			addEdge(vertIdx, nextVertIdx, faceIdx)
+		}
+	}
+
+	for edge, faces := range facesFromEdge {
+		if len(faces) != 2 {
+			log.Printf("decimatePhase3[vertIdx=%v]: found degenerative edge %+v: %+v", vertIdx, edge, faces)
+		}
+	}
 }
