@@ -149,12 +149,79 @@ func (fi *faceInfoT) splitOppositeFaceEdge(cutFaceIdx, cuttingVertIdx, fromVertI
 	cutVector := Vec3Cross(fi.faceNormals[cutFaceIdx], fi.m.Verts[toVertIdx].Sub(fi.m.Verts[fromVertIdx])).Normalized()
 	log.Printf("cutVector from vert[%v]=%v: %v", cuttingVertIdx, fi.m.Verts[cuttingVertIdx], cutVector)
 
-	secondEdgeToCut := fi.findOppositeEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx, cutVector)
-	if secondEdgeToCut == nil {
+	cutInfo := fi.findOppositeEdge(cutFaceIdx, cuttingVertIdx, fromVertIdx, cutVector)
+	if cutInfo == nil {
 		log.Fatalf("splitOppositeFaceEdge: unable to find opposite face edge")
 	}
 
-	log.Printf("splitting face: secondEdgeToCut=%v", secondEdgeToCut)
+	log.Printf("splitting face: cutInfo=%v", cutInfo)
+
+	// inject new vertex if it doesn't already exist
+	newVertKey := cutInfo.newCutVert.String()
+	newVertIdx, ok := fi.allVertIdxes[newVertKey]
+	if !ok {
+		newVertIdx = len(fi.m.Verts)
+		fi.allVertIdxes[newVertKey] = newVertIdx
+		fi.m.Verts = append(fi.m.Verts, cutInfo.newCutVert)
+	}
+
+	oldFace := fi.m.Faces[cutFaceIdx]
+	newFace1, newFace2 := fi.newFacesFromOld(oldFace, cuttingVertIdx, fromVertIdx, newVertIdx, cutInfo)
+	log.Printf("newFace1=%v, newFace2=%v", newFace1, newFace2)
+
+	fi.m.Faces[cutFaceIdx] = newFace1
+	newFaceIdx := len(fi.m.Faces)
+	fi.m.Faces = append(fi.m.Faces, newFace2)
+	fi.faceNormals = append(fi.faceNormals, fi.faceNormals[cutFaceIdx]) // copy identical face normal
+	fi.facesFromVert[newVertIdx] = []int{cutFaceIdx, newFaceIdx}
+}
+
+func (fi *faceInfoT) newFacesFromOld(oldFace []int, cuttingVertIdx, fromVertIdx, newVertIdx int, cutInfo *cutInfoT) (f1, f2 []int) {
+	for i, vertIdx := range oldFace {
+		f1 = append(f1, vertIdx)
+
+		if vertIdx == fromVertIdx {
+			f1 = append(f1, cuttingVertIdx)
+			f1 = append(f1, newVertIdx)
+			f2 = append(f2, cuttingVertIdx)
+			addToF2 := true
+			for j := 1; i+j < len(oldFace); j++ {
+				vertIdx = oldFace[i+j]
+				if addToF2 {
+					f2 = append(f2, vertIdx)
+				} else {
+					f1 = append(f1, vertIdx)
+				}
+				if vertIdx == cutInfo.fromVertIdx {
+					f2 = append(f2, newVertIdx)
+					addToF2 = false
+				}
+			}
+			return f1, f2
+		}
+		if vertIdx == cutInfo.fromVertIdx {
+			f1 = append(f1, newVertIdx)
+			f1 = append(f1, cuttingVertIdx)
+			f2 = append(f2, newVertIdx)
+			addToF2 := true
+			for j := 1; i+j < len(oldFace); j++ {
+				vertIdx = oldFace[i+j]
+				if addToF2 {
+					f2 = append(f2, vertIdx)
+				} else {
+					f1 = append(f1, vertIdx)
+				}
+				if vertIdx == fromVertIdx {
+					f2 = append(f2, cuttingVertIdx)
+					addToF2 = false
+				}
+			}
+			return f1, f2
+		}
+	}
+
+	log.Fatalf("programming error: newFacesFromOld(oldFace=%+v), f1=%+v, f2=%+v", oldFace, f1, f2)
+	return nil, nil
 }
 
 type cutInfoT struct {
@@ -342,7 +409,7 @@ decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
 2023/11/11 19:44:47 splitOppositeFaceEdge: cutFaceIdx=3, cuttingVertIdx=11, fromVertIdx=2, toVertIdx=6
 2023/11/11 19:44:47 cutVector from vert[11]={0.50000 0.50000 4.50000}: {-1.00000 0.00000 -0.00000}
 2023/11/11 19:44:47 found opposite edge: i=3, p1=5={-0.50000 1.50000 4.50000}: lhs={0.00000 0.00000 -2.00000}, rhs={0.00000 0.00000 -1.00000}, ratio=0.5
-2023/11/11 19:44:47 splitting face: secondEdgeToCut=&{5 {-0.5 0.5 4.5} 3}
+2023/11/11 19:44:47 splitting face: cutInfo=&{5 {-0.5 0.5 4.5} 3}
 
 2023/11/11 18:18:44 cutFaceUsing: cutFaceIdx=5, cuttingVertIdx=11, cuttingFaces=[9 10]
 2023/11/11 18:18:44 Found vert[10]={0.50000 0.50000 3.50000} on face[5]=[6 2 1 7]!!!

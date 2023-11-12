@@ -29,6 +29,7 @@ func (m *Mesh) MakeManifold() error {
 
 type faceInfoT struct {
 	m             *Mesh
+	allVertIdxes  map[string]int
 	faceNormals   []Vec3
 	facesFromVert map[int][]int
 }
@@ -46,8 +47,14 @@ func (m *Mesh) genFaceInfo() *faceInfoT {
 		}
 	}
 
+	allVertIdxes := make(map[string]int, len(m.Verts))
+	for vertIdx, vert := range m.Verts {
+		allVertIdxes[vert.String()] = vertIdx
+	}
+
 	return &faceInfoT{
 		m:             m,
+		allVertIdxes:  allVertIdxes,
 		faceNormals:   faceNormals,
 		facesFromVert: facesFromVert,
 	}
