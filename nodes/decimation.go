@@ -351,8 +351,8 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []*vert
 
 	for i, vertIdx := range face {
 		nextVertIdx := face[(i+1)%len(face)]
-		log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v to v[%v]=%v",
-			i, vertIdx, fi.m.Verts[vertIdx], nextVertIdx, fi.m.Verts[nextVertIdx])
+		// log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v to v[%v]=%v",
+		//   i, vertIdx, fi.m.Verts[vertIdx], nextVertIdx, fi.m.Verts[nextVertIdx])
 		p1 := fi.m.Verts[nextVertIdx].Sub(fi.m.Verts[vertIdx])
 		pOnP1 := genPOnP1Func(p1)
 
@@ -361,8 +361,8 @@ func (fi *faceInfoT) vertsLieOnFaceEdge(vertsToCheck []int, faceIdx int) []*vert
 				log.Printf("vertsLieOnFaceEdge: ignoring vert[%v]=%v", pIdx, fi.m.Verts[pIdx])
 				continue
 			}
-			log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v on line segment?",
-				i, pIdx, fi.m.Verts[pIdx])
+			// log.Printf("vertsLieOnFaceEdge: i=%v, looking at: v[%v]=%v on line segment?",
+			// 	i, pIdx, fi.m.Verts[pIdx])
 
 			p := fi.m.Verts[pIdx].Sub(fi.m.Verts[vertIdx])
 			if pOnP1(p) {
@@ -385,54 +385,54 @@ func genPOnP1Func(p1 Vec3) func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			v := tx > 0 && tx < 1 && ty > 0 && ty < 1 && tz > 0 && tz < 1 && AboutEq(tx, ty) && AboutEq(ty, tz)
-			log.Printf("A: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return tx > 0 && tx < 1 && ty > 0 && ty < 1 && tz > 0 && tz < 1 && AboutEq(tx, ty) && AboutEq(ty, tz)
+			// log.Printf("A: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	case p1.X != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			tz := p.Z / p1.Z
-			v := tx > 0 && tx < 1 && tz > 0 && tz < 1 && AboutEq(p.Y, 0) && AboutEq(tx, tz)
-			log.Printf("B: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return tx > 0 && tx < 1 && tz > 0 && tz < 1 && AboutEq(p.Y, 0) && AboutEq(tx, tz)
+			// log.Printf("B: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	case p1.X != 0 && p1.Y != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
 			ty := p.Y / p1.Y
-			v := tx > 0 && tx < 1 && ty > 0 && ty < 1 && AboutEq(p.Z, 0) && AboutEq(tx, ty)
-			log.Printf("C: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return tx > 0 && tx < 1 && ty > 0 && ty < 1 && AboutEq(p.Z, 0) && AboutEq(tx, ty)
+			// log.Printf("C: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	case p1.Y != 0 && p1.Z != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
 			tz := p.Z / p1.Z
-			v := ty > 0 && ty < 1 && tz > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(ty, tz)
-			log.Printf("D: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return ty > 0 && ty < 1 && tz > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(ty, tz)
+			// log.Printf("D: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	case p1.X != 0:
 		return func(p Vec3) bool {
 			tx := p.X / p1.X
-			v := tx > 0 && tx < 1 && AboutEq(p.Y, 0) && AboutEq(p.Z, 0)
-			log.Printf("E: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return tx > 0 && tx < 1 && AboutEq(p.Y, 0) && AboutEq(p.Z, 0)
+			// log.Printf("E: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	case p1.Y != 0:
 		return func(p Vec3) bool {
 			ty := p.Y / p1.Y
-			v := ty > 0 && ty < 1 && AboutEq(p.X, 0) && AboutEq(p.Z, 0)
-			log.Printf("F: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return ty > 0 && ty < 1 && AboutEq(p.X, 0) && AboutEq(p.Z, 0)
+			// log.Printf("F: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	case p1.Z != 0:
 		return func(p Vec3) bool {
 			tz := p.Z / p1.Z
-			v := tz > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(p.Y, 0)
-			log.Printf("G: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
-			return v
+			return tz > 0 && tz < 1 && AboutEq(p.X, 0) && AboutEq(p.Y, 0)
+			// log.Printf("G: pOnP1(p1=%v): p=%v, v=%v", p1, p, v)
+			// return v
 		}
 	default:
 		log.Fatalf("programming error: p1=%v", p1)
