@@ -48,8 +48,6 @@ func (fi *faceInfoT) decimatePhase1(vertIdx int) {
 		// step 2 - decimate the longest faces common to this vertex along with
 		// all connected topology to these faces.
 		fi.decimateFacesBy(vertIdx, nonManis)
-
-		log.Fatalf("nonManis: got %v", len(nonManis))
 	}
 }
 
