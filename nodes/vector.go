@@ -25,7 +25,7 @@ type Vec3 struct {
 }
 
 func (v Vec3) String() string {
-	return fmt.Sprintf("{%0.5f %0.5f %0.5f}", v.X, v.Y, v.Z)
+	return fmt.Sprintf("%0.5f %0.5f %0.5f", v.X, v.Y, v.Z) // better hashing without surrounding {}
 }
 
 // NewVec3 returns a new Vec3.

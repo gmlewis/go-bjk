@@ -16,12 +16,12 @@ func TestCalcFaceNormal(t *testing.T) {
 			{11.07, -0.50, 5.81},
 			{12.50, -0.50, 0.00},
 		},
-		Faces: [][]int{
+		Faces: []FaceT{
 			{0, 1, 2, 3, 4, 5},
 		},
 	}
 
-	got := mesh.CalcFaceNormal(0)
+	got := mesh.CalcFaceNormal(mesh.Faces[0])
 	want := Vec3{0, 1, 0}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("CalcFaceNormal mismatch (-want +got):\n%v", diff)

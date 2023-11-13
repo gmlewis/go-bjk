@@ -13,8 +13,11 @@ type Mesh struct {
 	Verts    []Vec3
 	Normals  []Vec3  // optional - per-vert normals
 	Tangents []Vec3  // optional - per-vert tangents
-	Faces    [][]int // optional - when used, Normals and Tangents are unused.
+	Faces    []FaceT // optional - when used, Normals and Tangents are unused.
 }
+
+// FaceT represents a face and is a slice of vertex indices.
+type FaceT []int
 
 const luaMeshTypeName = "Mesh"
 
@@ -37,14 +40,14 @@ func meshClone(ls *lua.LState) int {
 		Verts:    make([]Vec3, 0, len(orig.Verts)),
 		Normals:  make([]Vec3, 0, len(orig.Normals)),
 		Tangents: make([]Vec3, 0, len(orig.Tangents)),
-		Faces:    make([][]int, 0, len(orig.Faces)),
+		Faces:    make([]FaceT, 0, len(orig.Faces)),
 	}
 
 	m.Verts = append(m.Verts, orig.Verts...)
 	m.Normals = append(m.Normals, orig.Normals...)
 	m.Tangents = append(m.Tangents, orig.Tangents...)
 	for _, v := range orig.Faces {
-		m.Faces = append(m.Faces, append([]int{}, v...))
+		m.Faces = append(m.Faces, append(FaceT{}, v...))
 	}
 
 	ud := ls.NewUserData()
@@ -54,76 +57,9 @@ func meshClone(ls *lua.LState) int {
 	return 1
 }
 
-// Merge merges src into dst for Ops.merge(dst, src).
-func (dst *Mesh) Merge(src *Mesh) {
-	// First, a naive merge is performed by not checking if any Verts are shared.
-	verts := make([]Vec3, 0, len(dst.Verts)+len(src.Verts))
-	verts = append(verts, dst.Verts...)
-	verts = append(verts, src.Verts...)
-
-	// If there are no faces, then simply concatenate the verts/normals/tangents and return.
-	if len(dst.Faces) == 0 && len(src.Faces) == 0 {
-		normals := make([]Vec3, 0, len(dst.Normals)+len(src.Normals))
-		tangents := make([]Vec3, 0, len(dst.Tangents)+len(src.Tangents))
-
-		normals = append(normals, dst.Normals...)
-		normals = append(normals, src.Normals...)
-		tangents = append(tangents, dst.Tangents...)
-		tangents = append(tangents, src.Tangents...)
-
-		dst.Verts = verts
-		dst.Normals = normals
-		dst.Tangents = tangents
-		return
-	}
-
-	// However, if there are faces, the normals and tangents are no longer usable; delete them.
-	numOrigDstVerts := len(dst.Verts)
-	dst.Normals = nil
-	dst.Tangents = nil
-
-	// Next, a map is made of unique verts with a mapping of old indices to new ones.
-	uniqueVertsMap := map[string]int{}
-	vertsOldToNew := make([]int, 0, len(verts))
-	uniqueVerts := make([]Vec3, 0, len(verts)) // this estimate is too large, but it is order-of-ballpark correct.
-	for _, vert := range verts {
-		s := vert.String()
-		if idx, ok := uniqueVertsMap[s]; ok {
-			vertsOldToNew = append(vertsOldToNew, idx)
-			continue
-		}
-		newIdx := len(uniqueVerts)
-		vertsOldToNew = append(vertsOldToNew, newIdx)
-		uniqueVertsMap[s] = newIdx
-		uniqueVerts = append(uniqueVerts, vert)
-	}
-	dst.Verts = uniqueVerts
-	// if len(verts) != len(uniqueVerts) {
-	// 	log.Printf("Merge: reduced verts from %v to %v", len(verts), len(uniqueVerts))
-	// }
-
-	adjFace := func(face []int, offset int) []int {
-		result := make([]int, 0, len(face))
-		for _, vIdx := range face {
-			result = append(result, vertsOldToNew[vIdx+offset])
-		}
-		return result
-	}
-
-	faces := make([][]int, 0, len(dst.Faces)+len(src.Faces))
-	for _, face := range dst.Faces {
-		faces = append(faces, adjFace(face, 0))
-	}
-	for _, face := range src.Faces {
-		faces = append(faces, adjFace(face, numOrigDstVerts))
-	}
-
-	dst.Faces = faces
-}
-
 // NewPolygonFromPoints creates a new mesh from points.
 func NewPolygonFromPoints(pts []Vec3) *Mesh {
-	m := &Mesh{Verts: pts, Faces: [][]int{make([]int, 0, len(pts))}}
+	m := &Mesh{Verts: pts, Faces: []FaceT{make(FaceT, 0, len(pts))}}
 	for i := 0; i < len(pts); i++ {
 		m.Faces[0] = append(m.Faces[0], i)
 	}
@@ -131,7 +67,7 @@ func NewPolygonFromPoints(pts []Vec3) *Mesh {
 }
 
 // NewMeshFromPolygons creates a new mesh from points.
-func NewMeshFromPolygons(verts []Vec3, faces [][]int) *Mesh {
+func NewMeshFromPolygons(verts []Vec3, faces []FaceT) *Mesh {
 	// log.Printf("NewMeshFromPolygons: %v verts, %v faces", len(verts), len(faces))
 	return &Mesh{Verts: verts, Faces: faces}
 }
@@ -180,7 +116,7 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 	numVerts := len(crossSection.Verts)
 	m := &Mesh{
 		Verts: make([]Vec3, 0, numVerts*len(backbone.Verts)),
-		Faces: make([][]int, 0, numVerts*(len(backbone.Verts)-1)),
+		Faces: make([]FaceT, 0, numVerts*(len(backbone.Verts)-1)),
 	}
 
 	if len(backbone.Tangents) < len(backbone.Verts) {
@@ -204,7 +140,7 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 			}
 
 			// create a new quad for each extruded crossSection vertex
-			m.Faces = append(m.Faces, []int{
+			m.Faces = append(m.Faces, FaceT{
 				vIdx + i - numVerts,
 				vIdx + i,
 				vIdx + ((i + 1) % numVerts),
@@ -249,14 +185,13 @@ func (m *Mesh) generateTangents() {
 // One way to solve this "correctly" would be to see if any edge used to create the normal
 // lies outside the polygon, but this is computationally and algorithmically complex.
 // This implementation uses a simple heuristic using a voting mechanism.
-func (m *Mesh) CalcFaceNormal(faceIndex int) Vec3 {
-	if len(m.Verts) < 3 || len(m.Faces) <= faceIndex || len(m.Faces[faceIndex]) < 3 {
+func (m *Mesh) CalcFaceNormal(face FaceT) Vec3 {
+	if len(m.Verts) < 3 || len(face) < 3 {
 		log.Fatalf("CalcNormalAndTangent: want >=3 points >=1 face, got %#v", *m)
 	}
 
 	votes := map[Vec3]int{}
 
-	face := m.Faces[faceIndex]
 	numVerts := len(face)
 	for i, vIdx := range face {
 		va := m.Verts[vIdx]

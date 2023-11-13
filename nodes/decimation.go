@@ -2,10 +2,6 @@ package nodes
 
 import (
 	"fmt"
-	"log"
-	"sort"
-
-	"golang.org/x/exp/maps"
 )
 
 type halfEdgeT struct {
@@ -19,6 +15,7 @@ func (h *halfEdgeT) String() string {
 	return fmt.Sprintf("{edgeUnitVector: %v, toVertIdx: %v, length=%v, onFaces: %+v}", h.edgeUnitVector, h.toVertIdx, h.length, h.onFaces)
 }
 
+/*
 // decimateFaces focuses on a single vertex, finds all faces attached to it,
 // then decimates any faces whose topology is non-manifold.
 //
@@ -490,6 +487,44 @@ func (fi *faceInfoT) fromToVertIdxMatchesFace(cutFaceIdx, fromVertIdx, toVertIdx
 	return false
 }
 
+func (fi *faceInfoT) decimatePhase2(vertIdx int) {
+}
+
+func (fi *faceInfoT) decimatePhase3(vertIdx int) {
+	// step 1 - make a map of all edges to their faces
+	facesFromEdge := map[[2]int][]int{}
+	seenFaces := map[int]bool{}
+	addEdge := func(v1Idx, v2Idx, faceIdx int) {
+		if seenFaces[faceIdx] {
+			return
+		}
+		seenFaces[faceIdx] = true
+		if v1Idx == v2Idx {
+			log.Fatalf("decimatePhase3: programming error: face[%v]=%+v", faceIdx, fi.m.Faces[faceIdx])
+		}
+		if v1Idx > v2Idx {
+			v1Idx, v2Idx = v2Idx, v1Idx
+		}
+		key := [2]int{v1Idx, v2Idx}
+		facesFromEdge[key] = append(facesFromEdge[key], faceIdx)
+	}
+
+	for _, faceIdx := range fi.facesFromVert[vertIdx] {
+		face := fi.m.Faces[faceIdx]
+		for i, vertIdx := range face {
+			nextVertIdx := face[(i+1)%len(face)]
+			addEdge(vertIdx, nextVertIdx, faceIdx)
+		}
+	}
+
+	for edge, faces := range facesFromEdge {
+		if len(faces) != 2 {
+			log.Printf("decimatePhase3[vertIdx=%v]: found degenerative edge %+v: %+v", vertIdx, edge, faces)
+		}
+	}
+}
+*/
+
 /*
 decimatePhase1: vertIdx=2 {0.50 -0.50 4.50}, faceIdxes=[0 3 5 6 9 10]
 face[0]={{-0.50 -0.50 3.50} {0.50 -0.50 3.50} {0.50 -0.50 4.50} {-0.50 -0.50 4.50}}
@@ -532,40 +567,3 @@ with faces[5]=nil and faces[10]=nil:
 with faces[5]=nil and faces[10]=nil and faces[9]=nil:
 NONE FOUND - MAKES SENSE!!!
 */
-
-func (fi *faceInfoT) decimatePhase2(vertIdx int) {
-}
-
-func (fi *faceInfoT) decimatePhase3(vertIdx int) {
-	// step 1 - make a map of all edges to their faces
-	facesFromEdge := map[[2]int][]int{}
-	seenFaces := map[int]bool{}
-	addEdge := func(v1Idx, v2Idx, faceIdx int) {
-		if seenFaces[faceIdx] {
-			return
-		}
-		seenFaces[faceIdx] = true
-		if v1Idx == v2Idx {
-			log.Fatalf("decimatePhase3: programming error: face[%v]=%+v", faceIdx, fi.m.Faces[faceIdx])
-		}
-		if v1Idx > v2Idx {
-			v1Idx, v2Idx = v2Idx, v1Idx
-		}
-		key := [2]int{v1Idx, v2Idx}
-		facesFromEdge[key] = append(facesFromEdge[key], faceIdx)
-	}
-
-	for _, faceIdx := range fi.facesFromVert[vertIdx] {
-		face := fi.m.Faces[faceIdx]
-		for i, vertIdx := range face {
-			nextVertIdx := face[(i+1)%len(face)]
-			addEdge(vertIdx, nextVertIdx, faceIdx)
-		}
-	}
-
-	for edge, faces := range facesFromEdge {
-		if len(faces) != 2 {
-			log.Printf("decimatePhase3[vertIdx=%v]: found degenerative edge %+v: %+v", vertIdx, edge, faces)
-		}
-	}
-}

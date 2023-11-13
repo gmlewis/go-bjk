@@ -21,10 +21,6 @@ func (c *Client) ToSTL(design *ast.BJK, filename string) error {
 		return err
 	}
 
-	if err := mesh.MakeManifold(); err != nil {
-		return err
-	}
-
 	out, err := stl.New(filename)
 	if err != nil {
 		return err
@@ -52,7 +48,7 @@ func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int) error {
 		return fmt.Errorf("face <3 verts: %+v", face)
 	}
 
-	faceNormal := mesh.CalcFaceNormal(faceIndex)
+	faceNormal := mesh.CalcFaceNormal(mesh.Faces[faceIndex])
 	n := faceNormal.tof32arr()
 	// v1 := mesh.Verts[face[0]].tof32arr()
 

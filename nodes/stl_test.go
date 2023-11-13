@@ -17,7 +17,7 @@ func TestTesselateFace(t *testing.T) {
 			{11.07, -0.50, 5.81},
 			{12.50, -0.50, 0.00},
 		},
-		Faces: [][]int{
+		Faces: []FaceT{
 			{0, 1, 2, 3, 4, 5},
 		},
 	}

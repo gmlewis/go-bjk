@@ -67,7 +67,7 @@ func cube(ls *lua.LState) int {
 
 	polygon := NewMeshFromPolygons(
 		[]Vec3{v1, v2, v3, v4, v5, v6, v7, v8},
-		[][]int{
+		[]FaceT{
 			{0, 1, 2, 3},
 			{4, 5, 6, 7},
 			{4, 7, 1, 0},
@@ -206,7 +206,7 @@ func quad(ls *lua.LState) int {
 
 	polygon := NewMeshFromPolygons(
 		[]Vec3{v1, v2, v3, v4},
-		[][]int{
+		[]FaceT{
 			{0, 1, 2, 3},
 		})
 

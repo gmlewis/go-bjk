@@ -47,24 +47,24 @@ func extrudeWithCaps(ls *lua.LState) int {
 	faceMesh := checkMesh(ls, 3)
 	// log.Printf("extrudeWithCaps: BEFORE: faceMesh=%v", faceMesh)
 
-	var newFaces [][]int
+	var newFaces []FaceT
 	for faceIdx, face := range faceMesh.Faces {
 		if len(face) < 3 {
 			// log.Printf("extrudeWithCaps: Attempted to extrude a face with only %v vertices. Skipping.", len(face))
 			continue
 		}
 
-		extrusionNormal := faceMesh.CalcFaceNormal(faceIdx)
+		extrusionNormal := faceMesh.CalcFaceNormal(faceMesh.Faces[faceIdx])
 		extrudeVec := extrusionNormal.MulScalar(amount)
 		// log.Printf("face[%v]: extrudeVec=%v", faceIdx, extrudeVec)
 
 		// For this face, make another copy of all its vertices at the extruded distance.
 		numVerts := len(face)
 		vIdx := len(faceMesh.Verts)
-		extrudedFace := make([]int, 0, numVerts)
+		extrudedFace := make(FaceT, 0, numVerts)
 		for i, vertIdx := range face {
 			faceMesh.Verts = append(faceMesh.Verts, faceMesh.Verts[vertIdx].Add(extrudeVec))
-			newFaces = append(newFaces, []int{
+			newFaces = append(newFaces, FaceT{
 				vIdx + i - numVerts,
 				vIdx + i,
 				vIdx + ((i + 1) % numVerts),
