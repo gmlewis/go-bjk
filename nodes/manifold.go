@@ -43,6 +43,14 @@ type faceInfoT struct {
 	dstBadEdges      edge2FacesMapT
 }
 
+func (fi *faceInfoT) swapSrcAndDst() {
+	fi.srcFaces, fi.dstFaces = fi.dstFaces, fi.srcFaces
+	fi.srcFaceNormals, fi.dstFaceNormals = fi.dstFaceNormals, fi.srcFaceNormals
+	fi.srcFacesFromVert, fi.dstFacesFromVert = fi.dstFacesFromVert, fi.srcFacesFromVert
+	fi.srcEdges2Faces, fi.dstEdges2Faces = fi.dstEdges2Faces, fi.srcEdges2Faces
+	fi.srcBadEdges, fi.dstBadEdges = fi.dstBadEdges, fi.srcBadEdges
+}
+
 // edgeT represents an edge and is a sorted array of two vertex indices.
 type edgeT [2]int
 
@@ -92,7 +100,7 @@ func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVe
 		faceNormals = append(faceNormals, m.CalcFaceNormal(face))
 		for i, vertIdx := range face {
 			facesFromVert[vertIdx] = append(facesFromVert[vertIdx], faceIdx)
-			nextVertIdx := face[(i+1)%len(faces)]
+			nextVertIdx := face[(i+1)%len(face)]
 			edge := makeEdge(vertIdx, nextVertIdx)
 			edges2Faces[edge] = append(edges2Faces[edge], faceIdx)
 		}

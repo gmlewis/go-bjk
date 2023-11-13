@@ -79,9 +79,44 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	log.Printf("\n\nmanifoldMerge: srcFaces=%+v\n%v", srcFaces, dst.dumpFaces(srcFaces))
 	log.Printf("manifoldMerge: dstFaces=%+v\n%v", dstFaces, dst.dumpFaces(dstFaces))
 
-	faceInfo := dst.genFaceInfo(dstFaces, srcFaces)
-	log.Printf("faceInfo=%#v", *faceInfo)
+	fi := dst.genFaceInfo(dstFaces, srcFaces)
+	switch {
+	case len(fi.srcBadEdges) == 0 && len(fi.dstBadEdges) == 0:
+		fi.merge2manifolds()
+	case len(fi.srcBadEdges) == 0:
+		// swap src and dst so that src is the non-manifold mesh:
+		fi.swapSrcAndDst()
+		fi.mergeNonManifoldSrc()
+	case len(fi.dstBadEdges) == 0:
+		fi.mergeNonManifoldSrc()
+	default:
+		fi.merge2NonManifolds()
+	}
+}
 
+// merge2manifolds merges the manifold srcFaces and dstFaces meshes together,
+// creating a final manifold mesh.
+func (fi *faceInfoT) merge2manifolds() {
+	log.Fatalf("merge2manifolds - not yet implemented")
 	// last step: combine face sets
-	dst.Faces = append(dstFaces, srcFaces...)
+	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
+}
+
+// mergeNonManifoldSrc merges the non-manifold srcFaces mesh into the manifold dstFaces mesh,
+// creating a final manifold mesh.
+func (fi *faceInfoT) mergeNonManifoldSrc() {
+	log.Fatalf("mergeNonManifoldSrc - not yet implemented")
+	// last step: combine face sets
+	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
+}
+
+// merge2NonManifolds merges two non-manifold srcFaces and dstFaces meshes together,
+// but may or may not create a resulting manifold mesh due to the possibility of one of
+// the meshes still being un-capped (such as the case of the helix). However, the resulting
+// mesh should be manifold apart from any unconnected parts of the original meshes.
+// In other words, there should only remain edges that have exactly 1 or 2 faces, not more.
+func (fi *faceInfoT) merge2NonManifolds() {
+	log.Fatalf("merge2NonManifolds - not yet implemented")
+	// last step: combine face sets
+	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
 }
