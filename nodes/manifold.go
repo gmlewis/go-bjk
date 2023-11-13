@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/gmlewis/advent-of-code-2021/enum"
+	"golang.org/x/exp/maps"
 )
 
 // func (m *Mesh) makeManifold() error {
@@ -137,6 +140,28 @@ func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVe
 		edges2Faces,
 		badEdges,
 		badFaces
+}
+
+func (fi *faceInfoT) findSharedVerts() []VertIndexT {
+	// premature optimization:
+	// if len(fi.dstFaces) < len(fi.srcFaces) {
+	// 	fi.swapSrcAndDst()
+	// }
+	srcVerts := map[VertIndexT]bool{}
+	registerVert := func(vertIdx VertIndexT) { srcVerts[vertIdx] = true }
+	registerVerts := func(f FaceT) { enum.Each(f, registerVert) }
+	enum.Each(fi.srcFaces, registerVerts)
+
+	sharedVerts := map[VertIndexT]bool{}
+	checkVert := func(vertIdx VertIndexT) {
+		if srcVerts[vertIdx] {
+			sharedVerts[vertIdx] = true
+		}
+	}
+	checkVerts := func(f FaceT) { enum.Each(f, checkVert) }
+	enum.Each(fi.dstFaces, checkVerts)
+
+	return maps.Keys(sharedVerts)
 }
 
 func (m *Mesh) dumpFaces(faces []FaceT) string {
