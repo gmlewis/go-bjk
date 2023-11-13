@@ -36,9 +36,14 @@ func NewVec3(x, y, z float64) Vec3 {
 // AboutEq returns true if a is within Epsilon of b.
 func AboutEq(a, b float64) bool { return math.Abs(a-b) < Epsilon }
 
-// AboutZero returns if entire vector is within Epsilon of (0,0,0)
+// AboutZero returns true if entire vector is within Epsilon of (0,0,0)
 func (v *Vec3) AboutZero() bool {
 	return AboutEq(v.X, 0) && AboutEq(v.Y, 0) && AboutEq(v.Z, 0)
+}
+
+// AboutEq returns true if entire vector is within Epsilon of otherVec.
+func (v *Vec3) AboutEq(otherVec Vec3) bool {
+	return AboutEq(v.X, otherVec.X) && AboutEq(v.Y, otherVec.Y) && AboutEq(v.Z, otherVec.Z)
 }
 
 // Normalize normalizes a vector in-place.

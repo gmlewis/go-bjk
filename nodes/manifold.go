@@ -59,6 +59,7 @@ type faceInfoT struct {
 }
 
 type infoSetT struct {
+	m               *Mesh
 	faces           []FaceT
 	faceNormals     []Vec3
 	vert2Faces      vert2FacesMapT
@@ -97,6 +98,7 @@ func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
 
 func (m *Mesh) genFaceInfoForSet(faces []FaceT) *infoSetT {
 	infoSet := &infoSetT{
+		m:               m,
 		faces:           faces,
 		faceNormals:     make([]Vec3, 0, len(faces)),
 		vert2Faces:      vert2FacesMapT{}, // key=vertIdx, value=[]faceIdx
@@ -162,6 +164,61 @@ func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedF
 	}
 
 	return sharedVerts, sharedEdges, sharedFaces
+}
+
+func (is *infoSetT) connectedEdgeFromVertOnFace(vertIdx VertIndexT, edge edgeT, faceIdx faceIndexT) edgeT {
+	notVertIdx := edge[0]
+	if notVertIdx == vertIdx {
+		notVertIdx = edge[1]
+	}
+
+	face := is.faces[faceIdx]
+	for i, pIdx := range face {
+		nextIdx := VertIndexT((i + 1) % len(face))
+		if pIdx == vertIdx && nextIdx != notVertIdx {
+			return makeEdge(vertIdx, nextIdx)
+		}
+		if pIdx == vertIdx {
+			lastVertIdx := VertIndexT((i - 1 + len(face)) % len(face))
+			return makeEdge(vertIdx, lastVertIdx)
+		}
+	}
+
+	log.Fatalf("connectedEdgeFromVertOnFace: programming error for face %+v", face)
+	return edgeT{}
+}
+
+// This preserves the order of vertex indicies as they appear in the face definition.
+func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [2]VertIndexT {
+	face := is.faces[faceIdx]
+	for i, pIdx := range face {
+		nextIdx := VertIndexT((i + 1) % len(face))
+		if edge[0] == pIdx && edge[1] == nextIdx {
+			return [2]VertIndexT{edge[0], edge[1]}
+		}
+		if edge[1] == pIdx && edge[0] == nextIdx {
+			return [2]VertIndexT{edge[1], edge[0]}
+		}
+	}
+
+	log.Fatalf("getEdgeVertsInWindingOrder: programming error for face %+v", face)
+	return [2]VertIndexT{}
+}
+
+// edgeUnitVector returns the unit vector for this edge.
+// Note that the edge order does _NOT_ represent the winding order!
+// Therefore the original winding order needs to be found and preserved.
+func (is *infoSetT) edgeUnitVector(edge edgeT, faceIdx faceIndexT) Vec3 {
+	edgeVec3 := is.edgeVector(edge, faceIdx)
+	return edgeVec3.Normalized()
+}
+
+// edgeVector returns the vector representing this edge.
+// Note that the edge order does _NOT_ represent the winding order!
+// Therefore the original winding order needs to be found and preserved.
+func (is *infoSetT) edgeVector(edge edgeT, faceIdx faceIndexT) Vec3 {
+	vertIdxes := is.getEdgeVertsInWindingOrder(edge, faceIdx)
+	return is.m.Verts[vertIdxes[1]].Sub(is.m.Verts[vertIdxes[0]])
 }
 
 func (m *Mesh) faceArea(face FaceT) float64 {
