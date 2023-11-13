@@ -164,6 +164,17 @@ func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedF
 	return sharedVerts, sharedEdges, sharedFaces
 }
 
+func (m *Mesh) faceArea(face FaceT) float64 {
+	if len(face) == 4 {
+		v1 := m.Verts[face[1]].Sub(m.Verts[face[0]]).Length()
+		v2 := m.Verts[face[2]].Sub(m.Verts[face[1]]).Length()
+		log.Printf("faceArea %+v: %v", face, v1*v2)
+		return v1 * v2
+	}
+	log.Fatalf("faceArea: not implemented yet for %+v", face)
+	return 0
+}
+
 func (m *Mesh) dumpFaces(faces []FaceT) string {
 	var lines []string
 	for i, face := range faces {

@@ -31,5 +31,12 @@ func (fi *faceInfoT) merge2manifolds() {
 }
 
 func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT, srcFaces, dstFaces []faceIndexT) {
-	log.Fatalf("merge2manisOneEdge: sharedVerts=%+v, edge=%v, srcFaces=%+v, dstFaces=%+v", sharedVerts, edge, srcFaces, dstFaces)
+	assert(len(srcFaces) == 2 && len(dstFaces) == 2, "merge2manisOneEdge: want 2 srcFaces and 2 dstFaces")
+
+	// sort srcFaces by area (descending - largest first)
+	if srcFace0Area, srcFace1Area := fi.m.faceArea(fi.src.faces[srcFaces[0]]), fi.m.faceArea(fi.src.faces[srcFaces[1]]); srcFace0Area < srcFace1Area {
+		srcFaces[0], srcFaces[1] = srcFaces[1], srcFaces[0]
+	}
+
+	log.Printf("merge2manisOneEdge: sorted srcFaces by area:\n%v", fi.m.dumpFaces([]FaceT{fi.src.faces[srcFaces[0]], fi.src.faces[srcFaces[1]]}))
 }
