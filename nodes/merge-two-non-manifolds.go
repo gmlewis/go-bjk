@@ -10,5 +10,5 @@ import "log"
 func (fi *faceInfoT) merge2NonManifolds() {
 	log.Fatalf("merge2NonManifolds - not yet implemented")
 	// last step: combine face sets
-	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
+	fi.m.Faces = append(fi.dst.faces, fi.src.faces...)
 }

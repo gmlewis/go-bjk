@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
-	"github.com/gmlewis/advent-of-code-2021/enum"
-	"golang.org/x/exp/maps"
 )
 
 // func (m *Mesh) makeManifold() error {
@@ -42,31 +39,27 @@ type vert2FacesMapT map[VertIndexT][]faceIndexT
 // face2EdgesMapT represents a mapping from a face index to edges.
 type face2EdgesMapT map[faceIndexT][]edgeT
 
+// faceStr2FaceIdxMapT maps a face "signature" (e.g. "0 1 2 3") to a face index.
+type faceStr2FaceIdxMapT map[string]faceIndexT
+
 type faceInfoT struct {
-	m *Mesh
+	m   *Mesh
+	src *infoSetT
+	dst *infoSetT
+}
 
-	srcFaces         []FaceT
-	srcFaceNormals   []Vec3
-	srcFacesFromVert vert2FacesMapT
-	srcEdges2Faces   edge2FacesMapT
-	srcBadEdges      edge2FacesMapT
-	srcBadFaces      face2EdgesMapT
-
-	dstFaces         []FaceT
-	dstFaceNormals   []Vec3
-	dstFacesFromVert vert2FacesMapT
-	dstEdges2Faces   edge2FacesMapT
-	dstBadEdges      edge2FacesMapT
-	dstBadFaces      face2EdgesMapT
+type infoSetT struct {
+	faces           []FaceT
+	faceNormals     []Vec3
+	vert2Faces      vert2FacesMapT
+	edges2Faces     edge2FacesMapT
+	faceStr2FaceIdx faceStr2FaceIdxMapT
+	badEdges        edge2FacesMapT
+	badFaces        face2EdgesMapT
 }
 
 func (fi *faceInfoT) swapSrcAndDst() {
-	fi.srcFaces, fi.dstFaces = fi.dstFaces, fi.srcFaces
-	fi.srcFaceNormals, fi.dstFaceNormals = fi.dstFaceNormals, fi.srcFaceNormals
-	fi.srcFacesFromVert, fi.dstFacesFromVert = fi.dstFacesFromVert, fi.srcFacesFromVert
-	fi.srcEdges2Faces, fi.dstEdges2Faces = fi.dstEdges2Faces, fi.srcEdges2Faces
-	fi.srcBadEdges, fi.dstBadEdges = fi.dstBadEdges, fi.srcBadEdges
-	fi.srcBadFaces, fi.dstBadFaces = fi.dstBadFaces, fi.srcBadFaces
+	fi.src, fi.dst = fi.dst, fi.src
 }
 
 func makeEdge(v1, v2 VertIndexT) edgeT {
@@ -82,86 +75,83 @@ func makeEdge(v1, v2 VertIndexT) edgeT {
 // genFaceInfo calculates the face normals for every src and dst face
 // and generates a map of good and bad edges (mapped to their respective faces).
 func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
-	sfn, sffv, se2f, sbe, sbf := m.genFaceInfoForSet(srcFaces)
-	dfn, dffv, de2f, dbe, dbf := m.genFaceInfoForSet(dstFaces)
+	src := m.genFaceInfoForSet(srcFaces)
+	dst := m.genFaceInfoForSet(dstFaces)
 
 	return &faceInfoT{
-		m: m,
-
-		srcFaces:         srcFaces,
-		srcFaceNormals:   sfn,
-		srcFacesFromVert: sffv,
-		srcEdges2Faces:   se2f,
-		srcBadEdges:      sbe,
-		srcBadFaces:      sbf,
-
-		dstFaces:         dstFaces,
-		dstFaceNormals:   dfn,
-		dstFacesFromVert: dffv,
-		dstEdges2Faces:   de2f,
-		dstBadEdges:      dbe,
-		dstBadFaces:      dbf,
+		m:   m,
+		src: src,
+		dst: dst,
 	}
 }
 
-func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVert vert2FacesMapT, edges2Faces, badEdges edge2FacesMapT, badFaces face2EdgesMapT) {
-	faceNormals = make([]Vec3, 0, len(faces))
-	facesFromVert = vert2FacesMapT{} // key=vertIdx, value=[]faceIdx
-	edges2Faces = edge2FacesMapT{}
-	badEdges = edge2FacesMapT{}
-	badFaces = face2EdgesMapT{}
+func (m *Mesh) genFaceInfoForSet(faces []FaceT) *infoSetT {
+	infoSet := &infoSetT{
+		faces:           faces,
+		faceNormals:     make([]Vec3, 0, len(faces)),
+		vert2Faces:      vert2FacesMapT{}, // key=vertIdx, value=[]faceIdx
+		edges2Faces:     edge2FacesMapT{},
+		faceStr2FaceIdx: faceStr2FaceIdxMapT{},
+		badEdges:        edge2FacesMapT{},
+		badFaces:        face2EdgesMapT{},
+	}
 
 	for i, face := range faces {
 		faceIdx := faceIndexT(i)
-		faceNormals = append(faceNormals, m.CalcFaceNormal(face))
+		infoSet.faceNormals = append(infoSet.faceNormals, m.CalcFaceNormal(face))
+		infoSet.faceStr2FaceIdx[face.String()] = faceIdx
 		for i, vertIdx := range face {
-			facesFromVert[vertIdx] = append(facesFromVert[vertIdx], faceIdx)
+			infoSet.vert2Faces[vertIdx] = append(infoSet.vert2Faces[vertIdx], faceIdx)
 			nextVertIdx := face[(i+1)%len(face)]
 			edge := makeEdge(vertIdx, nextVertIdx)
-			edges2Faces[edge] = append(edges2Faces[edge], faceIdx)
+			infoSet.edges2Faces[edge] = append(infoSet.edges2Faces[edge], faceIdx)
 		}
 	}
 
 	// Now find the bad edges and move them to the badEdges map.
-	for edge, faceIdxes := range edges2Faces {
+	for edge, faceIdxes := range infoSet.edges2Faces {
 		if len(faceIdxes) != 2 {
-			badEdges[edge] = faceIdxes
+			infoSet.badEdges[edge] = faceIdxes
 			for _, faceIdx := range faceIdxes {
-				badFaces[faceIdx] = append(badFaces[faceIdx], edge)
+				infoSet.badFaces[faceIdx] = append(infoSet.badFaces[faceIdx], edge)
 			}
 		}
 	}
-	for edge := range badEdges {
-		delete(edges2Faces, edge)
+	for edge := range infoSet.badEdges {
+		delete(infoSet.edges2Faces, edge)
 	}
 
-	return faceNormals,
-		facesFromVert,
-		edges2Faces,
-		badEdges,
-		badFaces
+	return infoSet
 }
 
-func (fi *faceInfoT) findSharedVerts() []VertIndexT {
+func (fi *faceInfoT) findSharedVEFs() (map[VertIndexT][2][]faceIndexT, map[edgeT][2][]faceIndexT, map[string][2]faceIndexT) {
 	// premature optimization:
 	// if len(fi.dstFaces) < len(fi.srcFaces) {
 	// 	fi.swapSrcAndDst()
 	// }
-	srcVerts := map[VertIndexT]bool{}
-	registerVert := func(vertIdx VertIndexT) { srcVerts[vertIdx] = true }
-	registerVerts := func(f FaceT) { enum.Each(f, registerVert) }
-	enum.Each(fi.srcFaces, registerVerts)
 
-	sharedVerts := map[VertIndexT]bool{}
-	checkVert := func(vertIdx VertIndexT) {
-		if srcVerts[vertIdx] {
-			sharedVerts[vertIdx] = true
+	sharedVerts := map[VertIndexT][2][]faceIndexT{}
+	for vertIdx, dstFaces := range fi.dst.vert2Faces {
+		if srcFaces, ok := fi.src.vert2Faces[vertIdx]; ok {
+			sharedVerts[vertIdx] = [2][]faceIndexT{srcFaces, dstFaces}
 		}
 	}
-	checkVerts := func(f FaceT) { enum.Each(f, checkVert) }
-	enum.Each(fi.dstFaces, checkVerts)
 
-	return maps.Keys(sharedVerts)
+	sharedEdges := map[edgeT][2][]faceIndexT{}
+	for edge, dstFaces := range fi.dst.edges2Faces {
+		if srcFaces, ok := fi.src.edges2Faces[edge]; ok {
+			sharedEdges[edge] = [2][]faceIndexT{srcFaces, dstFaces}
+		}
+	}
+
+	sharedFaces := map[string][2]faceIndexT{}
+	for faceStr, dstFaceIdx := range fi.dst.faceStr2FaceIdx {
+		if srcFaceIdx, ok := fi.src.faceStr2FaceIdx[faceStr]; ok {
+			sharedFaces[faceStr] = [2]faceIndexT{srcFaceIdx, dstFaceIdx}
+		}
+	}
+
+	return sharedVerts, sharedEdges, sharedFaces
 }
 
 func (m *Mesh) dumpFaces(faces []FaceT) string {

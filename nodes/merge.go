@@ -81,13 +81,13 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 
 	fi := dst.genFaceInfo(dstFaces, srcFaces)
 	switch {
-	case len(fi.srcBadEdges) == 0 && len(fi.dstBadEdges) == 0:
+	case len(fi.src.badEdges) == 0 && len(fi.dst.badEdges) == 0:
 		fi.merge2manifolds()
-	case len(fi.srcBadEdges) == 0:
+	case len(fi.src.badEdges) == 0:
 		// swap src and dst so that src is the non-manifold mesh:
 		fi.swapSrcAndDst()
 		fi.mergeNonManifoldSrc()
-	case len(fi.dstBadEdges) == 0:
+	case len(fi.dst.badEdges) == 0:
 		fi.mergeNonManifoldSrc()
 	default:
 		fi.merge2NonManifolds()

@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"fmt"
 	"log"
 	"sort"
 
@@ -21,6 +22,13 @@ type VertIndexT int
 
 // FaceT represents a face and is a slice of vertex indices.
 type FaceT []VertIndexT
+
+// String generates a face "signature" which is a string of the sorted vertex indices.
+func (f FaceT) String() string {
+	verts := append([]VertIndexT{}, f...)
+	sort.Slice(verts, func(i, j int) bool { return verts[i] < verts[j] })
+	return fmt.Sprintf("%v", verts)
+}
 
 // faceIndexT represents a face index and is only used internally.
 type faceIndexT int
