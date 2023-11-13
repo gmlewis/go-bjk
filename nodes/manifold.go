@@ -42,6 +42,16 @@ type face2EdgesMapT map[faceIndexT][]edgeT
 // faceStr2FaceIdxMapT maps a face "signature" (e.g. "0 1 2 3") to a face index.
 type faceStr2FaceIdxMapT map[string]faceIndexT
 
+// sharedVertsMapT represents a collection of shared vertices and maps them back to src ([0]) and dst([1]) face indices.
+type sharedVertsMapT map[VertIndexT][2][]faceIndexT
+
+// sharedEdgesMapT represents a collection of shared edges and maps them back to src ([0]) and dst([1]) face indices.
+type sharedEdgesMapT map[edgeT][2][]faceIndexT
+
+// sharedFacesMapT represents a collection of shared faces (keyed by face "signature") and maps them back to
+// src ([0]) and dst([1]) face index.
+type sharedFacesMapT map[string][2]faceIndexT
+
 type faceInfoT struct {
 	m   *Mesh
 	src *infoSetT
@@ -124,27 +134,27 @@ func (m *Mesh) genFaceInfoForSet(faces []FaceT) *infoSetT {
 	return infoSet
 }
 
-func (fi *faceInfoT) findSharedVEFs() (map[VertIndexT][2][]faceIndexT, map[edgeT][2][]faceIndexT, map[string][2]faceIndexT) {
+func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedFacesMapT) {
 	// premature optimization:
 	// if len(fi.dstFaces) < len(fi.srcFaces) {
 	// 	fi.swapSrcAndDst()
 	// }
 
-	sharedVerts := map[VertIndexT][2][]faceIndexT{}
+	sharedVerts := sharedVertsMapT{}
 	for vertIdx, dstFaces := range fi.dst.vert2Faces {
 		if srcFaces, ok := fi.src.vert2Faces[vertIdx]; ok {
 			sharedVerts[vertIdx] = [2][]faceIndexT{srcFaces, dstFaces}
 		}
 	}
 
-	sharedEdges := map[edgeT][2][]faceIndexT{}
+	sharedEdges := sharedEdgesMapT{}
 	for edge, dstFaces := range fi.dst.edges2Faces {
 		if srcFaces, ok := fi.src.edges2Faces[edge]; ok {
 			sharedEdges[edge] = [2][]faceIndexT{srcFaces, dstFaces}
 		}
 	}
 
-	sharedFaces := map[string][2]faceIndexT{}
+	sharedFaces := sharedFacesMapT{}
 	for faceStr, dstFaceIdx := range fi.dst.faceStr2FaceIdx {
 		if srcFaceIdx, ok := fi.src.faceStr2FaceIdx[faceStr]; ok {
 			sharedFaces[faceStr] = [2]faceIndexT{srcFaceIdx, dstFaceIdx}
