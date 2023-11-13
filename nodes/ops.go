@@ -65,12 +65,12 @@ func extrudeWithCaps(ls *lua.LState) int {
 		for i, vertIdx := range face {
 			faceMesh.Verts = append(faceMesh.Verts, faceMesh.Verts[vertIdx].Add(extrudeVec))
 			newFaces = append(newFaces, FaceT{
-				vIdx + i - numVerts,
-				vIdx + i,
-				vIdx + ((i + 1) % numVerts),
-				vIdx + ((i + 1) % numVerts) - numVerts,
+				VertIndexT(vIdx + i - numVerts),
+				VertIndexT(vIdx + i),
+				VertIndexT(vIdx + ((i + 1) % numVerts)),
+				VertIndexT(vIdx + ((i + 1) % numVerts) - numVerts),
 			})
-			extrudedFace = append(extrudedFace, vIdx+i)
+			extrudedFace = append(extrudedFace, VertIndexT(vIdx+i))
 		}
 
 		// Copy the initial face to the end of the extrusion and make new quads

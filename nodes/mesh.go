@@ -16,8 +16,14 @@ type Mesh struct {
 	Faces    []FaceT // optional - when used, Normals and Tangents are unused.
 }
 
+// VertIndexT represents a vertex index.
+type VertIndexT int
+
 // FaceT represents a face and is a slice of vertex indices.
-type FaceT []int
+type FaceT []VertIndexT
+
+// faceIndexT represents a face index and is only used internally.
+type faceIndexT int
 
 const luaMeshTypeName = "Mesh"
 
@@ -61,7 +67,7 @@ func meshClone(ls *lua.LState) int {
 func NewPolygonFromPoints(pts []Vec3) *Mesh {
 	m := &Mesh{Verts: pts, Faces: []FaceT{make(FaceT, 0, len(pts))}}
 	for i := 0; i < len(pts); i++ {
-		m.Faces[0] = append(m.Faces[0], i)
+		m.Faces[0] = append(m.Faces[0], VertIndexT(i))
 	}
 	return m
 }
@@ -141,10 +147,10 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 
 			// create a new quad for each extruded crossSection vertex
 			m.Faces = append(m.Faces, FaceT{
-				vIdx + i - numVerts,
-				vIdx + i,
-				vIdx + ((i + 1) % numVerts),
-				vIdx + ((i + 1) % numVerts) - numVerts,
+				VertIndexT(vIdx + i - numVerts),
+				VertIndexT(vIdx + i),
+				VertIndexT(vIdx + ((i + 1) % numVerts)),
+				VertIndexT(vIdx + ((i + 1) % numVerts) - numVerts),
 			})
 			// log.Printf("face[%v]=%+v", len(m.Faces)-1, m.Faces[len(m.Faces)-1])
 		}

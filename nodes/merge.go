@@ -31,8 +31,8 @@ func (dst *Mesh) Merge(src *Mesh) {
 	dst.Tangents = nil
 
 	// Next, a map is made of unique verts with a mapping of old indices to new ones.
-	uniqueVertsMap := map[string]int{}
-	vertsOldToNew := make([]int, 0, len(verts))
+	uniqueVertsMap := map[string]VertIndexT{}
+	vertsOldToNew := make([]VertIndexT, 0, len(verts))
 	uniqueVerts := make([]Vec3, 0, len(verts)) // this estimate is too large, but it is order-of-ballpark correct.
 	for _, vert := range verts {
 		s := vert.String()
@@ -40,7 +40,7 @@ func (dst *Mesh) Merge(src *Mesh) {
 			vertsOldToNew = append(vertsOldToNew, idx)
 			continue
 		}
-		newIdx := len(uniqueVerts)
+		newIdx := VertIndexT(len(uniqueVerts))
 		vertsOldToNew = append(vertsOldToNew, newIdx)
 		uniqueVertsMap[s] = newIdx
 		uniqueVerts = append(uniqueVerts, vert)
@@ -53,7 +53,7 @@ func (dst *Mesh) Merge(src *Mesh) {
 	adjFace := func(face FaceT, offset int) FaceT {
 		result := make(FaceT, 0, len(face))
 		for _, vIdx := range face {
-			result = append(result, vertsOldToNew[vIdx+offset])
+			result = append(result, vertsOldToNew[int(vIdx)+offset])
 		}
 		return result
 	}
@@ -92,31 +92,4 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	default:
 		fi.merge2NonManifolds()
 	}
-}
-
-// merge2manifolds merges the manifold srcFaces and dstFaces meshes together,
-// creating a final manifold mesh.
-func (fi *faceInfoT) merge2manifolds() {
-	log.Fatalf("merge2manifolds - not yet implemented")
-	// last step: combine face sets
-	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
-}
-
-// mergeNonManifoldSrc merges the non-manifold srcFaces mesh into the manifold dstFaces mesh,
-// creating a final manifold mesh.
-func (fi *faceInfoT) mergeNonManifoldSrc() {
-	log.Fatalf("mergeNonManifoldSrc - not yet implemented")
-	// last step: combine face sets
-	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
-}
-
-// merge2NonManifolds merges two non-manifold srcFaces and dstFaces meshes together,
-// but may or may not create a resulting manifold mesh due to the possibility of one of
-// the meshes still being un-capped (such as the case of the helix). However, the resulting
-// mesh should be manifold apart from any unconnected parts of the original meshes.
-// In other words, there should only remain edges that have exactly 1 or 2 faces, not more.
-func (fi *faceInfoT) merge2NonManifolds() {
-	log.Fatalf("merge2NonManifolds - not yet implemented")
-	// last step: combine face sets
-	fi.m.Faces = append(fi.dstFaces, fi.srcFaces...)
 }

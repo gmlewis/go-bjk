@@ -27,20 +27,34 @@ import (
 // 	return nil
 // }
 
+// edgeT represents an edge and is a sorted array of two vertex indices.
+type edgeT [2]VertIndexT
+
+// edge2FacesMapT represents a mapping from an edge to one or more face indices.
+type edge2FacesMapT map[edgeT][]faceIndexT
+
+// vert2FacesMapT respresents a mapping from a vertex index to face indices.
+type vert2FacesMapT map[VertIndexT][]faceIndexT
+
+// face2EdgesMapT represents a mapping from a face index to edges.
+type face2EdgesMapT map[faceIndexT][]edgeT
+
 type faceInfoT struct {
 	m *Mesh
 
 	srcFaces         []FaceT
 	srcFaceNormals   []Vec3
-	srcFacesFromVert map[int][]int
+	srcFacesFromVert vert2FacesMapT
 	srcEdges2Faces   edge2FacesMapT
 	srcBadEdges      edge2FacesMapT
+	srcBadFaces      face2EdgesMapT
 
 	dstFaces         []FaceT
 	dstFaceNormals   []Vec3
-	dstFacesFromVert map[int][]int
+	dstFacesFromVert vert2FacesMapT
 	dstEdges2Faces   edge2FacesMapT
 	dstBadEdges      edge2FacesMapT
+	dstBadFaces      face2EdgesMapT
 }
 
 func (fi *faceInfoT) swapSrcAndDst() {
@@ -49,29 +63,24 @@ func (fi *faceInfoT) swapSrcAndDst() {
 	fi.srcFacesFromVert, fi.dstFacesFromVert = fi.dstFacesFromVert, fi.srcFacesFromVert
 	fi.srcEdges2Faces, fi.dstEdges2Faces = fi.dstEdges2Faces, fi.srcEdges2Faces
 	fi.srcBadEdges, fi.dstBadEdges = fi.dstBadEdges, fi.srcBadEdges
+	fi.srcBadFaces, fi.dstBadFaces = fi.dstBadFaces, fi.srcBadFaces
 }
 
-// edgeT represents an edge and is a sorted array of two vertex indices.
-type edgeT [2]int
-
-func makeEdge(v1, v2 int) edgeT {
+func makeEdge(v1, v2 VertIndexT) edgeT {
 	if v1 == v2 {
 		log.Fatalf("programming error: makeEdge(%v,%v)", v1, v2)
 	}
 	if v1 < v2 {
-		return [2]int{v1, v2}
+		return edgeT{v1, v2}
 	}
-	return [2]int{v2, v1} // swap
+	return edgeT{v2, v1} // swap
 }
-
-// edge2FacesMapT represents a mapping from an edge to one or more face indices.
-type edge2FacesMapT map[edgeT][]int
 
 // genFaceInfo calculates the face normals for every src and dst face
 // and generates a map of good and bad edges (mapped to their respective faces).
 func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
-	sfn, sffv, se2f, sbe := m.genFaceInfoForSet(srcFaces)
-	dfn, dffv, de2f, dbe := m.genFaceInfoForSet(dstFaces)
+	sfn, sffv, se2f, sbe, sbf := m.genFaceInfoForSet(srcFaces)
+	dfn, dffv, de2f, dbe, dbf := m.genFaceInfoForSet(dstFaces)
 
 	return &faceInfoT{
 		m: m,
@@ -81,22 +90,26 @@ func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
 		srcFacesFromVert: sffv,
 		srcEdges2Faces:   se2f,
 		srcBadEdges:      sbe,
+		srcBadFaces:      sbf,
 
 		dstFaces:         dstFaces,
 		dstFaceNormals:   dfn,
 		dstFacesFromVert: dffv,
 		dstEdges2Faces:   de2f,
 		dstBadEdges:      dbe,
+		dstBadFaces:      dbf,
 	}
 }
 
-func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVert map[int][]int, edges2Faces, badEdges edge2FacesMapT) {
+func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVert vert2FacesMapT, edges2Faces, badEdges edge2FacesMapT, badFaces face2EdgesMapT) {
 	faceNormals = make([]Vec3, 0, len(faces))
-	facesFromVert = map[int][]int{} // key=vertIdx, value=[]faceIdx
+	facesFromVert = vert2FacesMapT{} // key=vertIdx, value=[]faceIdx
 	edges2Faces = edge2FacesMapT{}
 	badEdges = edge2FacesMapT{}
+	badFaces = face2EdgesMapT{}
 
-	for faceIdx, face := range faces {
+	for i, face := range faces {
+		faceIdx := faceIndexT(i)
 		faceNormals = append(faceNormals, m.CalcFaceNormal(face))
 		for i, vertIdx := range face {
 			facesFromVert[vertIdx] = append(facesFromVert[vertIdx], faceIdx)
@@ -107,9 +120,12 @@ func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVe
 	}
 
 	// Now find the bad edges and move them to the badEdges map.
-	for edge, faces := range edges2Faces {
-		if len(faces) != 2 {
-			badEdges[edge] = faces
+	for edge, faceIdxes := range edges2Faces {
+		if len(faceIdxes) != 2 {
+			badEdges[edge] = faceIdxes
+			for _, faceIdx := range faceIdxes {
+				badFaces[faceIdx] = append(badFaces[faceIdx], edge)
+			}
 		}
 	}
 	for edge := range badEdges {
@@ -119,7 +135,8 @@ func (m *Mesh) genFaceInfoForSet(faces []FaceT) (faceNormals []Vec3, facesFromVe
 	return faceNormals,
 		facesFromVert,
 		edges2Faces,
-		badEdges
+		badEdges,
+		badFaces
 }
 
 func (m *Mesh) dumpFaces(faces []FaceT) string {
