@@ -209,6 +209,12 @@ func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [
 	return [2]VertIndexT{}
 }
 
+// edgeHeight returns an edge's height.
+func (is *infoSetT) edgeHeight(edge edgeT) float64 {
+	m := is.faceInfo.m
+	return m.Verts[edge[0]].Sub(m.Verts[edge[1]]).Length()
+}
+
 // // edgeVector returns the vector representing this edge.
 // // Note that the edge order does _NOT_ represent the winding order!
 // // Therefore the original winding order needs to be found and preserved.
