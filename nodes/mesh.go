@@ -11,7 +11,10 @@ import (
 
 // Mesh represents a mesh of points, edges, and faces.
 type Mesh struct {
-	Verts    []Vec3
+	// Do not manually add to Verts. Use AddVert instead.
+	Verts       []Vec3
+	uniqueVerts map[vertKeyT]VertIndexT
+
 	Normals  []Vec3  // optional - per-vert normals
 	Tangents []Vec3  // optional - per-vert tangents
 	Faces    []FaceT // optional - when used, Normals and Tangents are unused.
@@ -22,6 +25,14 @@ type VertIndexT int
 
 // FaceT represents a face and is a slice of vertex indices.
 type FaceT []VertIndexT
+
+// vertKeyT represents a vertex key (or "signature") which uniquely identifies a vertex for easy merging.
+type vertKeyT string
+
+// toKey generates a vertex vertKeyT (or "signature") which is a string representation of the vertex.
+func (v Vec3) toKey() vertKeyT {
+	return vertKeyT(fmt.Sprintf("%0.5f %0.5f %0.5f", v.X, v.Y, v.Z)) // better hashing without surrounding {}
+}
 
 // faceKeyT represents a face key (or "signature") which uniquely identifies a face consisting of the same verts.
 type faceKeyT string
@@ -35,6 +46,29 @@ func (f FaceT) toKey() faceKeyT {
 
 // faceIndexT represents a face index and is only used internally.
 type faceIndexT int
+
+// AddVert adds a vertex to a mesh (reusing existing vertices if possible) and returns its VertIndexT.
+func (m *Mesh) AddVert(v Vec3) VertIndexT {
+	key := v.toKey()
+	if vertIdx, ok := m.uniqueVerts[key]; ok {
+		return vertIdx
+	}
+	vertIdx := VertIndexT(len(m.Verts))
+	m.uniqueVerts[key] = vertIdx
+	m.Verts = append(m.Verts, v)
+	return vertIdx
+}
+
+// AddFace adds a face to a mesh and returns its FaceT.
+func (m *Mesh) AddFace(verts []Vec3) FaceT {
+	face := make([]VertIndexT, 0, len(verts))
+	for _, vert := range verts {
+		vertIdx := m.AddVert(vert)
+		face = append(face, vertIdx)
+	}
+	m.Faces = append(m.Faces, face)
+	return face
+}
 
 const luaMeshTypeName = "Mesh"
 
@@ -51,21 +85,38 @@ func registerMeshType(ls *lua.LState) {
 	// }
 }
 
-func meshClone(ls *lua.LState) int {
-	orig := checkMesh(ls, 1)
+func newMeshFrom(verts, normals, tangents []Vec3, faces []FaceT) *Mesh {
 	m := &Mesh{
-		Verts:    make([]Vec3, 0, len(orig.Verts)),
-		Normals:  make([]Vec3, 0, len(orig.Normals)),
-		Tangents: make([]Vec3, 0, len(orig.Tangents)),
-		Faces:    make([]FaceT, 0, len(orig.Faces)),
+		Verts:       make([]Vec3, 0, len(verts)),
+		uniqueVerts: map[vertKeyT]VertIndexT{},
+
+		Normals:  make([]Vec3, 0, len(normals)),
+		Tangents: make([]Vec3, 0, len(tangents)),
+		Faces:    make([]FaceT, 0, len(faces)),
 	}
 
-	m.Verts = append(m.Verts, orig.Verts...)
-	m.Normals = append(m.Normals, orig.Normals...)
-	m.Tangents = append(m.Tangents, orig.Tangents...)
-	for _, v := range orig.Faces {
-		m.Faces = append(m.Faces, append(FaceT{}, v...))
+	m.Verts = append(m.Verts, verts...)
+	for i, vert := range m.Verts {
+		key := vert.toKey()
+		m.uniqueVerts[key] = VertIndexT(i)
 	}
+
+	m.Normals = append(m.Normals, normals...)
+	m.Tangents = append(m.Tangents, tangents...)
+	for _, face := range faces {
+		faceVerts := make([]Vec3, 0, len(face))
+		for _, vertIdx := range face {
+			faceVerts = append(faceVerts, verts[vertIdx])
+		}
+		m.AddFace(faceVerts)
+	}
+
+	return m
+}
+
+func meshClone(ls *lua.LState) int {
+	orig := checkMesh(ls, 1)
+	m := newMeshFrom(orig.Verts, orig.Normals, orig.Tangents, orig.Faces)
 
 	ud := ls.NewUserData()
 	ud.Value = m
@@ -76,35 +127,25 @@ func meshClone(ls *lua.LState) int {
 
 // NewPolygonFromPoints creates a new mesh from points.
 func NewPolygonFromPoints(pts []Vec3) *Mesh {
-	m := &Mesh{Verts: pts, Faces: []FaceT{make(FaceT, 0, len(pts))}}
-	for i := 0; i < len(pts); i++ {
-		m.Faces[0] = append(m.Faces[0], VertIndexT(i))
-	}
+	m := newMeshFrom(pts, nil, nil, nil)
+	m.AddFace(pts)
 	return m
 }
 
 // NewMeshFromPolygons creates a new mesh from points.
 func NewMeshFromPolygons(verts []Vec3, faces []FaceT) *Mesh {
-	// log.Printf("NewMeshFromPolygons: %v verts, %v faces", len(verts), len(faces))
-	return &Mesh{Verts: verts, Faces: faces}
+	return newMeshFrom(verts, nil, nil, faces)
 }
 
 // NewMeshFromLineWithNormals creates a new mesh from points, normals, and tangents.
 func NewMeshFromLineWithNormals(points, normals, tangents []Vec3) *Mesh {
-	// log.Printf("NewMeshFromLineWithNormals: %v points, %v normals, %v tangents", len(points), len(normals), len(tangents))
-	return &Mesh{
-		Verts:    points,
-		Normals:  normals,
-		Tangents: tangents,
-	}
+	return newMeshFrom(points, normals, tangents, nil)
 }
 
 // NewMeshFromLine creates a new mesh from two points, divided into numSegs.
 func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
 	// log.Printf("NewMeshFromLine: 2 points, %v segments", numSegs)
-	m := &Mesh{
-		Verts: make([]Vec3, 0, numSegs+1),
-	}
+	verts := make([]Vec3, 0, numSegs+1)
 	lerp := func(val1, val2 float64, i int) float64 {
 		t := float64(i) / float64(numSegs)
 		return (val2-val1)*t + val1
@@ -115,10 +156,10 @@ func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
 			Y: lerp(v1.Y, v2.Y, i),
 			Z: lerp(v1.Z, v2.Z, i),
 		}
-		m.Verts = append(m.Verts, v)
+		verts = append(verts, v)
 	}
-	m.Verts = append(m.Verts, *v2)
-	return m
+	verts = append(verts, *v2)
+	return newMeshFrom(verts, nil, nil, nil)
 }
 
 // NewMeshFromExtrudeAlongCurve creates a new mesh by extruding the crossSection along the backbone.
@@ -132,8 +173,9 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 
 	numVerts := len(crossSection.Verts)
 	m := &Mesh{
-		Verts: make([]Vec3, 0, numVerts*len(backbone.Verts)),
-		Faces: make([]FaceT, 0, numVerts*(len(backbone.Verts)-1)),
+		Verts:       make([]Vec3, 0, numVerts*len(backbone.Verts)),
+		uniqueVerts: make(map[vertKeyT]VertIndexT, numVerts*len(backbone.Verts)),
+		Faces:       make([]FaceT, 0, numVerts*(len(backbone.Verts)-1)),
 	}
 
 	if len(backbone.Tangents) < len(backbone.Verts) {
@@ -149,8 +191,12 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 		vIdx := len(m.Verts)
 		// log.Printf("nmfeac: bvi=%v, normal=%v, tangent=%v, bvert=%v, xform=%v, vIdx=%v", bvi, backbone.Normals[bvi], backbone.Tangents[bvi], bvert, xform, vIdx)
 		for i, v := range crossSection.Verts {
-			// m.Verts = append(m.Verts, xform.Do(v))
-			m.Verts = append(m.Verts, v.Xform(xform))
+			// m.Verts = append(m.Verts, v.Xform(xform))
+			addedVertIdx := m.AddVert(v.Xform(xform))
+			if addedVertIdx != VertIndexT(vIdx+i) {
+				log.Fatalf("NewMeshFromExtrudeAlongCurve: programming error: addedVertIdx(%v) != vIdx(%v)+i(%v)", addedVertIdx, vIdx, i)
+			}
+
 			// log.Printf("verts[%v]=%v", len(m.Verts)-1, m.Verts[len(m.Verts)-1])
 			if bvi == 0 {
 				continue

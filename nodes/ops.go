@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"log"
 	"slices"
 
 	lua "github.com/yuin/gopher-lua"
@@ -50,7 +51,7 @@ func extrudeWithCaps(ls *lua.LState) int {
 	var newFaces []FaceT
 	for faceIdx, face := range faceMesh.Faces {
 		if len(face) < 3 {
-			// log.Printf("extrudeWithCaps: Attempted to extrude a face with only %v vertices. Skipping.", len(face))
+			log.Printf("extrudeWithCaps: Attempted to extrude a face[%v]=%+v with only %v vertices. Skipping.", faceIdx, face, len(face))
 			continue
 		}
 
@@ -63,7 +64,12 @@ func extrudeWithCaps(ls *lua.LState) int {
 		vIdx := len(faceMesh.Verts)
 		extrudedFace := make(FaceT, 0, numVerts)
 		for i, vertIdx := range face {
-			faceMesh.Verts = append(faceMesh.Verts, faceMesh.Verts[vertIdx].Add(extrudeVec))
+			// faceMesh.Verts = append(faceMesh.Verts, faceMesh.Verts[vertIdx].Add(extrudeVec))
+			addedVertIdx := faceMesh.AddVert(faceMesh.Verts[vertIdx].Add(extrudeVec))
+			if addedVertIdx != VertIndexT(vIdx+i) {
+				log.Fatalf("extrudeWithCaps: programming error: addedVertIdx(%v) != vIdx(%v)+i(%v)", addedVertIdx, vIdx, i)
+			}
+
 			newFaces = append(newFaces, FaceT{
 				VertIndexT(vIdx + i - numVerts),
 				VertIndexT(vIdx + i),

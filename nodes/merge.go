@@ -31,11 +31,11 @@ func (dst *Mesh) Merge(src *Mesh) {
 	dst.Tangents = nil
 
 	// Next, a map is made of unique verts with a mapping of old indices to new ones.
-	uniqueVertsMap := map[string]VertIndexT{}
+	uniqueVertsMap := map[vertKeyT]VertIndexT{}
 	vertsOldToNew := make([]VertIndexT, 0, len(verts))
 	uniqueVerts := make([]Vec3, 0, len(verts)) // this estimate is too large, but it is order-of-ballpark correct.
 	for _, vert := range verts {
-		s := vert.String()
+		s := vert.toKey()
 		if idx, ok := uniqueVertsMap[s]; ok {
 			vertsOldToNew = append(vertsOldToNew, idx)
 			continue
@@ -46,6 +46,7 @@ func (dst *Mesh) Merge(src *Mesh) {
 		uniqueVerts = append(uniqueVerts, vert)
 	}
 	dst.Verts = uniqueVerts
+	dst.uniqueVerts = uniqueVertsMap
 	// if len(verts) != len(uniqueVerts) {
 	// 	log.Printf("Merge: reduced verts from %v to %v", len(verts), len(uniqueVerts))
 	// }

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	// Epsilon is a small number.
+	// Epsilon is a small number used for comparing float64s.
 	Epsilon = 1e-5
 )
 
@@ -25,7 +25,7 @@ type Vec3 struct {
 }
 
 func (v Vec3) String() string {
-	return fmt.Sprintf("%0.5f %0.5f %0.5f", v.X, v.Y, v.Z) // better hashing without surrounding {}
+	return fmt.Sprintf("{%0.2f %0.2f %0.2f}", v.X, v.Y, v.Z)
 }
 
 // NewVec3 returns a new Vec3.

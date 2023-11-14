@@ -209,14 +209,14 @@ func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [
 	return [2]VertIndexT{}
 }
 
-// edgeVector returns the vector representing this edge.
-// Note that the edge order does _NOT_ represent the winding order!
-// Therefore the original winding order needs to be found and preserved.
-func (is *infoSetT) edgeVector(edge edgeT, faceIdx faceIndexT) Vec3 {
-	vertIdxes := is.getEdgeVertsInWindingOrder(edge, faceIdx)
-	m := is.faceInfo.m
-	return m.Verts[vertIdxes[1]].Sub(m.Verts[vertIdxes[0]])
-}
+// // edgeVector returns the vector representing this edge.
+// // Note that the edge order does _NOT_ represent the winding order!
+// // Therefore the original winding order needs to be found and preserved.
+// func (is *infoSetT) edgeVector(edge edgeT, faceIdx faceIndexT) Vec3 {
+// 	vertIdxes := is.getEdgeVertsInWindingOrder(edge, faceIdx)
+// 	m := is.faceInfo.m
+// 	return m.Verts[vertIdxes[1]].Sub(m.Verts[vertIdxes[0]])
+// }
 
 func (m *Mesh) faceArea(face FaceT) float64 {
 	if len(face) == 4 {
@@ -241,7 +241,7 @@ func (m *Mesh) dumpFace(faceIdx faceIndexT, face FaceT) string {
 	verts := make([]string, 0, len(face))
 	for _, vertIdx := range face {
 		v := m.Verts[vertIdx]
-		verts = append(verts, fmt.Sprintf("{%0.2f %0.2f %0.2f}", v.X, v.Y, v.Z))
+		verts = append(verts, v.String())
 	}
 	return fmt.Sprintf("face[%v]={%+v}: {%v}", faceIdx, face, strings.Join(verts, " "))
 }

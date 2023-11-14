@@ -8,19 +8,15 @@ import (
 )
 
 func TestTesselateFace(t *testing.T) {
-	mesh := &Mesh{
-		Verts: []Vec3{
+	mesh := NewPolygonFromPoints(
+		[]Vec3{
 			{11.50, -0.50, 0.00},
 			{10.20, -0.50, 5.31},
 			{6.59, -0.50, 9.42},
 			{7.10, -0.50, 10.29},
 			{11.07, -0.50, 5.81},
 			{12.50, -0.50, 0.00},
-		},
-		Faces: []FaceT{
-			{0, 1, 2, 3, 4, 5},
-		},
-	}
+		})
 
 	out := &fakeSTLWriter{}
 	if err := tesselateFace(out, mesh, 0); err != nil {

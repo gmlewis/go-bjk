@@ -171,34 +171,17 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 	log.Printf("AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 }
 
+// moveVerts creates new (or reuses old) vertices and returns the mapping from the
+// old face's vertIndexes to the new vertices, without modifying the face.
 func (is *infoSetT) moveVerts(face FaceT, move Vec3) map[VertIndexT]VertIndexT {
 	m := is.faceInfo.m
-	uniqueVertsMap := is.uniqueVertsMap()
 
 	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(face))
 	for _, vertIdx := range face {
-		p := m.Verts[vertIdx].Add(move)
-		s := p.String()
-		if idx, ok := uniqueVertsMap[s]; ok {
-			vertsOldToNew[vertIdx] = idx
-			continue
-		}
-		idx := VertIndexT(len(m.Verts))
-		m.Verts = append(m.Verts, p)
-		vertsOldToNew[vertIdx] = idx
-		uniqueVertsMap[s] = idx
+		v := m.Verts[vertIdx].Add(move)
+		newVertIdx := m.AddVert(v)
+		vertsOldToNew[vertIdx] = newVertIdx
 	}
 
 	return vertsOldToNew
-}
-
-func (is *infoSetT) uniqueVertsMap() map[string]VertIndexT {
-	m := is.faceInfo.m
-	uniqueVertsMap := map[string]VertIndexT{}
-	for i, vert := range m.Verts {
-		s := vert.String()
-		uniqueVertsMap[s] = VertIndexT(i)
-	}
-	log.Printf("uniqueVertsMap found %v unique verts", len(uniqueVertsMap))
-	return uniqueVertsMap
 }
