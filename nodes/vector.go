@@ -46,6 +46,11 @@ func (v *Vec3) AboutEq(otherVec Vec3) bool {
 	return AboutEq(v.X, otherVec.X) && AboutEq(v.Y, otherVec.Y) && AboutEq(v.Z, otherVec.Z)
 }
 
+// Negated returns the opposite (negated) vector of v.
+func (v Vec3) Negated() Vec3 {
+	return Vec3{X: -v.X, Y: -v.Y, Z: -v.Z}
+}
+
 // Normalize normalizes a vector in-place.
 func (v *Vec3) Normalize() {
 	length := v.Length()

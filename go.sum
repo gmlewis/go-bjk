@@ -6,8 +6,6 @@ github.com/alecthomas/repr v0.2.0 h1:HAzS41CIzNW5syS8Mf9UwXhNH1J9aix/BvDRf1Ml2Yk
 github.com/alecthomas/repr v0.2.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/frankban/quicktest v1.14.3/go.mod h1:mgiwOwqx65TmIk1wJ6Q7wvnVMocbUorkibMOrVTHZps=
-github.com/gmlewis/advent-of-code-2021 v0.37.0 h1:/FmqHjKbe2c3MMb0pKEv6cHwHBoQGUtkjOvLzB9t6CI=
-github.com/gmlewis/advent-of-code-2021 v0.37.0/go.mod h1:dIRljAs8YNaW5S+vwYQaF2T8NPxCfnUhGXAhLMgKVjk=
 github.com/gmlewis/go3d v0.0.4 h1:2ymApzgFXKZJ0nFgItUAAXt2z8n5tPOz5Wtu/SGZ1As=
 github.com/gmlewis/go3d v0.0.4/go.mod h1:kmNbdpGuKWLQCUigppF9tBmoHDLrsymSy6se+eBUOVk=
 github.com/gmlewis/irmf-slicer/v3 v3.5.0 h1:h+KamvyzOVYjduDrQHGgyj2TfJgjxVjafVh/t9nwDpY=

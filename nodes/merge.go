@@ -80,6 +80,8 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	log.Printf("manifoldMerge: dstFaces=%+v\n%v", dstFaces, dst.dumpFaces(dstFaces))
 
 	fi := dst.genFaceInfo(dstFaces, srcFaces)
+	log.Printf("manifoldMerge: src.badEdges=%v=%+v", len(fi.src.badEdges), fi.src.badEdges)
+	log.Printf("manifoldMerge: dst.badEdges=%v=%+v", len(fi.dst.badEdges), fi.dst.badEdges)
 	switch {
 	case len(fi.src.badEdges) == 0 && len(fi.dst.badEdges) == 0:
 		fi.merge2manifolds()
