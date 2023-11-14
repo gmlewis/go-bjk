@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"log"
+	"slices"
 
 	"golang.org/x/exp/maps"
 )
@@ -83,6 +84,65 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	dstLongOtherVertIdx, dstLongEdgeVector := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaces[1])
 	log.Printf("merge2manisOneEdge: dstLongOtherVertIdx=%v, dstLongEdgeVector=%v", dstLongOtherVertIdx, dstLongEdgeVector)
 
-	// fi.src.deleteFaceAndMoveNeighbors(srcFaces[1], dstShortEdgeVector)
-	// fi.dst.cutNeighborsAndShortenFace(dstFaceIdx, dstShortEdgeVector)
+	dstShortConnectedEdge := makeEdge(vertIdx, dstShortOtherVertIdx)
+	dstShortNextVertIdx, tmpVec := fi.dst.connectedEdgeVectorFromVertOnFace(dstShortOtherVertIdx, dstShortConnectedEdge, dstFaceIdx)
+	log.Printf("merge2manisOneEdge: dstShortNextVertIdx=%v, tmpVec=%v", dstShortNextVertIdx, tmpVec)
+	shortenFaceEdge := makeEdge(dstShortOtherVertIdx, dstShortNextVertIdx)
+	log.Printf("merge2manisOneEdge: shortenFaceEdge=%v", shortenFaceEdge)
+
+	fi.src.deleteFaceAndMoveNeighbors(srcFaces[1], dstShortEdgeVector)
+	fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, dstShortEdgeVector, shortenFaceEdge)
+}
+
+func (is *infoSetT) deleteFaceAndMoveNeighbors(deleteFaceIdx faceIndexT, move Vec3) {
+	face := is.faces[deleteFaceIdx]
+	oldVertsToNewMap := is.moveVerts(face, move)
+	affectedFaces := map[faceIndexT]bool{}
+
+	for vertIdx := range oldVertsToNewMap {
+		for _, faceIdx := range is.vert2Faces[vertIdx] {
+			if faceIdx == deleteFaceIdx {
+				continue
+			}
+			affectedFaces[faceIdx] = true
+		}
+	}
+
+	for faceIdx := range affectedFaces {
+		for i, vertIdx := range is.faces[faceIdx] {
+			if newIdx, ok := oldVertsToNewMap[vertIdx]; ok {
+				is.faces[faceIdx][i] = newIdx
+			}
+		}
+	}
+
+	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.
+}
+
+func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(faceIdx faceIndexT, move Vec3, edge edgeT) {
+}
+
+func (is *infoSetT) moveVerts(face FaceT, move Vec3) map[VertIndexT]VertIndexT {
+	m := is.faceInfo.m
+	uniqueVertsMap := map[string]VertIndexT{}
+	for i, vert := range m.Verts {
+		s := vert.String()
+		uniqueVertsMap[s] = VertIndexT(i)
+	}
+
+	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(face))
+	for _, vertIdx := range face {
+		p := m.Verts[vertIdx].Add(move)
+		s := p.String()
+		if idx, ok := uniqueVertsMap[s]; ok {
+			vertsOldToNew[vertIdx] = idx
+			continue
+		}
+		idx := VertIndexT(len(m.Verts))
+		m.Verts = append(m.Verts, p)
+		vertsOldToNew[vertIdx] = idx
+		uniqueVertsMap[s] = idx
+	}
+
+	return vertsOldToNew
 }
