@@ -23,11 +23,14 @@ type VertIndexT int
 // FaceT represents a face and is a slice of vertex indices.
 type FaceT []VertIndexT
 
-// String generates a face "signature" which is a string of the sorted vertex indices.
-func (f FaceT) String() string {
+// faceKeyT represents a face key (or "signature") which uniquely identifies a face consisting of the same verts.
+type faceKeyT string
+
+// toKey generates a face faceKeyT (or "signature") which is a string of the sorted vertex indices.
+func (f FaceT) toKey() faceKeyT {
 	verts := append([]VertIndexT{}, f...)
 	sort.Slice(verts, func(i, j int) bool { return verts[i] < verts[j] })
-	return fmt.Sprintf("%v", verts)
+	return faceKeyT(fmt.Sprintf("%v", verts))
 }
 
 // faceIndexT represents a face index and is only used internally.

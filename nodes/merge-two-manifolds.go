@@ -42,23 +42,47 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 		dstFaces[0], dstFaces[1] = dstFaces[1], dstFaces[0]
 	}
 
-	log.Printf("merge2manisOneEdge: sorted srcFaces by area desc:\n%v", fi.m.dumpFaces([]FaceT{fi.src.faces[srcFaces[0]], fi.src.faces[srcFaces[1]]}))
-	log.Printf("merge2manisOneEdge: sorted dstFaces by area asc:\n%v", fi.m.dumpFaces([]FaceT{fi.dst.faces[dstFaces[0]], fi.dst.faces[dstFaces[1]]}))
+	log.Printf("merge2manisOneEdge: sorted srcFaces by area desc:\n%v\n%v",
+		fi.m.dumpFace(srcFaces[0], fi.src.faces[srcFaces[0]]), fi.m.dumpFace(srcFaces[1], fi.src.faces[srcFaces[1]]))
+	log.Printf("merge2manisOneEdge: sorted dstFaces by area asc:\n%v\n%v",
+		fi.m.dumpFace(dstFaces[0], fi.dst.faces[dstFaces[0]]), fi.m.dumpFace(dstFaces[1], fi.dst.faces[dstFaces[1]]))
 	srcFaceIdx, dstFaceIdx := srcFaces[0], dstFaces[0]
 
 	if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx]) {
 		log.Fatalf("merge2manisOneEdge: unhandled case: normals don't match: %v vs %v", fi.src.faceNormals[srcFaceIdx], fi.dst.faceNormals[dstFaceIdx])
 	}
+	if len(fi.src.faces[srcFaceIdx]) != 4 {
+		log.Fatalf("merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaceIdx, len(fi.src.faces[srcFaceIdx]), fi.src.faces[srcFaceIdx])
+	}
+	if len(fi.src.faces[srcFaces[1]]) != 4 {
+		log.Fatalf("merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaces[1], len(fi.src.faces[srcFaces[1]]), fi.src.faces[srcFaces[1]])
+	}
+	if len(fi.dst.faces[dstFaceIdx]) != 4 {
+		log.Fatalf("merge2manisOneEdge: unhandled case: dst.faces[%v] len=%v=%+v", dstFaceIdx, len(fi.dst.faces[dstFaceIdx]), fi.dst.faces[dstFaceIdx])
+	}
+	if len(fi.dst.faces[dstFaces[1]]) != 4 {
+		log.Fatalf("merge2manisOneEdge: unhandled case: dst.faces[%v] len=%v=%+v", dstFaces[1], len(fi.dst.faces[dstFaces[1]]), fi.dst.faces[dstFaces[1]])
+	}
 
 	vertIdx := edge[0]
-	srcLongEdge := fi.src.connectedEdgeFromVertOnFace(vertIdx, edge, srcFaceIdx)  // long edge of srcFaceIdx
-	dstShortEdge := fi.dst.connectedEdgeFromVertOnFace(vertIdx, edge, dstFaceIdx) // short edge of dstFaceIdx
+	srcLongOtherVertIdx, srcLongEdgeVector := fi.src.connectedEdgeVectorFromVertOnFace(vertIdx, edge, srcFaceIdx)
+	dstShortOtherVertIdx, dstShortEdgeVector := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaceIdx)
 
-	srcLongEdgeUV := fi.src.edgeUnitVector(srcLongEdge, srcFaceIdx)
-	dstShortEdgeUV := fi.dst.edgeUnitVector(dstShortEdge, dstFaceIdx)
+	log.Printf("merge2manisOneEdge: srcLongOtherVertIdx=%v, srcLongEdgeVector=%v", srcLongOtherVertIdx, srcLongEdgeVector)
+	srcLongEdgeUV := srcLongEdgeVector.Normalized()
+	log.Printf("merge2manisOneEdge: dstShortOtherVertIdx=%v, dstShortEdgeVector=%v", dstShortOtherVertIdx, dstShortEdgeVector)
+	dstShortEdgeUV := dstShortEdgeVector.Normalized()
 	if !srcLongEdgeUV.AboutEq(dstShortEdgeUV) {
 		log.Fatalf("merge2manisOneEdge: unhandled case: edge unit vectors don't match: %v vs %v", srcLongEdgeUV, dstShortEdgeUV)
 	}
 
-	log.Printf("merge2manisOneEdge: edge unit vectors match: %v, srcLongEdge=%v, dstShortEdge=%v", srcLongEdgeUV, srcLongEdge, dstShortEdge)
+	log.Printf("merge2manisOneEdge: edge unit vectors match: %v, srcLongEdgeVector=%v, dstShortEdgeVector=%v", srcLongEdgeUV, srcLongEdgeVector, dstShortEdgeVector)
+
+	srcShortOtherVertIdx, srcShortEdgeVector := fi.src.connectedEdgeVectorFromVertOnFace(vertIdx, edge, srcFaces[1])
+	log.Printf("merge2manisOneEdge: srcShortOtherVertIdx=%v, srcShortEdgeVector=%v", srcShortOtherVertIdx, srcShortEdgeVector)
+	dstLongOtherVertIdx, dstLongEdgeVector := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaces[1])
+	log.Printf("merge2manisOneEdge: dstLongOtherVertIdx=%v, dstLongEdgeVector=%v", dstLongOtherVertIdx, dstLongEdgeVector)
+
+	// fi.src.deleteFaceAndMoveNeighbors(srcFaces[1], dstShortEdgeVector)
+	// fi.dst.cutNeighborsAndShortenFace(dstFaceIdx, dstShortEdgeVector)
 }

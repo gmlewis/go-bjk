@@ -40,7 +40,7 @@ type vert2FacesMapT map[VertIndexT][]faceIndexT
 type face2EdgesMapT map[faceIndexT][]edgeT
 
 // faceStr2FaceIdxMapT maps a face "signature" (e.g. "0 1 2 3") to a face index.
-type faceStr2FaceIdxMapT map[string]faceIndexT
+type faceStr2FaceIdxMapT map[faceKeyT]faceIndexT
 
 // sharedVertsMapT represents a collection of shared vertices and maps them back to src ([0]) and dst([1]) face indices.
 type sharedVertsMapT map[VertIndexT][2][]faceIndexT
@@ -50,7 +50,7 @@ type sharedEdgesMapT map[edgeT][2][]faceIndexT
 
 // sharedFacesMapT represents a collection of shared faces (keyed by face "signature") and maps them back to
 // src ([0]) and dst([1]) face index.
-type sharedFacesMapT map[string][2]faceIndexT
+type sharedFacesMapT map[faceKeyT][2]faceIndexT
 
 type faceInfoT struct {
 	m   *Mesh
@@ -59,7 +59,7 @@ type faceInfoT struct {
 }
 
 type infoSetT struct {
-	m               *Mesh
+	faceInfo        *faceInfoT
 	faces           []FaceT
 	faceNormals     []Vec3
 	vert2Faces      vert2FacesMapT
@@ -86,19 +86,15 @@ func makeEdge(v1, v2 VertIndexT) edgeT {
 // genFaceInfo calculates the face normals for every src and dst face
 // and generates a map of good and bad edges (mapped to their respective faces).
 func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
-	src := m.genFaceInfoForSet(srcFaces)
-	dst := m.genFaceInfoForSet(dstFaces)
-
-	return &faceInfoT{
-		m:   m,
-		src: src,
-		dst: dst,
-	}
+	fi := &faceInfoT{m: m}
+	fi.src = fi.genFaceInfoForSet(srcFaces)
+	fi.dst = fi.genFaceInfoForSet(dstFaces)
+	return fi
 }
 
-func (m *Mesh) genFaceInfoForSet(faces []FaceT) *infoSetT {
+func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 	infoSet := &infoSetT{
-		m:               m,
+		faceInfo:        fi,
 		faces:           faces,
 		faceNormals:     make([]Vec3, 0, len(faces)),
 		vert2Faces:      vert2FacesMapT{}, // key=vertIdx, value=[]faceIdx
@@ -110,8 +106,8 @@ func (m *Mesh) genFaceInfoForSet(faces []FaceT) *infoSetT {
 
 	for i, face := range faces {
 		faceIdx := faceIndexT(i)
-		infoSet.faceNormals = append(infoSet.faceNormals, m.CalcFaceNormal(face))
-		infoSet.faceStr2FaceIdx[face.String()] = faceIdx
+		infoSet.faceNormals = append(infoSet.faceNormals, fi.m.CalcFaceNormal(face))
+		infoSet.faceStr2FaceIdx[face.toKey()] = faceIdx
 		for i, vertIdx := range face {
 			infoSet.vert2Faces[vertIdx] = append(infoSet.vert2Faces[vertIdx], faceIdx)
 			nextVertIdx := face[(i+1)%len(face)]
@@ -166,33 +162,41 @@ func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedF
 	return sharedVerts, sharedEdges, sharedFaces
 }
 
-func (is *infoSetT) connectedEdgeFromVertOnFace(vertIdx VertIndexT, edge edgeT, faceIdx faceIndexT) edgeT {
+// Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on edge)
+// and therefore is completely independent of the winding order of the face!
+// In addition to the edge vector, it also returns the VertIndexT of the other vertex.
+func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge edgeT, faceIdx faceIndexT) (VertIndexT, Vec3) {
 	notVertIdx := edge[0]
 	if notVertIdx == vertIdx {
 		notVertIdx = edge[1]
 	}
 
+	m := is.faceInfo.m
 	face := is.faces[faceIdx]
 	for i, pIdx := range face {
-		nextIdx := VertIndexT((i + 1) % len(face))
+		nextIdx := face[(i+1)%len(face)]
 		if pIdx == vertIdx && nextIdx != notVertIdx {
-			return makeEdge(vertIdx, nextIdx)
+			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, nextIdx=%v, returning (%v).Sub(%v)",
+				vertIdx, edge, faceIdx, i, pIdx, nextIdx, m.Verts[nextIdx], m.Verts[vertIdx])
+			return nextIdx, m.Verts[nextIdx].Sub(m.Verts[vertIdx])
 		}
 		if pIdx == vertIdx {
-			lastVertIdx := VertIndexT((i - 1 + len(face)) % len(face))
-			return makeEdge(vertIdx, lastVertIdx)
+			lastVertIdx := face[(i-1+len(face))%len(face)]
+			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, lastVertIdx=%v, returning (%v).Sub(%v)",
+				vertIdx, edge, faceIdx, i, pIdx, lastVertIdx, m.Verts[lastVertIdx], m.Verts[vertIdx])
+			return lastVertIdx, m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
 		}
 	}
 
-	log.Fatalf("connectedEdgeFromVertOnFace: programming error for face %+v", face)
-	return edgeT{}
+	log.Fatalf("connectedEdgeVectorFromVertOnFace: programming error for face %+v", face)
+	return 0, Vec3{}
 }
 
 // This preserves the order of vertex indicies as they appear in the face definition.
 func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [2]VertIndexT {
 	face := is.faces[faceIdx]
 	for i, pIdx := range face {
-		nextIdx := VertIndexT((i + 1) % len(face))
+		nextIdx := face[(i+1)%len(face)]
 		if edge[0] == pIdx && edge[1] == nextIdx {
 			return [2]VertIndexT{edge[0], edge[1]}
 		}
@@ -201,16 +205,8 @@ func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [
 		}
 	}
 
-	log.Fatalf("getEdgeVertsInWindingOrder: programming error for face %+v", face)
+	log.Fatalf("getEdgeVertsInWindingOrder: programming error: invalid edge %v for face %+v", edge, face)
 	return [2]VertIndexT{}
-}
-
-// edgeUnitVector returns the unit vector for this edge.
-// Note that the edge order does _NOT_ represent the winding order!
-// Therefore the original winding order needs to be found and preserved.
-func (is *infoSetT) edgeUnitVector(edge edgeT, faceIdx faceIndexT) Vec3 {
-	edgeVec3 := is.edgeVector(edge, faceIdx)
-	return edgeVec3.Normalized()
 }
 
 // edgeVector returns the vector representing this edge.
@@ -218,7 +214,8 @@ func (is *infoSetT) edgeUnitVector(edge edgeT, faceIdx faceIndexT) Vec3 {
 // Therefore the original winding order needs to be found and preserved.
 func (is *infoSetT) edgeVector(edge edgeT, faceIdx faceIndexT) Vec3 {
 	vertIdxes := is.getEdgeVertsInWindingOrder(edge, faceIdx)
-	return is.m.Verts[vertIdxes[1]].Sub(is.m.Verts[vertIdxes[0]])
+	m := is.faceInfo.m
+	return m.Verts[vertIdxes[1]].Sub(m.Verts[vertIdxes[0]])
 }
 
 func (m *Mesh) faceArea(face FaceT) float64 {
@@ -235,16 +232,16 @@ func (m *Mesh) faceArea(face FaceT) float64 {
 func (m *Mesh) dumpFaces(faces []FaceT) string {
 	var lines []string
 	for i, face := range faces {
-		lines = append(lines, fmt.Sprintf("face[%v]={%+v}: %v", i, face, m.dumpFace(face)))
+		lines = append(lines, m.dumpFace(faceIndexT(i), face))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func (m *Mesh) dumpFace(face FaceT) string {
+func (m *Mesh) dumpFace(faceIdx faceIndexT, face FaceT) string {
 	verts := make([]string, 0, len(face))
 	for _, vertIdx := range face {
 		v := m.Verts[vertIdx]
 		verts = append(verts, fmt.Sprintf("{%0.2f %0.2f %0.2f}", v.X, v.Y, v.Z))
 	}
-	return fmt.Sprintf("{%v}", strings.Join(verts, " "))
+	return fmt.Sprintf("face[%v]={%+v}: {%v}", faceIdx, face, strings.Join(verts, " "))
 }
