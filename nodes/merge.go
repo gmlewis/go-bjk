@@ -72,7 +72,7 @@ func (dst *Mesh) Merge(src *Mesh) {
 	// Now, make sure that all faces will be manifold before combining.
 	dst.manifoldMerge(faces, srcFaces)
 
-	log.Fatalf("GML: DEBUGGING: First manifoldMerge")
+	log.Printf("\n\nAFTER MERGE:\nfaces:\n%v", dst.dumpFaces(dst.Faces))
 }
 
 func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
