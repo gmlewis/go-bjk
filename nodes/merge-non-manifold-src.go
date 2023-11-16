@@ -3,7 +3,7 @@ package nodes
 import "log"
 
 // mergeNonManifoldSrc merges the non-manifold srcFaces mesh into the manifold dstFaces mesh,
-// creating a final manifold mesh.
+// creating a final manifold mesh (ideally, although it is possible that it is still non-manifold).
 func (fi *faceInfoT) mergeNonManifoldSrc() {
 	for edge, faceIdxes := range fi.src.badEdges {
 		for _, faceIdx := range faceIdxes {

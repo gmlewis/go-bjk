@@ -191,7 +191,6 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 		vIdx := len(m.Verts)
 		// log.Printf("nmfeac: bvi=%v, normal=%v, tangent=%v, bvert=%v, xform=%v, vIdx=%v", bvi, backbone.Normals[bvi], backbone.Tangents[bvi], bvert, xform, vIdx)
 		for i, v := range crossSection.Verts {
-			// m.Verts = append(m.Verts, v.Xform(xform))
 			addedVertIdx := m.AddVert(v.Xform(xform))
 			if addedVertIdx != VertIndexT(vIdx+i) {
 				log.Fatalf("NewMeshFromExtrudeAlongCurve: programming error: addedVertIdx(%v) != vIdx(%v)+i(%v)", addedVertIdx, vIdx, i)
@@ -203,12 +202,21 @@ func NewMeshFromExtrudeAlongCurve(backbone, crossSection *Mesh, flip int) *Mesh 
 			}
 
 			// create a new quad for each extruded crossSection vertex
-			m.Faces = append(m.Faces, FaceT{
-				VertIndexT(vIdx + i - numVerts),
-				VertIndexT(vIdx + i),
-				VertIndexT(vIdx + ((i + 1) % numVerts)),
-				VertIndexT(vIdx + ((i + 1) % numVerts) - numVerts),
-			})
+			if flip != 0 {
+				m.Faces = append(m.Faces, FaceT{
+					VertIndexT(vIdx + i),
+					VertIndexT(vIdx + i - numVerts),
+					VertIndexT(vIdx + ((i + 1) % numVerts) - numVerts),
+					VertIndexT(vIdx + ((i + 1) % numVerts)),
+				})
+			} else {
+				m.Faces = append(m.Faces, FaceT{
+					VertIndexT(vIdx + i - numVerts),
+					VertIndexT(vIdx + i),
+					VertIndexT(vIdx + ((i + 1) % numVerts)),
+					VertIndexT(vIdx + ((i + 1) % numVerts) - numVerts),
+				})
+			}
 			// log.Printf("face[%v]=%+v", len(m.Faces)-1, m.Faces[len(m.Faces)-1])
 		}
 	}

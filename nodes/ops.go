@@ -71,10 +71,10 @@ func extrudeWithCaps(ls *lua.LState) int {
 			}
 
 			newFaces = append(newFaces, FaceT{
-				VertIndexT(vIdx + i - numVerts),
 				VertIndexT(vIdx + i),
-				VertIndexT(vIdx + ((i + 1) % numVerts)),
+				VertIndexT(vIdx + i - numVerts),
 				VertIndexT(vIdx + ((i + 1) % numVerts) - numVerts),
+				VertIndexT(vIdx + ((i + 1) % numVerts)),
 			})
 			extrudedFace = append(extrudedFace, VertIndexT(vIdx+i))
 		}
