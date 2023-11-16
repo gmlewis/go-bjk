@@ -84,7 +84,7 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	if !srcLongEdgeUV.AboutEq(dstShortEdgeUV) {
 		if srcLongEdgeUV.AboutEq(dstShortEdgeUV.Negated()) {
 			fi.src.facesTargetedForDeletion[srcFaceToDelete] = true
-			fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge)
+			fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge, nil)
 			return
 		}
 
@@ -100,7 +100,7 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	log.Printf("merge2manisOneEdge: shortenFaceEdge=%v", shortenFaceEdge)
 
 	fi.src.deleteFaceAndMoveNeighbors(srcFaceToDelete, dstShortEdgeVector)
-	fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, shortenFaceEdge)
+	fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, shortenFaceEdge, nil)
 }
 
 func (is *infoSetT) deleteFaceAndMoveNeighbors(deleteFaceIdx faceIndexT, move Vec3) {
@@ -131,7 +131,7 @@ func (is *infoSetT) deleteFaceAndMoveNeighbors(deleteFaceIdx faceIndexT, move Ve
 	log.Printf("AFTER deleteFaceAndMoveNeighbors(deleteFaceIdx=%v, move=%v), #faces=%v\n%v", deleteFaceIdx, move, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 }
 
-func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, move Vec3, edge edgeT) {
+func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, move Vec3, edge edgeT, newCutFaceOKToAdd func(FaceT) bool) {
 	log.Printf("BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 	baseFace := is.faces[baseFaceIdx]
 	oldVertsToNewMap := is.moveVerts(baseFace, move)
@@ -149,8 +149,8 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 
 	for faceIdx := range affectedFaces {
 		face := is.faces[faceIdx]
-		oldCutFace := make([]VertIndexT, 0, len(face))
-		newCutFace := make([]VertIndexT, 0, len(face)/2)
+		oldCutFace := make(FaceT, 0, len(face))
+		newCutFace := make(FaceT, 0, len(face)/2)
 		var faceHasEdge bool
 		for i, vertIdx := range face {
 			if newIdx, ok := oldVertsToNewMap[vertIdx]; ok {
@@ -167,11 +167,15 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 		if faceHasEdge {
 			continue
 		}
-		// Fill in the gap (created by moving this face) with a new face.
-		slices.Reverse(newCutFace)
-		oldCutFace = append(oldCutFace, newCutFace...)
-		log.Printf("adding new cut face: %+v", oldCutFace)
-		is.faces = append(is.faces, oldCutFace)
+		if newCutFaceOKToAdd == nil || newCutFaceOKToAdd(oldCutFace) {
+			// Fill in the gap (created by moving this face) with a new face.
+			slices.Reverse(newCutFace)
+			oldCutFace = append(oldCutFace, newCutFace...)
+			log.Printf("adding new cut face: %+v", oldCutFace)
+			is.faces = append(is.faces, oldCutFace)
+		} else {
+			log.Printf("NOT ADDING new cut face: %+v !!!", oldCutFace)
+		}
 	}
 
 	log.Printf("AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))

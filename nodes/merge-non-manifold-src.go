@@ -8,6 +8,18 @@ import (
 // mergeNonManifoldSrc merges the non-manifold srcFaces mesh into the manifold dstFaces mesh,
 // creating a final manifold mesh (ideally, although it is possible that it is still non-manifold).
 func (fi *faceInfoT) mergeNonManifoldSrc() {
+	// first step - if all bad edges are owned by a set of faces with two edges each,
+	// chances are high that those faces should simply be deleted.
+	srcFaceIndicesToEdges := reverseMapBadEdges(fi.src.badEdges)
+	debugFaces := make([]FaceT, 0, len(srcFaceIndicesToEdges))
+	log.Printf("mergeNonManifoldSrc: srcFaceIndicesToEdges: %+v", srcFaceIndicesToEdges)
+	for srcFaceIdx, badEdges := range srcFaceIndicesToEdges {
+		debugFaces = append(debugFaces, fi.src.faces[srcFaceIdx])
+		log.Printf("mergeNonManifoldSrc: src.faces[%v] has %v bad edges: %+v", srcFaceIdx, len(badEdges), badEdges)
+	}
+	fi.m.Faces = debugFaces
+	fi.m.WriteSTL(fmt.Sprintf("debug-%v-%v-badFaces-%v.stl", len(fi.src.faces), len(fi.dst.faces), len(debugFaces)))
+
 	for edge, faceIdxes := range fi.src.badEdges {
 		switch len(faceIdxes) {
 		case 1:

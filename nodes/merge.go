@@ -1,6 +1,9 @@
 package nodes
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // Merge merges src into dst for Ops.merge(dst, src).
 func (dst *Mesh) Merge(src *Mesh) {
@@ -75,6 +78,20 @@ func (dst *Mesh) Merge(src *Mesh) {
 	// dst.Faces = append(faces, srcFaces...) // ONLY FOR DEBUGGING WHEN NOT RUNNING MANIFOLD MERGE!!!
 
 	log.Printf("\n\nAFTER MERGE:\nfaces:\n%v", dst.dumpFaces(dst.Faces))
+
+	// verify that this step did not create non-manifold geometry.
+	fi := dst.genFaceInfo(dst.Faces, nil)
+	if len(fi.dst.badEdges) > 0 {
+		fi.m.WriteSTL(fmt.Sprintf("after-merge-badDstEdges-%v-src.stl", len(fi.dst.badEdges)))
+
+		for edge, faceIdxes := range fi.dst.badEdges {
+			for _, faceIdx := range faceIdxes {
+				log.Printf("NEW BAD EDGE: %v: %v", edge, dst.dumpFace(faceIdx, dst.Faces[faceIdx]))
+			}
+		}
+
+		log.Fatalf("BAD MERGE STOP")
+	}
 }
 
 func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
@@ -84,6 +101,11 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	fi := dst.genFaceInfo(dstFaces, srcFaces)
 	log.Printf("manifoldMerge: src.badEdges=%v=%+v", len(fi.src.badEdges), fi.src.badEdges)
 	log.Printf("manifoldMerge: dst.badEdges=%v=%+v", len(fi.dst.badEdges), fi.dst.badEdges)
+	fi.m.Faces = fi.src.faces
+	fi.m.WriteSTL(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-src.stl", len(fi.src.badEdges), len(fi.dst.badEdges)))
+	fi.m.Faces = fi.dst.faces
+	fi.m.WriteSTL(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-dst.stl", len(fi.src.badEdges), len(fi.dst.badEdges)))
+
 	switch {
 	case len(fi.src.badEdges) == 0 && len(fi.dst.badEdges) == 0:
 		fi.merge2manifolds()

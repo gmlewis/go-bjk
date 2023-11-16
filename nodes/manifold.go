@@ -223,8 +223,8 @@ func (is *infoSetT) edgeHeight(edge edgeT) float64 {
 	return m.Verts[edge[0]].Sub(m.Verts[edge[1]]).Length()
 }
 
-func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesToEdges, dstFaceIndicesToEdges map[faceIndexT][]edgeT) {
-	srcFaceIndicesToEdges, dstFaceIndicesToEdges = map[faceIndexT][]edgeT{}, map[faceIndexT][]edgeT{}
+func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesToEdges, dstFaceIndicesToEdges face2EdgesMapT) {
+	srcFaceIndicesToEdges, dstFaceIndicesToEdges = face2EdgesMapT{}, face2EdgesMapT{}
 	for edge, v := range sharedEdges {
 		for _, faceIdx := range v[0] {
 			srcFaceIndicesToEdges[faceIdx] = append(srcFaceIndicesToEdges[faceIdx], edge)
@@ -236,9 +236,19 @@ func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesTo
 	return srcFaceIndicesToEdges, dstFaceIndicesToEdges
 }
 
+func reverseMapBadEdges(badEdges edge2FacesMapT) (faceIndicesToEdges face2EdgesMapT) {
+	faceIndicesToEdges = face2EdgesMapT{}
+	for edge, faceIndices := range badEdges {
+		for _, faceIdx := range faceIndices {
+			faceIndicesToEdges[faceIdx] = append(faceIndicesToEdges[faceIdx], edge)
+		}
+	}
+	return faceIndicesToEdges
+}
+
 // faceIndicesByEdgeCount returns a map of edge count to slice of faceIndices.
 // So a face that has 6 shared edges would appear in the slice in result[6].
-func faceIndicesByEdgeCount(inMap map[faceIndexT][]edgeT) map[int][]faceIndexT {
+func faceIndicesByEdgeCount(inMap face2EdgesMapT) map[int][]faceIndexT {
 	result := map[int][]faceIndexT{}
 	for faceIdx, edges := range inMap {
 		result[len(edges)] = append(result[len(edges)], faceIdx)
