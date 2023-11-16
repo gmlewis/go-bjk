@@ -18,16 +18,16 @@ func (fi *faceInfoT) merge2manifolds() {
 
 	switch {
 	case len(sharedFaces) > 0:
-		log.Fatalf("merge2manifolds - unhandled: shared faces: %+v", sharedFaces)
+		log.Printf("WARNING: merge2manifolds - unhandled: shared faces: %+v", sharedFaces)
 	case len(sharedEdges) > 1:
-		fi.merge2manisManyEdges(sharedVerts, sharedEdges)
+		fi.merge2manisManyEdges(sharedEdges)
 	case len(sharedEdges) == 1:
 		edges := maps.Keys(sharedEdges)
 		edge := edges[0]
 		fi.merge2manisOneEdge(sharedVerts, edge, sharedEdges[edge][0], sharedEdges[edge][1])
 	case len(sharedVerts) == 0 && len(sharedEdges) == 0 && len(sharedFaces) == 0: // simple concatenation - no sharing
 	default:
-		log.Fatalf("merge2manifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))
+		log.Printf("WARNING: merge2manifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))
 	}
 
 	// last step: combine face sets
@@ -53,19 +53,24 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	srcFaceIdx, dstFaceIdx := srcFaces[0], dstFaces[0]
 
 	if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx]) {
-		log.Fatalf("merge2manisOneEdge: unhandled case: normals don't match: %v vs %v", fi.src.faceNormals[srcFaceIdx], fi.dst.faceNormals[dstFaceIdx])
+		log.Printf("WARNING: merge2manisOneEdge: unhandled case: normals don't match: %v vs %v", fi.src.faceNormals[srcFaceIdx], fi.dst.faceNormals[dstFaceIdx])
+		return
 	}
 	if len(fi.src.faces[srcFaceIdx]) != 4 {
-		log.Fatalf("merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaceIdx, len(fi.src.faces[srcFaceIdx]), fi.src.faces[srcFaceIdx])
+		log.Printf("WARNING: merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaceIdx, len(fi.src.faces[srcFaceIdx]), fi.src.faces[srcFaceIdx])
+		return
 	}
 	if len(fi.src.faces[srcFaces[1]]) != 4 {
-		log.Fatalf("merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaces[1], len(fi.src.faces[srcFaces[1]]), fi.src.faces[srcFaces[1]])
+		log.Printf("WARNING: merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaces[1], len(fi.src.faces[srcFaces[1]]), fi.src.faces[srcFaces[1]])
+		return
 	}
 	if len(fi.dst.faces[dstFaceIdx]) != 4 {
-		log.Fatalf("merge2manisOneEdge: unhandled case: dst.faces[%v] len=%v=%+v", dstFaceIdx, len(fi.dst.faces[dstFaceIdx]), fi.dst.faces[dstFaceIdx])
+		log.Printf("WARNING: merge2manisOneEdge: unhandled case: dst.faces[%v] len=%v=%+v", dstFaceIdx, len(fi.dst.faces[dstFaceIdx]), fi.dst.faces[dstFaceIdx])
+		return
 	}
 	if len(fi.dst.faces[dstFaces[1]]) != 4 {
-		log.Fatalf("merge2manisOneEdge: unhandled case: dst.faces[%v] len=%v=%+v", dstFaces[1], len(fi.dst.faces[dstFaces[1]]), fi.dst.faces[dstFaces[1]])
+		log.Printf("WARNING: merge2manisOneEdge: unhandled case: dst.faces[%v] len=%v=%+v", dstFaces[1], len(fi.dst.faces[dstFaces[1]]), fi.dst.faces[dstFaces[1]])
+		return
 	}
 
 	srcFaceToDelete := srcFaces[1]
@@ -86,7 +91,8 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 			return
 		}
 
-		log.Fatalf("merge2manisOneEdge: unhandled case: edge unit vectors don't match: %v vs %v", srcLongEdgeUV, dstShortEdgeUV)
+		log.Printf("WARNING: merge2manisOneEdge: unhandled case: edge unit vectors don't match: %v vs %v", srcLongEdgeUV, dstShortEdgeUV)
+		return
 	}
 	// log.Printf("merge2manisOneEdge: edge unit vectors match: %v, srcLongEdgeVector=%v, dstShortEdgeVector=%v", srcLongEdgeUV, srcLongEdgeVector, dstShortEdgeVector)
 
@@ -98,10 +104,6 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 
 	fi.src.deleteFaceAndMoveNeighbors(srcFaceToDelete, dstShortEdgeVector)
 	fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, shortenFaceEdge)
-}
-
-func (is *infoSetT) deleteFace(deleteFaceIdx faceIndexT) {
-	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.
 }
 
 func (is *infoSetT) deleteFaceAndMoveNeighbors(deleteFaceIdx faceIndexT, move Vec3) {

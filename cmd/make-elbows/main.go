@@ -5,7 +5,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
@@ -14,6 +16,7 @@ import (
 
 var (
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
+	outBJK  = flag.String("o", "make-elbows.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut  = flag.String("stl", "make-elbows.stl", "Output filename for binary STL file")
 )
@@ -61,7 +64,11 @@ func main() {
 		Build()
 	must(err)
 
-	// fmt.Printf("%v\n", design)
+	if *outBJK == "-" {
+		fmt.Printf("%v\n", design)
+	} else if *outBJK != "" {
+		must(os.WriteFile(*outBJK, []byte(design.String()+"\n"), 0644))
+	}
 
 	if *stlOut != "" {
 		must(c.ToSTL(design, *stlOut))

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
@@ -17,6 +18,7 @@ var (
 	debug     = flag.Bool("debug", false, "Turn on debugging info")
 	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
+	outBJK    = flag.String("o", "extrude-helix.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir   = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut    = flag.String("stl", "extrude-helix.stl", "Output filename for binary STL file")
 	vertTurns = flag.Float64("vt", 1.0, "Vertical turns of wire in electromagnet")
@@ -59,7 +61,11 @@ func main() {
 		Build()
 	must(err)
 
-	fmt.Printf("%v\n", design)
+	if *outBJK == "-" {
+		fmt.Printf("%v\n", design)
+	} else if *outBJK != "" {
+		must(os.WriteFile(*outBJK, []byte(design.String()+"\n"), 0644))
+	}
 
 	if *stlOut != "" {
 		must(c.ToSTL(design, *stlOut))

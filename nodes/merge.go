@@ -71,7 +71,8 @@ func (dst *Mesh) Merge(src *Mesh) {
 	}
 
 	// Now, make sure that all faces will be manifold before combining.
-	dst.manifoldMerge(faces, srcFaces)
+	// dst.manifoldMerge(faces, srcFaces)
+	dst.Faces = append(faces, srcFaces...) // ONLY FOR DEBUGGING WHEN NOT RUNNING MANIFOLD MERGE!!!
 
 	log.Printf("\n\nAFTER MERGE:\nfaces:\n%v", dst.dumpFaces(dst.Faces))
 }

@@ -3,7 +3,11 @@ package nodes
 import (
 	"fmt"
 	"log"
+	"slices"
+	"sort"
 	"strings"
+
+	"golang.org/x/exp/maps"
 )
 
 // func (m *Mesh) makeManifold() error {
@@ -213,6 +217,60 @@ func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [
 func (is *infoSetT) edgeHeight(edge edgeT) float64 {
 	m := is.faceInfo.m
 	return m.Verts[edge[0]].Sub(m.Verts[edge[1]]).Length()
+}
+
+func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesToEdges, dstFaceIndicesToEdges map[faceIndexT][]edgeT) {
+	srcFaceIndicesToEdges, dstFaceIndicesToEdges = map[faceIndexT][]edgeT{}, map[faceIndexT][]edgeT{}
+	for edge, v := range sharedEdges {
+		for _, faceIdx := range v[0] {
+			srcFaceIndicesToEdges[faceIdx] = append(srcFaceIndicesToEdges[faceIdx], edge)
+		}
+		for _, faceIdx := range v[1] {
+			dstFaceIndicesToEdges[faceIdx] = append(dstFaceIndicesToEdges[faceIdx], edge)
+		}
+	}
+	return srcFaceIndicesToEdges, dstFaceIndicesToEdges
+}
+
+// faceIndicesByEdgeCount returns a map of edge count to slice of faceIndices.
+// So a face that has 6 shared edges would appear in the slice in result[6].
+func faceIndicesByEdgeCount(inMap map[faceIndexT][]edgeT) map[int][]faceIndexT {
+	result := map[int][]faceIndexT{}
+	for faceIdx, edges := range inMap {
+		result[len(edges)] = append(result[len(edges)], faceIdx)
+	}
+	return result
+}
+
+// deleteFace deletes the face at the provided index, thereby shifting the other
+// face indices around it! Always delete from last to first when deleting multiple faces.
+func (is *infoSetT) deleteFace(deleteFaceIdx faceIndexT) {
+	log.Printf("\n\nDELETING FACE!!! %v", is.faceInfo.m.dumpFace(deleteFaceIdx, is.faces[deleteFaceIdx]))
+	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.
+}
+
+// faceHasEdge checks that the given face has the provided edge.
+func (is *infoSetT) faceHasEdge(faceIdx faceIndexT, edge edgeT) bool {
+	face := is.faces[faceIdx]
+	for i, vertIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		if edge[0] == vertIdx && edge[1] == nextIdx {
+			return true
+		}
+		if edge[1] == vertIdx && edge[0] == nextIdx {
+			return true
+		}
+	}
+	return false
+}
+
+// deleteFacesLastToFirst deletes faces by sorting their indices, then deleting them highest to lowest.
+func (is *infoSetT) deleteFacesLastToFirst(facesToDeleteMap map[faceIndexT]bool) {
+	facesToDelete := maps.Keys(facesToDeleteMap)
+	sort.Slice(facesToDelete, func(i, j int) bool { return facesToDelete[i] > facesToDelete[j] })
+	for _, faceIdx := range facesToDelete {
+		is.deleteFace(faceIdx)
+	}
 }
 
 // // edgeVector returns the vector representing this edge.

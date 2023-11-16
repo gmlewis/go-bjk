@@ -11,7 +11,7 @@ func (fi *faceInfoT) mergeNonManifoldSrc() {
 		}
 	}
 
-	log.Fatalf("mergeNonManifoldSrc - not yet implemented")
+	log.Printf("WARNING: mergeNonManifoldSrc - not yet implemented")
 	// last step: combine face sets
 	fi.m.Faces = append(fi.dst.faces, fi.src.faces...)
 }
