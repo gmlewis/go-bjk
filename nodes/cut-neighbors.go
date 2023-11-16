@@ -25,6 +25,7 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 
 	for faceIdx := range affectedFaces {
 		face := is.faces[faceIdx]
+		originalFaceNormal := is.faceNormals[faceIdx]
 		oldCutFace := make(FaceT, 0, len(face))
 		newCutFace := make(FaceT, 0, len(face)/2)
 		var faceHasEdge bool
@@ -43,10 +44,21 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 		if faceHasEdge {
 			continue
 		}
+
 		if newCutFaceOKToAdd == nil || newCutFaceOKToAdd(oldCutFace) {
 			// Fill in the gap (created by moving this face) with a new face.
+			// NOTE that this new face MUST face the same direction (have the same normal) as its shortened face above!!!
 			slices.Reverse(newCutFace)
 			oldCutFace = append(oldCutFace, newCutFace...)
+			newFaceNormal := is.faceInfo.m.CalcFaceNormal(oldCutFace)
+			if !newFaceNormal.AboutEq(originalFaceNormal) {
+				slices.Reverse(oldCutFace)
+				newFaceNormal = is.faceInfo.m.CalcFaceNormal(oldCutFace)
+				if !newFaceNormal.AboutEq(originalFaceNormal) {
+					log.Fatalf("unable to make new face %+v normal (%v) same as original %+v (%v)", oldCutFace, newFaceNormal, face, originalFaceNormal)
+				}
+			}
+
 			log.Printf("adding new cut face: %+v", oldCutFace)
 			is.faces = append(is.faces, oldCutFace)
 		} else {
