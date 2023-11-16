@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go -stl ../../make-bfem-cage.stl"; -*-
+// -*- compile-command: "go run main.go -o '' -stl ../../make-bfem-cage.stl"; -*-
 
 // make-bfem-cage tests the STL output for BFEMCage.
 package main

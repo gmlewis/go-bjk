@@ -21,13 +21,18 @@ func (c *Client) ToSTL(design *ast.BJK, filename string) error {
 		return err
 	}
 
+	return mesh.WriteSTL(filename)
+}
+
+// WriteSTL writes the mesh to a new STL file.
+func (m *Mesh) WriteSTL(filename string) error {
 	out, err := stl.New(filename)
 	if err != nil {
 		return err
 	}
 
-	for faceIndex := range mesh.Faces {
-		if err := tesselateFace(out, mesh, faceIndex); err != nil {
+	for faceIndex := range m.Faces {
+		if err := tesselateFace(out, m, faceIndex); err != nil {
 			return err
 		}
 	}
