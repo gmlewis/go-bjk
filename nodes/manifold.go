@@ -71,6 +71,8 @@ type infoSetT struct {
 	faceStr2FaceIdx faceStr2FaceIdxMapT
 	badEdges        edge2FacesMapT
 	badFaces        face2EdgesMapT
+
+	facesTargetedForDeletion map[faceIndexT]bool
 }
 
 func (fi *faceInfoT) swapSrcAndDst() {
@@ -106,6 +108,8 @@ func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 		faceStr2FaceIdx: faceStr2FaceIdxMapT{},
 		badEdges:        edge2FacesMapT{},
 		badFaces:        face2EdgesMapT{},
+
+		facesTargetedForDeletion: map[faceIndexT]bool{},
 	}
 
 	for i, face := range faces {
@@ -244,6 +248,7 @@ func faceIndicesByEdgeCount(inMap map[faceIndexT][]edgeT) map[int][]faceIndexT {
 
 // deleteFace deletes the face at the provided index, thereby shifting the other
 // face indices around it! Always delete from last to first when deleting multiple faces.
+// Do not call this directly. Let deleteFacesLastToFirst actually delete the faces.
 func (is *infoSetT) deleteFace(deleteFaceIdx faceIndexT) {
 	log.Printf("\n\nDELETING FACE!!! %v", is.faceInfo.m.dumpFace(deleteFaceIdx, is.faces[deleteFaceIdx]))
 	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.

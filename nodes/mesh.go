@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 	"golang.org/x/exp/maps"
@@ -37,11 +38,24 @@ func (v Vec3) toKey() vertKeyT {
 // faceKeyT represents a face key (or "signature") which uniquely identifies a face consisting of the same verts.
 type faceKeyT string
 
-// toKey generates a face faceKeyT (or "signature") which is a string of the sorted vertex indices.
+// toKey generates a faceKeyT (or "signature") which is a string of the sorted vertex indices.
 func (f FaceT) toKey() faceKeyT {
 	verts := append([]VertIndexT{}, f...)
 	sort.Slice(verts, func(i, j int) bool { return verts[i] < verts[j] })
 	return faceKeyT(fmt.Sprintf("%v", verts))
+}
+
+// faceVertKeyT represents a face with verts key (or "signature") which uniquely identifies a face consisting of the same vert Vec3s.
+type faceVertKeyT string
+
+// toVertKey generates a faceVertKeyT (or "signature") which is a string of the sorted vertex Vec3s.
+func (is *infoSetT) toVertKey(f FaceT) faceVertKeyT {
+	verts := make([]string, 0, len(f))
+	for _, vertIdx := range f {
+		verts = append(verts, string(is.faceInfo.m.Verts[vertIdx].toKey()))
+	}
+	sort.Slice(verts, func(i, j int) bool { return verts[i] < verts[j] })
+	return faceVertKeyT(strings.Join(verts, ","))
 }
 
 // faceIndexT represents a face index and is only used internally.

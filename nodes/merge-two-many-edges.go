@@ -43,8 +43,6 @@ func (fi *faceInfoT) merge2manisManyEdgesTwoFaces(sharedEdges sharedEdgesMapT, s
 	// all the other processing is finished.
 	var cutFunc func()
 
-	srcFacesToDeleteMap := map[faceIndexT]bool{}
-	dstFacesToDeleteMap := map[faceIndexT]bool{}
 	for edge, v := range sharedEdges {
 		srcFaces := v[0]
 		dstFaces := v[1]
@@ -70,10 +68,10 @@ func (fi *faceInfoT) merge2manisManyEdgesTwoFaces(sharedEdges sharedEdgesMapT, s
 		dstEdgeLength := dstEdgeVector.Length()
 		switch {
 		case AboutEq(srcEdgeLength, dstEdgeLength):
-			srcFacesToDeleteMap[srcOtherFaceIdx] = true
-			dstFacesToDeleteMap[dstOtherFaceIdx] = true
+			fi.src.facesTargetedForDeletion[srcOtherFaceIdx] = true
+			fi.dst.facesTargetedForDeletion[dstOtherFaceIdx] = true
 		case srcEdgeLength < dstEdgeLength:
-			srcFacesToDeleteMap[srcOtherFaceIdx] = true
+			fi.src.facesTargetedForDeletion[srcOtherFaceIdx] = true
 			// Note that the first cutNeighborsAndShortenFaceOnEdge will affect ALL the edges!
 			// Therefore, first check to make sure the dstOtherFaceIdx still has the original edge first.
 			if cutFunc == nil {
@@ -82,7 +80,7 @@ func (fi *faceInfoT) merge2manisManyEdgesTwoFaces(sharedEdges sharedEdgesMapT, s
 				}
 			}
 		default: // srcEdgeLength > dstEdgeLength:
-			dstFacesToDeleteMap[dstOtherFaceIdx] = true
+			fi.dst.facesTargetedForDeletion[dstOtherFaceIdx] = true
 			// Same here. Check that srcOtherFaceIdx still has the original edge first.
 			if cutFunc == nil {
 				cutFunc = func() {
@@ -95,7 +93,4 @@ func (fi *faceInfoT) merge2manisManyEdgesTwoFaces(sharedEdges sharedEdgesMapT, s
 	if cutFunc != nil {
 		cutFunc()
 	}
-
-	fi.src.deleteFacesLastToFirst(srcFacesToDeleteMap)
-	fi.dst.deleteFacesLastToFirst(dstFacesToDeleteMap)
 }

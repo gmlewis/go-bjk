@@ -96,4 +96,9 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	default:
 		fi.merge2NonManifolds()
 	}
+
+	// last step: delete targeted faces for deletion, then combine.
+	fi.src.deleteFacesLastToFirst(fi.src.facesTargetedForDeletion)
+	fi.dst.deleteFacesLastToFirst(fi.dst.facesTargetedForDeletion)
+	fi.m.Faces = append(fi.dst.faces, fi.src.faces...)
 }

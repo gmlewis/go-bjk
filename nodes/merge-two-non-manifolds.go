@@ -31,9 +31,6 @@ func (fi *faceInfoT) merge2NonManifolds() {
 	default:
 		log.Printf("WARNING: merge2NonManifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))
 	}
-
-	// last step: combine face sets
-	fi.m.Faces = append(fi.dst.faces, fi.src.faces...)
 }
 
 func (fi *faceInfoT) merge2NonManisOneEdge(sharedVerts sharedVertsMapT, edge edgeT, srcFaces, dstFaces []faceIndexT) {

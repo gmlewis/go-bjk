@@ -29,9 +29,6 @@ func (fi *faceInfoT) merge2manifolds() {
 	default:
 		log.Printf("WARNING: merge2manifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))
 	}
-
-	// last step: combine face sets
-	fi.m.Faces = append(fi.dst.faces, fi.src.faces...)
 }
 
 func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT, srcFaces, dstFaces []faceIndexT) {
@@ -86,7 +83,7 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	dstShortEdgeUV := dstShortEdgeVector.Normalized()
 	if !srcLongEdgeUV.AboutEq(dstShortEdgeUV) {
 		if srcLongEdgeUV.AboutEq(dstShortEdgeUV.Negated()) {
-			fi.src.deleteFace(srcFaceToDelete)
+			fi.src.facesTargetedForDeletion[srcFaceToDelete] = true
 			fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge)
 			return
 		}
@@ -130,7 +127,7 @@ func (is *infoSetT) deleteFaceAndMoveNeighbors(deleteFaceIdx faceIndexT, move Ve
 		}
 	}
 
-	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.
+	is.facesTargetedForDeletion[deleteFaceIdx] = true
 	log.Printf("AFTER deleteFaceAndMoveNeighbors(deleteFaceIdx=%v, move=%v), #faces=%v\n%v", deleteFaceIdx, move, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 }
 
