@@ -55,7 +55,7 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 	for i, ev := range srcSideEVs {
 		nextEV := srcSideEVs[(i+1)%len(srcSideEVs)]
 		if !ev.toSubFrom.AboutEq(nextEV.toSubFrom) {
-			log.Printf("mergeExtrusion: unhandled case: src ev=%+v, nextEV=%+v", ev, nextEV)
+			log.Printf("WARNING: mergeExtrusion: unhandled case: src ev=%+v, nextEV=%+v", ev, nextEV)
 			return
 		}
 		srcOtherEndFace = append(srcOtherEndFace, ev.toVertIdx)
@@ -66,7 +66,7 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 	for i, ev := range dstSideEVs {
 		nextEV := dstSideEVs[(i+1)%len(dstSideEVs)]
 		if !ev.toSubFrom.AboutEq(nextEV.toSubFrom) {
-			log.Printf("mergeExtrusion: unhandled case: dst ev=%+v, nextEV=%+v", ev, nextEV)
+			log.Printf("WARNING: mergeExtrusion: unhandled case: dst ev=%+v, nextEV=%+v", ev, nextEV)
 			return
 		}
 		dstOtherEndFace = append(dstOtherEndFace, ev.toVertIdx)

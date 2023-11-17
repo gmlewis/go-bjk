@@ -76,21 +76,31 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	vertIdx := edge[0]
 	srcLongEV := fi.src.connectedEdgeVectorFromVertOnFace(vertIdx, edge, srcFaceIdx)
 	srcLongEdgeVector := srcLongEV.toSubFrom
+	log.Printf("merge2manisOneEdge: srcLongEV=%+v", srcLongEV)
 
 	dstShortEV := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaceIdx)
 	dstShortOtherVertIdx, dstShortEdgeVector := dstShortEV.toVertIdx, dstShortEV.toSubFrom
+	log.Printf("merge2manisOneEdge: dstShortEV=%+v", dstShortEV)
 
 	srcShortEV := fi.src.connectedEdgeVectorFromVertOnFace(vertIdx, edge, srcFaceToDelete)
 	srcShortEdgeVector := srcShortEV.toSubFrom
-	// log.Printf("merge2manisOneEdge: srcShortOtherVertIdx=%v, srcShortEdgeVector=%v", srcShortOtherVertIdx, srcShortEdgeVector)
-
-	// log.Printf("merge2manisOneEdge: srcLongOtherVertIdx=%v, srcLongEdgeVector=%v, srcFaceToDelete=%v", srcLongOtherVertIdx, srcLongEdgeVector, srcFaceToDelete)
+	log.Printf("merge2manisOneEdge: srcShortEV=%+v", srcShortEV)
 
 	srcLongEdgeUV := srcLongEdgeVector.Normalized()
-	// log.Printf("merge2manisOneEdge: dstShortOtherVertIdx=%v, dstShortEdgeVector=%v", dstShortOtherVertIdx, dstShortEdgeVector)
 	dstShortEdgeUV := dstShortEdgeVector.Normalized()
 	if !srcLongEdgeUV.AboutEq(dstShortEdgeUV) {
 		if srcLongEdgeUV.AboutEq(dstShortEdgeUV.Negated()) {
+			fi.src.facesTargetedForDeletion[srcFaceToDelete] = true
+			fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge, nil)
+			return
+		}
+
+		dstLongEV := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaces[1])
+		log.Printf("merge2manisOneEdge: dstLongEV=%+v", dstLongEV)
+
+		log.Printf("merge2manisOneEdge: srcFaceToDelete=%v, normal=%v", srcFaceToDelete, fi.src.faceNormals[srcFaceToDelete])
+		log.Printf("merge2manisOneEdge: dstFaces[1]=%v, normal=%v", dstFaces[1], fi.dst.faceNormals[dstFaces[1]])
+		if fi.src.faceNormals[srcFaceToDelete].AboutEq(fi.dst.faceNormals[dstFaces[1]].Negated()) {
 			fi.src.facesTargetedForDeletion[srcFaceToDelete] = true
 			fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge, nil)
 			return
@@ -112,6 +122,35 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	fi.src.deleteFaceAndMoveNeighbors(srcFaceToDelete, dstShortEdgeVector)
 	fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, shortenFaceEdge, nil)
 }
+
+/*
+2023/11/16 21:54:01 manifoldMerge: src.badEdges=0=map[]
+2023/11/16 21:54:01 manifoldMerge: dst.badEdges=0=map[]
+2023/11/16 21:54:01 merge2manifolds: shared verts: map[275:[[0 3 4] [177 178 179]] 276:[[0 2 3] [177 179 180]]]
+2023/11/16 21:54:01 merge2manifolds: shared edges: map[[275 276]:[[0 3] [177 179]]]
+2023/11/16 21:54:01 merge2manifolds: shared faces: map[]
+2023/11/16 21:54:01 faceArea [275 276 301 300]: 4.2354551832614975
+2023/11/16 21:54:01 faceArea [304 276 275 305]: 0.9999999999999996
+2023/11/16 21:54:01 faceArea [277 276 275 274]: 0.9999999999999994
+2023/11/16 21:54:01 faceArea [299 275 276 289]: 2.9999999999999987
+
+2023/11/16 21:54:01 connectedEdgeVectorFromVertOnFace(vertIdx=275, edge=[275 276], faceIdx=0): i=0, pIdx=275, lastVertIdx=300, returning ({3.75 4.50 -6.50}).Sub({0.15 4.50 -7.50})
+2023/11/16 21:54:01 merge2manisOneEdge: srcLongEV={edge:[275 300] fromVertIdx:275 toVertIdx:300 toSubFrom:{X:3.59996997898018 Y:0 Z:1.003308720986067} length:3.7371663381719116}
+
+2023/11/16 21:54:01 connectedEdgeVectorFromVertOnFace(vertIdx=275, edge=[275 276], faceIdx=177): i=2, pIdx=275, nextIdx=274, returning ({-0.85 4.50 -7.52}).Sub({0.15 4.50 -7.50})
+2023/11/16 21:54:01 merge2manisOneEdge: dstShortEV={edge:[274 275] fromVertIdx:275 toVertIdx:274 toSubFrom:{X:-0.9997998999159141 Y:0 Z:-0.020004002802642695} length:1}
+
+2023/11/16 21:54:01 connectedEdgeVectorFromVertOnFace(vertIdx=275, edge=[275 276], faceIdx=3): i=2, pIdx=275, nextIdx=305, returning ({0.15 5.50 -7.50}).Sub({0.15 4.50 -7.50})
+2023/11/16 21:54:01 merge2manisOneEdge: srcShortEV={edge:[275 305] fromVertIdx:275 toVertIdx:305 toSubFrom:{X:0 Y:1 Z:0} length:1}
+
+2023/11/16 22:02:38 connectedEdgeVectorFromVertOnFace(vertIdx=275, edge=[275 276], faceIdx=179): i=1, pIdx=275, lastVertIdx=299, returning ({0.15 7.50 -7.50}).Sub({0.15 4.50 -7.50})
+2023/11/16 22:02:38 merge2manisOneEdge: dstLongEV={edge:[275 299] fromVertIdx:275 toVertIdx:299 toSubFrom:{X:0 Y:3 Z:0} length:3}
+
+2023/11/16 22:05:23 merge2manisOneEdge: srcFaceToDelete=3, normal={-1.00 -0.00 -0.02}
+2023/11/16 22:05:23 merge2manisOneEdge: dstFaces[1]=179, normal={1.00 0.00 0.02}
+
+2023/11/16 21:54:01 WARNING: merge2manisOneEdge: unhandled case: edge unit vectors don't match: {0.96 0.00 0.27} vs {-1.00 0.00 -0.02}
+*/
 
 func (is *infoSetT) deleteFaceAndMoveNeighbors(deleteFaceIdx faceIndexT, move Vec3) {
 	log.Printf("BEFORE deleteFaceAndMoveNeighbors(deleteFaceIdx=%v, move=%v), #faces=%v\n%v", deleteFaceIdx, move, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
