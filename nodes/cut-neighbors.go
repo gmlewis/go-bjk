@@ -11,6 +11,7 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 	log.Printf("BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 	baseFace := is.faces[baseFaceIdx]
 	oldVertsToNewMap := is.moveVerts(baseFace, move)
+	log.Printf("oldVertsToNewMap: %+v", oldVertsToNewMap)
 	affectedFaces := map[faceIndexT]bool{}
 
 	for vertIdx := range oldVertsToNewMap {
@@ -23,6 +24,7 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 	}
 	log.Printf("cutNeighborsAndShortenFaceOnEdge found %v affected faces: %+v", len(affectedFaces), maps.Keys(affectedFaces))
 
+	verts := is.faceInfo.m.Verts
 	for faceIdx := range affectedFaces {
 		face := is.faces[faceIdx]
 		originalFaceNormal := is.faceNormals[faceIdx]
@@ -31,7 +33,7 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 		var faceHasEdge bool
 		for i, vertIdx := range face {
 			if newIdx, ok := oldVertsToNewMap[vertIdx]; ok {
-				log.Printf("changing face[%v][%v] from vertIdx=%v to vertIdx=%v", faceIdx, i, vertIdx, newIdx)
+				log.Printf("changing face[%v][%v] from vertIdx=%v=%v to vertIdx=%v=%v", faceIdx, i, vertIdx, verts[vertIdx], newIdx, verts[newIdx])
 				is.faces[faceIdx][i] = newIdx
 				oldCutFace = append(oldCutFace, vertIdx)
 				newCutFace = append(newCutFace, newIdx)
@@ -55,7 +57,8 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 				slices.Reverse(oldCutFace)
 				newFaceNormal = is.faceInfo.m.CalcFaceNormal(oldCutFace)
 				if !newFaceNormal.AboutEq(originalFaceNormal) {
-					log.Fatalf("unable to make new face %+v normal (%v) same as original %+v (%v)", oldCutFace, newFaceNormal, face, originalFaceNormal)
+					log.Printf("WARNING: unable to make new face %+v normal (%v) same as original %+v (%v), skipping", oldCutFace, newFaceNormal, face, originalFaceNormal)
+					continue
 				}
 			}
 

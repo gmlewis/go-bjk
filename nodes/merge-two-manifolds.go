@@ -51,10 +51,6 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	// 	fi.m.dumpFace(dstFaces[0], fi.dst.faces[dstFaces[0]]), fi.m.dumpFace(dstFaces[1], fi.dst.faces[dstFaces[1]]))
 	srcFaceIdx, dstFaceIdx := srcFaces[0], dstFaces[0]
 
-	if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx]) {
-		log.Printf("WARNING: merge2manisOneEdge: unhandled case: normals don't match: %v vs %v", fi.src.faceNormals[srcFaceIdx], fi.dst.faceNormals[dstFaceIdx])
-		return
-	}
 	if len(fi.src.faces[srcFaceIdx]) != 4 {
 		log.Printf("WARNING: merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaceIdx, len(fi.src.faces[srcFaceIdx]), fi.src.faces[srcFaceIdx])
 		return
@@ -87,7 +83,22 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	log.Printf("merge2manisOneEdge: srcShortEV=%+v", srcShortEV)
 
 	srcLongEdgeUV := srcLongEdgeVector.Normalized()
+	log.Printf("merge2manisOneEdge: srcLongEdgeUV=%v", srcLongEdgeUV)
 	dstShortEdgeUV := dstShortEdgeVector.Normalized()
+	log.Printf("merge2manisOneEdge: dstShortEdgeUV=%v", dstShortEdgeUV)
+
+	if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx]) {
+		if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx].Negated()) {
+			log.Printf("WARNING: merge2manisOneEdge: unhandled case: normals don't match: %v vs %v", fi.src.faceNormals[srcFaceIdx], fi.dst.faceNormals[dstFaceIdx])
+			return
+		}
+
+		// TODO - FIX THIS
+		fi.src.cutNeighborsAndShortenFaceOnEdge(srcFaceToDelete, dstShortEdgeVector, edge, nil)
+		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
+		return
+	}
+
 	if !srcLongEdgeUV.AboutEq(dstShortEdgeUV) {
 		if srcLongEdgeUV.AboutEq(dstShortEdgeUV.Negated()) {
 			fi.src.facesTargetedForDeletion[srcFaceToDelete] = true
@@ -122,6 +133,120 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	fi.src.deleteFaceAndMoveNeighbors(srcFaceToDelete, dstShortEdgeVector)
 	fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, shortenFaceEdge, nil)
 }
+
+/*
+2023/11/16 23:08:31 manifoldMerge: src.badEdges=0=map[]
+2023/11/16 23:08:31 manifoldMerge: dst.badEdges=0=map[]
+2023/11/16 23:08:31 merge2manifolds: shared verts: map[422:[[0 1 2] [295 296 299]] 423:[[0 1 4] [295 296 297]]]
+2023/11/16 23:08:31 merge2manifolds: shared edges: map[[422 423]:[[0 1] [295 296]]]
+2023/11/16 23:08:31 merge2manifolds: shared faces: map[]
+2023/11/16 23:08:31 faceArea [431 430 422 423]: 7.9043000032484105
+2023/11/16 23:08:31 faceArea [432 423 422 433]: 97.17639415758327
+2023/11/16 23:08:31 faceArea [425 424 423 422]: 9.764135298130396
+2023/11/16 23:08:31 faceArea [426 422 423 427]: 8.83421765068939
+2023/11/16 23:08:31 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=1): i=2, pIdx=422, nextIdx=433, returning ({9.49 16.50 0.38}).Sub({9.49 5.50 0.38})
+2023/11/16 23:08:31 merge2manisOneEdge: srcLongEV={edge:[422 433] fromVertIdx:422 toVertIdx:433 toSubFrom:{X:0 Y:11 Z:0} length:11}
+2023/11/16 23:08:31 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=296): i=1, pIdx=422, lastVertIdx=426, returning ({9.49 6.50 0.38}).Sub({9.49 5.50 0.38})
+2023/11/16 23:08:31 merge2manisOneEdge: dstShortEV={edge:[422 426] fromVertIdx:422 toVertIdx:426 toSubFrom:{X:0 Y:1 Z:0} length:1}
+2023/11/16 23:08:31 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=0): i=2, pIdx=422, lastVertIdx=430, returning ({8.49 5.50 0.34}).Sub({9.49 5.50 0.38})
+2023/11/16 23:08:31 merge2manisOneEdge: srcShortEV={edge:[422 430] fromVertIdx:422 toVertIdx:430 toSubFrom:{X:-0.9991996797437448 Y:0 Z:-0.04000000000000037} length:1.000000000000001}
+2023/11/16 23:08:31 merge2manisOneEdge: srcLongEdgeUV={0.00 1.00 0.00}
+2023/11/16 23:08:31 merge2manisOneEdge: dstShortEdgeUV={0.00 1.00 0.00}
+2023/11/16 23:08:31 BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=1, move={0.00 1.00 0.00}, edge=[422 423]), #faces=6  // CORRECT EDGE - CORRECT MOVE - WRONG baseFaceIdx - should be 0
+
+face[0]={[431 430 422 423]}: {{4.54 5.50 7.19} {8.49 5.50 0.34} {9.49 5.50 0.38} {5.08 5.50 8.03}}
+face[1]={[432 423 422 433]}: {{5.08 16.50 8.03} {5.08 5.50 8.03} {9.49 5.50 0.38} {9.49 16.50 0.38}}  // TARGET face
+face[2]={[433 422 430 434]}: {{9.49 16.50 0.38} {9.49 5.50 0.38} {8.49 5.50 0.34} {8.49 16.50 0.34}}
+face[3]={[434 430 431 435]}: {{8.49 16.50 0.34} {8.49 5.50 0.34} {4.54 5.50 7.19} {4.54 16.50 7.19}}
+face[4]={[435 431 423 432]}: {{4.54 16.50 7.19} {4.54 5.50 7.19} {5.08 5.50 8.03} {5.08 16.50 8.03}}
+face[5]={[432 433 434 435]}: {{5.08 16.50 8.03} {9.49 16.50 0.38} {8.49 16.50 0.34} {4.54 16.50 7.19}}
+
+2023/11/16 23:08:31 cutNeighborsAndShortenFaceOnEdge found 4 affected faces: [2 5 4 0]   // WRONG!!!  Should be [0 2 3 4]
+2023/11/16 23:08:31 changing face[0][2] from vertIdx=422={9.49 5.50 0.38} to vertIdx=426={9.49 6.50 0.38}
+2023/11/16 23:08:31 changing face[0][3] from vertIdx=423={5.08 5.50 8.03} to vertIdx=427={5.08 6.50 8.03}
+2023/11/16 23:08:31 changing face[2][0] from vertIdx=433={9.49 16.50 0.38} to vertIdx=437={9.49 17.50 0.38}  // WRONG!
+2023/11/16 23:08:31 changing face[2][1] from vertIdx=422={9.49 5.50 0.38} to vertIdx=426={9.49 6.50 0.38}
+2023/11/16 23:08:31 WARNING: unable to make new face [437 426 422 433] normal ({0.00 0.00 -0.00}) same as original [437 426 430 434] ({0.04 0.00 -1.00}), skipping
+2023/11/16 23:08:31 changing face[5][0] from vertIdx=432={5.08 16.50 8.03} to vertIdx=436={5.08 17.50 8.03}  // WRONG!
+2023/11/16 23:08:31 changing face[5][1] from vertIdx=433={9.49 16.50 0.38} to vertIdx=437={9.49 17.50 0.38}  // WRONG!
+2023/11/16 23:08:31 WARNING: unable to make new face [436 437 433 432] normal ({-0.87 0.00 -0.50}) same as original [436 437 434 435] ({-0.00 1.00 0.00}), skipping
+2023/11/16 23:08:31 changing face[4][2] from vertIdx=423={5.08 5.50 8.03} to vertIdx=427={5.08 6.50 8.03}
+2023/11/16 23:08:31 changing face[4][3] from vertIdx=432={5.08 16.50 8.03} to vertIdx=436={5.08 17.50 8.03}  // WRONG!
+2023/11/16 23:08:31 WARNING: unable to make new face [427 436 432 423] normal ({0.00 0.00 0.00}) same as original [435 431 427 436] ({-0.85 0.00 0.53}), skipping
+2023/11/16 23:08:31 AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=1, move={0.00 1.00 0.00}, edge=[422 423]), #faces=6
+face[0]={[431 430 426 427]}: {{4.54 5.50 7.19} {8.49 5.50 0.34} {9.49 6.50 0.38} {5.08 6.50 8.03}}
+face[1]={[432 423 422 433]}: {{5.08 16.50 8.03} {5.08 5.50 8.03} {9.49 5.50 0.38} {9.49 16.50 0.38}}
+face[2]={[437 426 430 434]}: {{9.49 17.50 0.38} {9.49 6.50 0.38} {8.49 5.50 0.34} {8.49 16.50 0.34}}
+face[3]={[434 430 431 435]}: {{8.49 16.50 0.34} {8.49 5.50 0.34} {4.54 5.50 7.19} {4.54 16.50 7.19}}
+face[4]={[435 431 427 436]}: {{4.54 16.50 7.19} {4.54 5.50 7.19} {5.08 6.50 8.03} {5.08 17.50 8.03}}
+face[5]={[436 437 434 435]}: {{5.08 17.50 8.03} {9.49 17.50 0.38} {8.49 16.50 0.34} {4.54 16.50 7.19}}
+2023/11/16 23:08:31
+
+DELETING FACE!!! face[296]={[426 422 423 427]}: {{9.49 6.50 0.38} {9.49 5.50 0.38} {5.08 5.50 8.03} {5.08 6.50 8.03}}
+2023/11/16 23:08:31
+*/
+
+/*
+2023/11/16 23:00:06 manifoldMerge: src.badEdges=0=map[]
+2023/11/16 23:00:06 manifoldMerge: dst.badEdges=0=map[]
+2023/11/16 23:00:06 merge2manifolds: shared verts: map[422:[[0 1 2] [295 296 299]] 423:[[0 1 4] [295 296 297]]]
+2023/11/16 23:00:06 merge2manifolds: shared edges: map[[422 423]:[[0 1] [295 296]]]
+2023/11/16 23:00:06 merge2manifolds: shared faces: map[]
+2023/11/16 23:00:06 faceArea [431 430 422 423]: 7.9043000032484105
+2023/11/16 23:00:06 faceArea [432 423 422 433]: 97.17639415758327
+2023/11/16 23:00:06 faceArea [425 424 423 422]: 9.764135298130396
+2023/11/16 23:00:06 faceArea [426 422 423 427]: 8.83421765068939
+2023/11/16 23:00:06 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=1): i=2, pIdx=422, nextIdx=433, returning ({9.49 16.50 0.38}).Sub({9.49 5.50 0.38})
+2023/11/16 23:00:06 merge2manisOneEdge: srcLongEV={edge:[422 433] fromVertIdx:422 toVertIdx:433 toSubFrom:{X:0 Y:11 Z:0} length:11}
+2023/11/16 23:00:06 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=296): i=1, pIdx=422, lastVertIdx=426, returning ({9.49 6.50 0.38}).Sub({9.49 5.50 0.38})
+2023/11/16 23:00:06 merge2manisOneEdge: dstShortEV={edge:[422 426] fromVertIdx:422 toVertIdx:426 toSubFrom:{X:0 Y:1 Z:0} length:1}
+2023/11/16 23:00:06 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=0): i=2, pIdx=422, lastVertIdx=430, returning ({8.49 5.50 0.34}).Sub({9.49 5.50 0.38})
+2023/11/16 23:00:06 merge2manisOneEdge: srcShortEV={edge:[422 430] fromVertIdx:422 toVertIdx:430 toSubFrom:{X:-0.9991996797437448 Y:0 Z:-0.04000000000000037} length:1.000000000000001}
+2023/11/16 23:00:06 merge2manisOneEdge: srcLongEdgeUV={0.00 1.00 0.00}
+2023/11/16 23:00:06 merge2manisOneEdge: dstShortEdgeUV={0.00 1.00 0.00}
+
+2023/11/16 23:00:06 BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=1, move={0.00 1.00 0.00}, edge=[422 423]), #faces=6
+
+face[0]={[431 430 422 423]}: {{4.54 5.50 7.19} {8.49 5.50 0.34} {9.49 5.50 0.38} {5.08 5.50 8.03}}
+face[1]={[432 423 422 433]}: {{5.08 16.50 8.03} {5.08 5.50 8.03} {9.49 5.50 0.38} {9.49 16.50 0.38}}
+face[2]={[433 422 430 434]}: {{9.49 16.50 0.38} {9.49 5.50 0.38} {8.49 5.50 0.34} {8.49 16.50 0.34}}
+face[3]={[434 430 431 435]}: {{8.49 16.50 0.34} {8.49 5.50 0.34} {4.54 5.50 7.19} {4.54 16.50 7.19}}
+face[4]={[435 431 423 432]}: {{4.54 16.50 7.19} {4.54 5.50 7.19} {5.08 5.50 8.03} {5.08 16.50 8.03}}
+face[5]={[432 433 434 435]}: {{5.08 16.50 8.03} {9.49 16.50 0.38} {8.49 16.50 0.34} {4.54 16.50 7.19}}
+
+2023/11/16 23:00:06 cutNeighborsAndShortenFaceOnEdge found 4 affected faces: [5 4 0 2]
+
+2023/11/16 23:00:06 changing face[0][2] from vertIdx=422 to vertIdx=426
+2023/11/16 23:00:06 changing face[0][3] from vertIdx=423 to vertIdx=427
+2023/11/16 23:00:06 changing face[2][0] from vertIdx=433 to vertIdx=437
+2023/11/16 23:00:06 changing face[2][1] from vertIdx=422 to vertIdx=426
+
+2023/11/16 23:00:06 unable to make new face [437 426 422 433] normal ({0.00 0.00 -0.00}) same as original [437 426 430 434] ({0.04 0.00 -1.00})
+*/
+
+/*
+2023/11/16 22:44:00 manifoldMerge: src.badEdges=0=map[]
+2023/11/16 22:44:00 manifoldMerge: dst.badEdges=0=map[]
+2023/11/16 22:44:00 merge2manifolds: shared verts: map[422:[[0 1 2] [295 296 299]] 423:[[0 1 4] [295 296 297]]]
+2023/11/16 22:44:00 merge2manifolds: shared edges: map[[422 423]:[[0 1] [295 296]]]
+2023/11/16 22:44:00 merge2manifolds: shared faces: map[]
+2023/11/16 22:44:00 faceArea [431 430 422 423]: 7.9043000032484105
+2023/11/16 22:44:00 faceArea [432 423 422 433]: 97.17639415758327
+2023/11/16 22:44:00 faceArea [425 424 423 422]: 9.764135298130396
+2023/11/16 22:44:00 faceArea [426 422 423 427]: 8.83421765068939
+
+2023/11/16 22:44:00 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=1): i=2, pIdx=422, nextIdx=433, returning ({9.49 16.50 0.38}).Sub({9.49 5.50 0.38})
+2023/11/16 22:44:00 merge2manisOneEdge: srcLongEV={edge:[422 433] fromVertIdx:422 toVertIdx:433 toSubFrom:{X:0 Y:11 Z:0} length:11}
+
+2023/11/16 22:44:00 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=296): i=1, pIdx=422, lastVertIdx=426, returning ({9.49 6.50 0.38}).Sub({9.49 5.50 0.38})
+2023/11/16 22:44:00 merge2manisOneEdge: dstShortEV={edge:[422 426] fromVertIdx:422 toVertIdx:426 toSubFrom:{X:0 Y:1 Z:0} length:1}
+
+2023/11/16 22:44:00 connectedEdgeVectorFromVertOnFace(vertIdx=422, edge=[422 423], faceIdx=0): i=2, pIdx=422, lastVertIdx=430, returning ({8.49 5.50 0.34}).Sub({9.49 5.50 0.38})
+2023/11/16 22:44:00 merge2manisOneEdge: srcShortEV={edge:[422 430] fromVertIdx:422 toVertIdx:430 toSubFrom:{X:-0.9991996797437448 Y:0 Z:-0.04000000000000037} length:1.000000000000001}
+
+2023/11/16 22:44:00 merge2manisOneEdge: srcLongEdgeUV={0.00 1.00 0.00}
+2023/11/16 22:44:00 merge2manisOneEdge: dstShortEdgeUV={0.00 1.00 0.00}
+*/
 
 /*
 2023/11/16 21:54:01 manifoldMerge: src.badEdges=0=map[]
