@@ -31,7 +31,17 @@ type FaceT []VertIndexT
 type vertKeyT string
 
 // toKey generates a vertex vertKeyT (or "signature") which is a string representation of the vertex.
+// Note that "positive zero" and "negative zero" map to different strings, so convert negative zeros to positive zeros.
 func (v Vec3) toKey() vertKeyT {
+	if AboutEq(v.X, 0) {
+		v.X = 0
+	}
+	if AboutEq(v.Y, 0) {
+		v.Y = 0
+	}
+	if AboutEq(v.Z, 0) {
+		v.Z = 0
+	}
 	return vertKeyT(fmt.Sprintf("%0.5f %0.5f %0.5f", v.X, v.Y, v.Z)) // better hashing without surrounding {}
 }
 

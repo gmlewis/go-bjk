@@ -14,6 +14,23 @@ func (fi *faceInfoT) merge2manisOneFace(sharedEdges sharedEdgesMapT, srcFaceIdx,
 		srcFaceNumVerts, dstFaceNumVerts, len(sharedEdges), sharedEdges)
 }
 
+/*
+2023/11/16 20:47:24 WARNING: merge2manisOneFace unhandled case:
+srcFaceNumVerts=4,
+dstFaceNumVerts=4,
+sharedEdges=10=map[
+[70 71]:[[0 1] [33 47]]
+[71 72]:[[0 2] [34 47]]
+[72 73]:[[0 3] [35 47]]
+[73 74]:[[0 4] [36 47]]
+[74 75]:[[0 5] [37 47]]
+[75 76]:[[0 6] [38 47]]
+[236 237]:[[8 10] [146 150]]
+[236 240]:[[7 8] [149 150]]
+[237 241]:[[8 9] [150 151]]
+[240 241]:[[0 8] [150 152]]]
+*/
+
 func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dstFaceIdx faceIndexT) {
 	log.Printf("mergeExtrusion: sharedEdges=%+v", sharedEdges)
 	log.Printf("mergeExtrusion: srcFaceIdx=%v, dstFaceIdx=%v", srcFaceIdx, dstFaceIdx)
