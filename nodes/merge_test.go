@@ -60,11 +60,11 @@ func TestMerge(t *testing.T) {
 
 			src = loadObj(t, prefix+"-src.obj")
 			dst = loadObj(t, prefix+"-dst.obj")
-			want = loadObj(t, prefix+"-swapped.obj")
+			want = loadObj(t, prefix+"-swapped-result.obj")
 			log.Printf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
 			t.Logf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
 			src.Merge(dst)
-			compareMeshes(t, prefix+"-swapped.obj", src, want)
+			compareMeshes(t, prefix+"-swapped-result.obj", src, want)
 		})
 	}
 }
