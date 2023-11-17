@@ -47,8 +47,8 @@ func (dst *Mesh) Merge(src *Mesh) {
 
 	if GenerateGoldenFilesPrefix != "" {
 		dst.WriteObj(fmt.Sprintf("%v-%03d-result.obj", GenerateGoldenFilesPrefix, goldenFileCount))
-		origDst.mergeWithFaces(origSrc)
-		origDst.WriteObj(fmt.Sprintf("%v-%03d-swapped-result.obj", GenerateGoldenFilesPrefix, goldenFileCount))
+		origSrc.mergeWithFaces(origDst)
+		origSrc.WriteObj(fmt.Sprintf("%v-%03d-swapped-result.obj", GenerateGoldenFilesPrefix, goldenFileCount))
 	}
 }
 
