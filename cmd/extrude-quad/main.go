@@ -17,6 +17,7 @@ import (
 var (
 	amount  = flag.Float64("mm", 1, "Millimeters to extrude quad")
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
+	golden  = flag.Bool("golden", false, "Generate golden test files")
 	outBJK  = flag.String("o", "extrude-quad.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut  = flag.String("stl", "extrude-quad.stl", "Output filename for binary STL file")
@@ -24,6 +25,10 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *golden {
+		nodes.GenerateGoldenFilesPrefix = "golden-extrude-quad"
+	}
 
 	homeDir, err := homedir.Dir()
 	must(err)

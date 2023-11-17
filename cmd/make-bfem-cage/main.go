@@ -16,6 +16,7 @@ import (
 
 var (
 	debug    = flag.Bool("debug", false, "Turn on debugging info")
+	golden   = flag.Bool("golden", false, "Generate golden test files")
 	outBJK   = flag.String("o", "make-bfem-cage.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir  = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	segments = flag.Int("ns", 36, "Number of segments")
@@ -24,6 +25,10 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *golden {
+		nodes.GenerateGoldenFilesPrefix = "golden-make-bfem-cage"
+	}
 
 	homeDir, err := homedir.Dir()
 	must(err)

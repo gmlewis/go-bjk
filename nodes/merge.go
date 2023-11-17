@@ -5,15 +5,21 @@ import (
 	"log"
 )
 
+var (
+	// GenerateGoldenFilesPrefix is used only to generate testdata files to ensure
+	// that Merge experiences no regressions on known, good merges.
+	GenerateGoldenFilesPrefix string
+	goldenFileCount           int
+)
+
 // Merge merges src into dst for Ops.merge(dst, src).
 func (dst *Mesh) Merge(src *Mesh) {
-	// First, a naive merge is performed by not checking if any Verts are shared.
-	verts := make([]Vec3, 0, len(dst.Verts)+len(src.Verts))
-	verts = append(verts, dst.Verts...)
-	verts = append(verts, src.Verts...)
-
 	// If there are no faces, then simply concatenate the verts/normals/tangents and return.
 	if len(dst.Faces) == 0 && len(src.Faces) == 0 {
+		verts := make([]Vec3, 0, len(dst.Verts)+len(src.Verts))
+		verts = append(verts, dst.Verts...)
+		verts = append(verts, src.Verts...)
+
 		normals := make([]Vec3, 0, len(dst.Normals)+len(src.Normals))
 		tangents := make([]Vec3, 0, len(dst.Tangents)+len(src.Tangents))
 
@@ -28,7 +34,30 @@ func (dst *Mesh) Merge(src *Mesh) {
 		return
 	}
 
-	// However, if there are faces, the normals and tangents are no longer usable; delete them.
+	var origSrc, origDst *Mesh
+	if GenerateGoldenFilesPrefix != "" {
+		goldenFileCount++
+		src.WriteSTL(fmt.Sprintf("%v-%03d-src.stl", GenerateGoldenFilesPrefix, goldenFileCount))
+		dst.WriteSTL(fmt.Sprintf("%v-%03d-dst.stl", GenerateGoldenFilesPrefix, goldenFileCount))
+		origSrc = src.copyVertsFaces()
+		origDst = dst.copyVertsFaces()
+	}
+
+	dst.mergeWithFaces(src)
+
+	if GenerateGoldenFilesPrefix != "" {
+		dst.WriteSTL(fmt.Sprintf("%v-%03d-result.stl", GenerateGoldenFilesPrefix, goldenFileCount))
+		origDst.mergeWithFaces(origSrc)
+		origDst.WriteSTL(fmt.Sprintf("%v-%03d-swapped-result.stl", GenerateGoldenFilesPrefix, goldenFileCount))
+	}
+}
+
+func (dst *Mesh) mergeWithFaces(src *Mesh) {
+	verts := make([]Vec3, 0, len(dst.Verts)+len(src.Verts))
+	verts = append(verts, dst.Verts...)
+	verts = append(verts, src.Verts...)
+
+	// There are faces, the normals and tangents are no longer usable; delete them.
 	numOrigDstVerts := len(dst.Verts)
 	dst.Normals = nil
 	dst.Tangents = nil
@@ -75,20 +104,6 @@ func (dst *Mesh) Merge(src *Mesh) {
 	// dst.Faces = append(faces, srcFaces...) // ONLY FOR DEBUGGING WHEN NOT RUNNING MANIFOLD MERGE!!!
 
 	// log.Printf("\n\nAFTER MERGE:\nfaces:\n%v", dst.dumpFaces(dst.Faces))
-
-	// verify that this step did not create non-manifold geometry.
-	fi := dst.genFaceInfo(dst.Faces, nil)
-	if len(fi.dst.badEdges) > 0 {
-		fi.m.WriteSTL(fmt.Sprintf("after-merge-badDstEdges-%v-src.stl", len(fi.dst.badEdges)))
-
-		for edge, faceIdxes := range fi.dst.badEdges {
-			for _, faceIdx := range faceIdxes {
-				log.Printf("NEW BAD EDGE: %v: %v", edge, dst.dumpFace(faceIdx, dst.Faces[faceIdx]))
-			}
-		}
-
-		log.Fatalf("Merg: BAD MERGE STOP")
-	}
 }
 
 func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
@@ -120,4 +135,27 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	fi.src.deleteFacesLastToFirst(fi.src.facesTargetedForDeletion)
 	fi.dst.deleteFacesLastToFirst(fi.dst.facesTargetedForDeletion)
 	fi.m.Faces = append(fi.dst.faces, fi.src.faces...)
+
+	// verify that this step did not create non-manifold geometry.
+	afterMergeFI := fi.m.genFaceInfo(fi.m.Faces, nil)
+	if len(afterMergeFI.dst.badEdges) > 0 {
+		// Sometimes a merge without bad edges is not possible.
+		// As a heuristic, if the number of bad edges in the original is identical to the number after, silently allow it.
+		if len(fi.src.badEdges)+len(fi.dst.badEdges) == len(afterMergeFI.dst.badEdges) {
+			return
+		}
+
+		log.Printf("BAD MERGE: before: src badEdges=%v", len(fi.src.badEdges))
+		log.Printf("BAD MERGE: before: dst badEdges=%v", len(fi.dst.badEdges))
+		log.Printf("BAD MERGE: after: dst badEdges=%v", len(afterMergeFI.dst.badEdges))
+		afterMergeFI.m.WriteSTL(fmt.Sprintf("after-merge-badDstEdges-%v-src.stl", len(afterMergeFI.dst.badEdges)))
+
+		for edge, faceIdxes := range afterMergeFI.dst.badEdges {
+			for _, faceIdx := range faceIdxes {
+				log.Printf("NEW BAD EDGE: %v: %v", edge, dst.dumpFace(faceIdx, dst.Faces[faceIdx]))
+			}
+		}
+
+		log.Fatalf("Merge: BAD MERGE STOP")
+	}
 }

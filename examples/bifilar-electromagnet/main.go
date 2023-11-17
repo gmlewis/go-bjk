@@ -22,6 +22,7 @@ import (
 
 var (
 	debug     = flag.Bool("debug", false, "Turn on debugging info")
+	golden    = flag.Bool("golden", false, "Generate golden test files")
 	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numPairs  = flag.Int("np", 11, "Number of coil pairs (minimum 2)")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
@@ -40,6 +41,10 @@ func set(name string, value any) string {
 
 func main() {
 	flag.Parse()
+
+	if *golden {
+		nodes.GenerateGoldenFilesPrefix = "golden-bifilar-electromagnet"
+	}
 
 	if *innerDiam < 0 {
 		log.Fatalf("-id must be at least 0")

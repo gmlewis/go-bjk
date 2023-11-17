@@ -16,6 +16,7 @@ import (
 
 var (
 	debug     = flag.Bool("debug", false, "Turn on debugging info")
+	golden    = flag.Bool("golden", false, "Generate golden test files")
 	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	outBJK    = flag.String("o", "extrude-helix.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
@@ -28,6 +29,10 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *golden {
+		nodes.GenerateGoldenFilesPrefix = "golden-extrude-helix"
+	}
 
 	homeDir, err := homedir.Dir()
 	must(err)

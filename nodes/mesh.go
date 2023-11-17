@@ -21,6 +21,21 @@ type Mesh struct {
 	Faces    []FaceT // optional - when used, Normals and Tangents are unused.
 }
 
+// copyVertsFaces performs a deep copy of only the Verts and Faces.
+func (m *Mesh) copyVertsFaces() (dup *Mesh) {
+	dup = &Mesh{
+		Verts: append([]Vec3{}, m.Verts...),   // Vec3 is a struct value - OK to copy.
+		Faces: make([]FaceT, 0, len(m.Faces)), // FaceT is a slice - need to make a deep copy.
+	}
+	for _, face := range m.Faces {
+		dup.Faces = append(dup.Faces, append(FaceT{}, face...))
+	}
+	for k, v := range m.uniqueVerts {
+		dup.uniqueVerts[k] = v
+	}
+	return dup
+}
+
 // VertIndexT represents a vertex index.
 type VertIndexT int
 
