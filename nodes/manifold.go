@@ -10,27 +10,6 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// func (m *Mesh) makeManifold() error {
-// 	if len(m.Faces) == 0 {
-// 		return errors.New("no faces in mesh")
-// 	}
-//
-// 	faceInfo := m.genFaceInfo()
-//
-// 	for {
-// 		faceInfo.changesMade = false
-// 		for vertIdx := range m.Verts {
-// 			faceInfo.decimateFaces(vertIdx)
-// 		}
-//
-// 		if !faceInfo.changesMade {
-// 			break
-// 		}
-// 	}
-//
-// 	return nil
-// }
-
 // edgeT represents an edge and is a sorted array of two vertex indices.
 type edgeT [2]VertIndexT
 
@@ -192,9 +171,8 @@ func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge e
 	for i, pIdx := range face {
 		nextIdx := face[(i+1)%len(face)]
 		if pIdx == vertIdx && nextIdx != notVertIdx {
-			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, nextIdx=%v, returning (%v).Sub(%v)",
-				vertIdx, edge, faceIdx, i, pIdx, nextIdx, m.Verts[nextIdx], m.Verts[vertIdx])
-			// return nextIdx, m.Verts[nextIdx].Sub(m.Verts[vertIdx])
+			// log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, nextIdx=%v, returning (%v).Sub(%v)",
+			//   vertIdx, edge, faceIdx, i, pIdx, nextIdx, m.Verts[nextIdx], m.Verts[vertIdx])
 			toSubFrom := m.Verts[nextIdx].Sub(m.Verts[vertIdx])
 			return edgeVectorT{
 				edge:        makeEdge(vertIdx, nextIdx),
@@ -206,9 +184,8 @@ func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge e
 		}
 		if pIdx == vertIdx {
 			lastVertIdx := face[(i-1+len(face))%len(face)]
-			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, lastVertIdx=%v, returning (%v).Sub(%v)",
-				vertIdx, edge, faceIdx, i, pIdx, lastVertIdx, m.Verts[lastVertIdx], m.Verts[vertIdx])
-			// return lastVertIdx, m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
+			// log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, lastVertIdx=%v, returning (%v).Sub(%v)",
+			//   vertIdx, edge, faceIdx, i, pIdx, lastVertIdx, m.Verts[lastVertIdx], m.Verts[vertIdx])
 			toSubFrom := m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
 			return edgeVectorT{
 				edge:        makeEdge(vertIdx, lastVertIdx),
@@ -317,7 +294,7 @@ func faceIndicesByEdgeCount(inMap face2EdgesMapT) map[int][]faceIndexT {
 // face indices around it! Always delete from last to first when deleting multiple faces.
 // Do not call this directly. Let deleteFacesLastToFirst actually delete the faces.
 func (is *infoSetT) deleteFace(deleteFaceIdx faceIndexT) {
-	log.Printf("\n\nDELETING FACE!!! %v", is.faceInfo.m.dumpFace(deleteFaceIdx, is.faces[deleteFaceIdx]))
+	// log.Printf("\n\nDELETING FACE!!! %v", is.faceInfo.m.dumpFace(deleteFaceIdx, is.faces[deleteFaceIdx]))
 	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.
 }
 
@@ -358,10 +335,10 @@ func (m *Mesh) faceArea(face FaceT) float64 {
 	if len(face) == 4 {
 		v1 := m.Verts[face[1]].Sub(m.Verts[face[0]]).Length()
 		v2 := m.Verts[face[2]].Sub(m.Verts[face[1]]).Length()
-		log.Printf("faceArea %+v: %v", face, v1*v2)
+		// log.Printf("faceArea %+v: %v", face, v1*v2)
 		return v1 * v2
 	}
-	log.Fatalf("faceArea: not implemented yet for %+v", face)
+	log.Fatalf("faceArea: not implemented yet for face %+v with %v vertices", face, len(face))
 	return 0
 }
 

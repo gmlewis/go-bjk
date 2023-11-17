@@ -3,15 +3,13 @@ package nodes
 import (
 	"log"
 	"slices"
-
-	"golang.org/x/exp/maps"
 )
 
 func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, move Vec3, edge edgeT, newCutFaceOKToAdd func(FaceT) bool) {
-	log.Printf("BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
+	// log.Printf("BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 	baseFace := is.faces[baseFaceIdx]
 	oldVertsToNewMap := is.moveVerts(baseFace, move)
-	log.Printf("oldVertsToNewMap: %+v", oldVertsToNewMap)
+	// log.Printf("oldVertsToNewMap: %+v", oldVertsToNewMap)
 	affectedFaces := map[faceIndexT]bool{}
 
 	for vertIdx := range oldVertsToNewMap {
@@ -22,9 +20,9 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 			affectedFaces[faceIdx] = true
 		}
 	}
-	log.Printf("cutNeighborsAndShortenFaceOnEdge found %v affected faces: %+v", len(affectedFaces), maps.Keys(affectedFaces))
+	// log.Printf("cutNeighborsAndShortenFaceOnEdge found %v affected faces: %+v", len(affectedFaces), maps.Keys(affectedFaces))
+	// verts := is.faceInfo.m.Verts
 
-	verts := is.faceInfo.m.Verts
 	for faceIdx := range affectedFaces {
 		face := is.faces[faceIdx]
 		originalFaceNormal := is.faceNormals[faceIdx]
@@ -33,7 +31,7 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 		var faceHasEdge bool
 		for i, vertIdx := range face {
 			if newIdx, ok := oldVertsToNewMap[vertIdx]; ok {
-				log.Printf("changing face[%v][%v] from vertIdx=%v=%v to vertIdx=%v=%v", faceIdx, i, vertIdx, verts[vertIdx], newIdx, verts[newIdx])
+				// log.Printf("changing face[%v][%v] from vertIdx=%v=%v to vertIdx=%v=%v", faceIdx, i, vertIdx, verts[vertIdx], newIdx, verts[newIdx])
 				is.faces[faceIdx][i] = newIdx
 				oldCutFace = append(oldCutFace, vertIdx)
 				newCutFace = append(newCutFace, newIdx)
@@ -62,14 +60,14 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 				}
 			}
 
-			log.Printf("adding new cut face: %+v", oldCutFace)
+			// log.Printf("adding new cut face: %+v", oldCutFace)
 			is.faces = append(is.faces, oldCutFace)
-		} else {
-			log.Printf("NOT ADDING new cut face: %+v !!!", oldCutFace)
+			// } else {
+			// 	log.Printf("NOT ADDING new cut face: %+v !!!", oldCutFace)
 		}
 	}
 
-	log.Printf("AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
+	// log.Printf("AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 }
 
 // moveVerts creates new (or reuses old) vertices and returns the mapping from the

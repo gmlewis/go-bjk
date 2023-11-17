@@ -14,9 +14,9 @@ import (
 func (fi *faceInfoT) merge2NonManifolds() {
 	// step 1 - find all shared vertices, edges, and faces
 	sharedVerts, sharedEdges, sharedFaces := fi.findSharedVEFs()
-	log.Printf("merge2NonManifolds: shared verts: %+v", sharedVerts)
-	log.Printf("merge2NonManifolds: shared edges: %+v", sharedEdges)
-	log.Printf("merge2NonManifolds: shared faces: %+v", sharedFaces)
+	// log.Printf("merge2NonManifolds: shared verts: %+v", sharedVerts)
+	// log.Printf("merge2NonManifolds: shared edges: %+v", sharedEdges)
+	// log.Printf("merge2NonManifolds: shared faces: %+v", sharedFaces)
 
 	switch {
 	case len(sharedFaces) > 0:
