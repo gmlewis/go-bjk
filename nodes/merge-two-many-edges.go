@@ -32,8 +32,19 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	if len(srcEdgeCountToFaceIndices[numSharedEdges]) == 1 && len(srcEdgeCountToFaceIndices[1]) == numSharedEdges &&
 		len(dstEdgeCountToFaceIndices[numSharedEdges-1]) == 1 && len(dstEdgeCountToFaceIndices[1]) == numSharedEdges+1 {
 		// two separate cuts that need to be performed...
-		opts.srcMainFaceIdx = srcEdgeCountToFaceIndices[numSharedEdges][0]
-		opts.dstMainFaceIdx = dstEdgeCountToFaceIndices[numSharedEdges-1][0]
+		opts.srcMainFaceIdx = opts.srcEdgeCountToFaceIndices[numSharedEdges][0]
+		opts.dstMainFaceIdx = opts.dstEdgeCountToFaceIndices[numSharedEdges-1][0]
+		fi.twoSeparateCuts(opts)
+		return
+	}
+
+	// This is the mirror swapped dst<=>src case of the case above.
+	if len(dstEdgeCountToFaceIndices[numSharedEdges]) == 1 && len(dstEdgeCountToFaceIndices[1]) == numSharedEdges &&
+		len(srcEdgeCountToFaceIndices[numSharedEdges-1]) == 1 && len(srcEdgeCountToFaceIndices[1]) == numSharedEdges+1 {
+		fi.swapSrcAndDst(&opts)
+		// two separate cuts that need to be performed...
+		opts.srcMainFaceIdx = opts.srcEdgeCountToFaceIndices[numSharedEdges][0]
+		opts.dstMainFaceIdx = opts.dstEdgeCountToFaceIndices[numSharedEdges-1][0]
 		fi.twoSeparateCuts(opts)
 		return
 	}
@@ -70,12 +81,6 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 			}
 		}
 
-		// // swap src/dst and call twoSeparateCuts
-		// fi.src, fi.dst = fi.dst, fi.src
-		// // reverse the sharedEdges results
-		// for edge, v := range sharedEdges {
-		// 	sharedEdges[edge] = [2][]faceIndexT{v[1], v[0]}
-		// }
 		if foundMatchingNormals {
 			fi.twoSeparateCuts(opts)
 			return
@@ -99,6 +104,18 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: dstFaceIndicesToEdges=%v", len(dstFaceIndicesToEdges))
 	for faceIdx, edges := range dstFaceIndicesToEdges {
 		log.Printf("dstFaceIndicesToEdges[%v]=%v=%+v", faceIdx, len(edges), edges)
+	}
+}
+
+func (fi *faceInfoT) swapSrcAndDst(opts *twoSeparateCutsOpts) {
+	fi.src, fi.dst = fi.dst, fi.src
+	if opts != nil {
+		opts.srcFaceIndicesToEdges, opts.dstFaceIndicesToEdges = opts.dstFaceIndicesToEdges, opts.srcFaceIndicesToEdges
+		opts.srcEdgeCountToFaceIndices, opts.dstEdgeCountToFaceIndices = opts.dstEdgeCountToFaceIndices, opts.srcEdgeCountToFaceIndices
+		// reverse the sharedEdges results
+		for edge, v := range opts.sharedEdges {
+			opts.sharedEdges[edge] = [2][]faceIndexT{v[1], v[0]}
+		}
 	}
 }
 

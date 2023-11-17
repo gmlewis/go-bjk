@@ -35,12 +35,12 @@ func TestMerge(t *testing.T) {
 	defer os.RemoveAll(tempDir) // clean up
 
 	for _, prefix := range testCasePrefixes {
-		if prefix != "golden-make-bfem-cage-008" {
+		if prefix != "golden-make-bfem-cage-012" {
 			continue // debug only
 		}
 
 		t.Run(prefix, func(t *testing.T) {
-			if false { // makes it easier to block out one or the other
+			{ // makes it easier to block out one or the other
 				src := loadObj(t, prefix+"-src.obj")
 				dst := loadObj(t, prefix+"-dst.obj")
 				want := loadObj(t, prefix+"-result.obj")

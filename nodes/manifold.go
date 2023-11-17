@@ -54,10 +54,6 @@ type infoSetT struct {
 	facesTargetedForDeletion map[faceIndexT]bool
 }
 
-func (fi *faceInfoT) swapSrcAndDst() {
-	fi.src, fi.dst = fi.dst, fi.src
-}
-
 func makeEdge(v1, v2 VertIndexT) edgeT {
 	if v1 == v2 {
 		log.Fatalf("programming error: makeEdge(%v,%v)", v1, v2)

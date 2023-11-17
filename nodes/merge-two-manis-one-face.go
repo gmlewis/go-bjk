@@ -68,8 +68,6 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 		log.Fatalf("mergeExtrusion: unable to get srcFace to delete from %+v", srcOtherEndFace)
 	}
 	fi.src.facesTargetedForDeletion[srcFaceToDeleteIdx] = true
-
-	log.Fatalf("mergeExtrusion: STOP")
 }
 
 func (fi *faceInfoT) truncateExtrusion(is *infoSetT, evsToTruncate, otherEVs []edgeVectorT) {
