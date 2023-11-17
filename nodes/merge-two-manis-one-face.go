@@ -50,6 +50,15 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 	log.Printf("mergeExtrusion: sharedEdges=%+v", sharedEdges)
 	log.Printf("mergeExtrusion: srcFaceIdx=%v, dstFaceIdx=%v", srcFaceIdx, dstFaceIdx)
 
+	srcFaceNumVerts, dstFaceNumVerts := len(fi.src.faces[srcFaceIdx]), len(fi.dst.faces[dstFaceIdx])
+	if srcFaceNumVerts == dstFaceNumVerts && srcFaceNumVerts == len(sharedEdges) &&
+		fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx].Negated()) {
+		// abutting faces - remove them both.
+		fi.src.facesTargetedForDeletion[srcFaceIdx] = true
+		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
+		return
+	}
+
 	srcSideEVs := fi.src.getFaceSideEdgeVectors(srcFaceIdx)
 	srcOtherEndFace := make(FaceT, 0, len(srcSideEVs))
 	for i, ev := range srcSideEVs {
@@ -107,6 +116,24 @@ func (fi *faceInfoT) truncateExtrusion(is *infoSetT, evsToTruncate, otherEVs []e
 		}
 	}
 }
+
+/*
+2023/11/16 22:11:07 manifoldMerge: src.badEdges=0=map[]
+2023/11/16 22:11:07 manifoldMerge: dst.badEdges=0=map[]
+2023/11/16 22:11:07 merge2manifolds: shared verts: map[379:[[0 3 4] [261 262 263]] 380:[[0 2 3] [261 263 275 277]] 383:[[3 4 5] [262 263 265]] 384:[[2 3 5] [263 265 274 275]]]
+2023/11/16 22:11:07 merge2manifolds: shared edges: map[[379 380]:[[0 3] [261 263]] [379 383]:[[3 4] [262 263]] [380 384]:[[2 3] [263 275]] [383 384]:[[3 5] [263 265]]]
+2023/11/16 22:11:07 merge2manifolds: shared faces: map[[379 380 383 384]:[3 263]]
+2023/11/16 22:11:07 mergeExtrusion: sharedEdges=map[[379 380]:[[0 3] [261 263]] [379 383]:[[3 4] [262 263]] [380 384]:[[2 3] [263 275]] [383 384]:[[3 5] [263 265]]]
+2023/11/16 22:11:07 mergeExtrusion: srcFaceIdx=3, dstFaceIdx=263
+2023/11/16 22:11:07 connectedEdgeVectorFromVertOnFace(vertIdx=384, edge=[380 384], faceIdx=2): i=3, pIdx=384, nextIdx=403, returning ({-5.25 6.50 -9.09}).Sub({-8.99 6.50 -5.43})
+2023/11/16 22:11:07 connectedEdgeVectorFromVertOnFace(vertIdx=380, edge=[379 380], faceIdx=0): i=1, pIdx=380, nextIdx=401, returning ({-5.25 5.50 -9.09}).Sub({-8.99 5.50 -5.43})
+2023/11/16 22:11:07 connectedEdgeVectorFromVertOnFace(vertIdx=379, edge=[379 383], faceIdx=4): i=1, pIdx=379, nextIdx=400, returning ({-4.75 5.50 -8.23}).Sub({-8.13 5.50 -4.91})
+2023/11/16 22:11:07 connectedEdgeVectorFromVertOnFace(vertIdx=383, edge=[383 384], faceIdx=5): i=3, pIdx=383, nextIdx=402, returning ({-4.75 6.50 -8.23}).Sub({-8.13 6.50 -4.91})
+
+2023/11/16 22:11:07 mergeExtrusion: unhandled case: src
+    ev={edge:[380 401] fromVertIdx:380 toVertIdx:401 toSubFrom:{X:3.736426161583494 Y:0 Z:-3.6624155318311846} length:5.232032873440673}
+nextEV={edge:[379 400] fromVertIdx:379 toVertIdx:400 toSubFrom:{X:3.3805760509564937 Y:0 Z:-3.313614052609166} length:4.733744028351084}
+*/
 
 /*
 2023/11/16 19:29:24 manifoldMerge: src.badEdges=0=map[]
