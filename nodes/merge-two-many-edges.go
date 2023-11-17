@@ -49,39 +49,17 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 		return
 	}
 
-	if len(srcEdgeCountToFaceIndices[1]) == numSharedEdges-1 &&
-		len(dstEdgeCountToFaceIndices[1]) == numSharedEdges {
-		// log.Printf("merge2manisManyEdges: finding main src and dst faces")
-		srcFaceNormals := map[faceIndexT]Vec3{}
-		for _, faceIndices := range srcEdgeCountToFaceIndices {
-			if len(faceIndices) != 1 {
-				continue
-			}
-			faceIdx := faceIndices[0]
-			srcFaceNormals[faceIdx] = fi.src.faceNormals[faceIdx]
-			// log.Printf("merge2manisManyEdges: src face[%v] normal: %v", faceIdx, srcFaceNormals[faceIdx])
+	if len(srcEdgeCountToFaceIndices[1]) == numSharedEdges-1 && len(dstEdgeCountToFaceIndices[1]) == numSharedEdges {
+		if fi.findMatchingFaceNormals(&opts) {
+			fi.twoSeparateCuts(opts)
+			return
 		}
+	}
 
-		var foundMatchingNormals bool
-	dstLoop:
-		for _, faceIndices := range dstEdgeCountToFaceIndices {
-			if len(faceIndices) != 1 {
-				continue
-			}
-			faceIdx := faceIndices[0]
-			dstFaceNormal := fi.dst.faceNormals[faceIdx]
-			// log.Printf("merge2manisManyEdges: dst face[%v] normal: %v", faceIdx, dstFaceNormal)
-			for srcFaceIdx, n := range srcFaceNormals {
-				if n.AboutEq(dstFaceNormal) {
-					opts.srcMainFaceIdx = srcFaceIdx
-					opts.dstMainFaceIdx = faceIdx
-					foundMatchingNormals = true
-					break dstLoop
-				}
-			}
-		}
-
-		if foundMatchingNormals {
+	// This is the mirror swapped dst<=>src case of the case above.
+	if len(dstEdgeCountToFaceIndices[1]) == numSharedEdges-1 && len(srcEdgeCountToFaceIndices[1]) == numSharedEdges {
+		fi.swapSrcAndDst(&opts)
+		if fi.findMatchingFaceNormals(&opts) {
 			fi.twoSeparateCuts(opts)
 			return
 		}
@@ -105,6 +83,40 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	for faceIdx, edges := range dstFaceIndicesToEdges {
 		log.Printf("dstFaceIndicesToEdges[%v]=%v=%+v", faceIdx, len(edges), edges)
 	}
+}
+
+func (fi *faceInfoT) findMatchingFaceNormals(opts *twoSeparateCutsOpts) bool {
+	// log.Printf("merge2manisManyEdges: finding main src and dst faces")
+	srcFaceNormals := map[faceIndexT]Vec3{}
+	for _, faceIndices := range opts.srcEdgeCountToFaceIndices {
+		if len(faceIndices) != 1 {
+			continue
+		}
+		faceIdx := faceIndices[0]
+		srcFaceNormals[faceIdx] = fi.src.faceNormals[faceIdx]
+		// log.Printf("merge2manisManyEdges: src face[%v] normal: %v", faceIdx, srcFaceNormals[faceIdx])
+	}
+
+	var foundMatchingNormals bool
+dstLoop:
+	for _, faceIndices := range opts.dstEdgeCountToFaceIndices {
+		if len(faceIndices) != 1 {
+			continue
+		}
+		faceIdx := faceIndices[0]
+		dstFaceNormal := fi.dst.faceNormals[faceIdx]
+		// log.Printf("merge2manisManyEdges: dst face[%v] normal: %v", faceIdx, dstFaceNormal)
+		for srcFaceIdx, n := range srcFaceNormals {
+			if n.AboutEq(dstFaceNormal) {
+				opts.srcMainFaceIdx = srcFaceIdx
+				opts.dstMainFaceIdx = faceIdx
+				foundMatchingNormals = true
+				break dstLoop
+			}
+		}
+	}
+
+	return foundMatchingNormals
 }
 
 func (fi *faceInfoT) swapSrcAndDst(opts *twoSeparateCutsOpts) {
