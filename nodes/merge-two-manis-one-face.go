@@ -10,11 +10,26 @@ func (fi *faceInfoT) merge2manisOneFace(sharedEdges sharedEdgesMapT, srcFaceIdx,
 		return
 	}
 
-	log.Printf("WARNING: merge2manisOneFace unhandled case: srcFaceNumVerts=%v, dstFaceNumVerts=%v, sharedEdges=%v=%+v",
-		srcFaceNumVerts, dstFaceNumVerts, len(sharedEdges), sharedEdges)
+	// this is not an extrusion afterall.
+	fi.merge2manisManyEdges(sharedEdges)
 }
 
 /*
+2023/11/16 20:47:24 manifoldMerge: src.badEdges=0=map[]
+2023/11/16 20:47:24 manifoldMerge: dst.badEdges=0=map[]
+
+2023/11/16 20:47:24 merge2manifolds: shared verts: map[70:[[0 1 9] [33 46 47]] 71:[[0 1 2] [33 34 47]] 72:[[0 2 3] [34 35 47]] 73:[[0 3 4] [35 36 47]] 74:[[0 4 5] [36 37 47]] 75:[[0 5 6] [37 38 47]] 76:[[0 6 7] [38 39 47]] 236:[[7 8 10] [145 146 149 150]] 237:[[8 9 10] [146 147 150 151]] 240:[[0 7 8] [149 150 152]] 241:[[0 8 9] [150 151 152]]]
+
+2023/11/16 20:47:24 merge2manifolds: shared edges: map[[70 71]:[[0 1] [33 47]] [71 72]:[[0 2] [34 47]] [72 73]:[[0 3] [35 47]] [73 74]:[[0 4] [36 47]] [74 75]:[[0 5] [37 47]] [75 76]:[[0 6] [38 47]] [236 237]:[[8 10] [146 150]] [236 240]:[[7 8] [149 150]] [237 241]:[[8 9] [150 151]] [240 241]:[[0 8] [150 152]]]
+
+2023/11/16 20:47:24 merge2manifolds: shared faces: map[[236 237 240 241]:[8 150]]
+
+srcFaces:...
+face[8]={[236 240 241 237]}: {{-6.50 6.50 0.00} {-6.50 7.50 0.00} {-6.50 7.50 1.00} {-6.50 6.50 1.00}}
+
+dstFaces:...
+face[150]={[240 236 237 241]}: {{-6.50 7.50 0.00} {-6.50 6.50 0.00} {-6.50 6.50 1.00} {-6.50 7.50 1.00}}
+
 2023/11/16 20:47:24 WARNING: merge2manisOneFace unhandled case:
 srcFaceNumVerts=4,
 dstFaceNumVerts=4,
