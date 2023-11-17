@@ -14,7 +14,7 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 	affectedFaces := map[faceIndexT]bool{}
 
 	for vertIdx := range oldVertsToNewMap {
-		for _, faceIdx := range is.vert2Faces[vertIdx] {
+		for _, faceIdx := range is.vertToFaces[vertIdx] {
 			if faceIdx == baseFaceIdx {
 				continue
 			}

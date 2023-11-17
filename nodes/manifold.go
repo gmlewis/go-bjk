@@ -34,11 +34,11 @@ import (
 // edgeT represents an edge and is a sorted array of two vertex indices.
 type edgeT [2]VertIndexT
 
-// edge2FacesMapT represents a mapping from an edge to one or more face indices.
-type edge2FacesMapT map[edgeT][]faceIndexT
+// edgeToFacesMapT represents a mapping from an edge to one or more face indices.
+type edgeToFacesMapT map[edgeT][]faceIndexT
 
-// vert2FacesMapT respresents a mapping from a vertex index to face indices.
-type vert2FacesMapT map[VertIndexT][]faceIndexT
+// vertToFacesMapT respresents a mapping from a vertex index to face indices.
+type vertToFacesMapT map[VertIndexT][]faceIndexT
 
 // face2EdgesMapT represents a mapping from a face index to edges.
 type face2EdgesMapT map[faceIndexT][]edgeT
@@ -66,10 +66,10 @@ type infoSetT struct {
 	faceInfo        *faceInfoT
 	faces           []FaceT
 	faceNormals     []Vec3
-	vert2Faces      vert2FacesMapT
-	edges2Faces     edge2FacesMapT
+	vertToFaces     vertToFacesMapT
+	edgeToFaces     edgeToFacesMapT
 	faceStr2FaceIdx faceStr2FaceIdxMapT
-	badEdges        edge2FacesMapT
+	badEdges        edgeToFacesMapT
 	badFaces        face2EdgesMapT
 
 	facesTargetedForDeletion map[faceIndexT]bool
@@ -103,10 +103,10 @@ func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 		faceInfo:        fi,
 		faces:           faces,
 		faceNormals:     make([]Vec3, 0, len(faces)),
-		vert2Faces:      vert2FacesMapT{}, // key=vertIdx, value=[]faceIdx
-		edges2Faces:     edge2FacesMapT{},
+		vertToFaces:     vertToFacesMapT{}, // key=vertIdx, value=[]faceIdx
+		edgeToFaces:     edgeToFacesMapT{},
 		faceStr2FaceIdx: faceStr2FaceIdxMapT{},
-		badEdges:        edge2FacesMapT{},
+		badEdges:        edgeToFacesMapT{},
 		badFaces:        face2EdgesMapT{},
 
 		facesTargetedForDeletion: map[faceIndexT]bool{},
@@ -117,15 +117,15 @@ func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 		infoSet.faceNormals = append(infoSet.faceNormals, fi.m.CalcFaceNormal(face))
 		infoSet.faceStr2FaceIdx[face.toKey()] = faceIdx
 		for i, vertIdx := range face {
-			infoSet.vert2Faces[vertIdx] = append(infoSet.vert2Faces[vertIdx], faceIdx)
+			infoSet.vertToFaces[vertIdx] = append(infoSet.vertToFaces[vertIdx], faceIdx)
 			nextVertIdx := face[(i+1)%len(face)]
 			edge := makeEdge(vertIdx, nextVertIdx)
-			infoSet.edges2Faces[edge] = append(infoSet.edges2Faces[edge], faceIdx)
+			infoSet.edgeToFaces[edge] = append(infoSet.edgeToFaces[edge], faceIdx)
 		}
 	}
 
 	// Now find the bad edges and move them to the badEdges map.
-	for edge, faceIdxes := range infoSet.edges2Faces {
+	for edge, faceIdxes := range infoSet.edgeToFaces {
 		if len(faceIdxes) != 2 {
 			infoSet.badEdges[edge] = faceIdxes
 			for _, faceIdx := range faceIdxes {
@@ -134,7 +134,7 @@ func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 		}
 	}
 	for edge := range infoSet.badEdges {
-		delete(infoSet.edges2Faces, edge)
+		delete(infoSet.edgeToFaces, edge)
 	}
 
 	return infoSet
@@ -147,15 +147,15 @@ func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedF
 	// }
 
 	sharedVerts := sharedVertsMapT{}
-	for vertIdx, dstFaces := range fi.dst.vert2Faces {
-		if srcFaces, ok := fi.src.vert2Faces[vertIdx]; ok {
+	for vertIdx, dstFaces := range fi.dst.vertToFaces {
+		if srcFaces, ok := fi.src.vertToFaces[vertIdx]; ok {
 			sharedVerts[vertIdx] = [2][]faceIndexT{srcFaces, dstFaces}
 		}
 	}
 
 	sharedEdges := sharedEdgesMapT{}
-	for edge, dstFaces := range fi.dst.edges2Faces {
-		if srcFaces, ok := fi.src.edges2Faces[edge]; ok {
+	for edge, dstFaces := range fi.dst.edgeToFaces {
+		if srcFaces, ok := fi.src.edgeToFaces[edge]; ok {
 			sharedEdges[edge] = [2][]faceIndexT{srcFaces, dstFaces}
 		}
 	}
@@ -170,10 +170,18 @@ func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedF
 	return sharedVerts, sharedEdges, sharedFaces
 }
 
+type edgeVectorT struct {
+	edge        edgeT
+	fromVertIdx VertIndexT
+	toVertIdx   VertIndexT
+	toSubFrom   Vec3
+	length      float64
+}
+
 // Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on edge)
 // and therefore is completely independent of the winding order of the face!
 // In addition to the edge vector, it also returns the VertIndexT of the other vertex.
-func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge edgeT, faceIdx faceIndexT) (VertIndexT, Vec3) {
+func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge edgeT, faceIdx faceIndexT) edgeVectorT {
 	notVertIdx := edge[0]
 	if notVertIdx == vertIdx {
 		notVertIdx = edge[1]
@@ -186,18 +194,34 @@ func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge e
 		if pIdx == vertIdx && nextIdx != notVertIdx {
 			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, nextIdx=%v, returning (%v).Sub(%v)",
 				vertIdx, edge, faceIdx, i, pIdx, nextIdx, m.Verts[nextIdx], m.Verts[vertIdx])
-			return nextIdx, m.Verts[nextIdx].Sub(m.Verts[vertIdx])
+			// return nextIdx, m.Verts[nextIdx].Sub(m.Verts[vertIdx])
+			toSubFrom := m.Verts[nextIdx].Sub(m.Verts[vertIdx])
+			return edgeVectorT{
+				edge:        makeEdge(vertIdx, nextIdx),
+				fromVertIdx: vertIdx,
+				toVertIdx:   nextIdx,
+				toSubFrom:   toSubFrom,
+				length:      toSubFrom.Length(),
+			}
 		}
 		if pIdx == vertIdx {
 			lastVertIdx := face[(i-1+len(face))%len(face)]
 			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, lastVertIdx=%v, returning (%v).Sub(%v)",
 				vertIdx, edge, faceIdx, i, pIdx, lastVertIdx, m.Verts[lastVertIdx], m.Verts[vertIdx])
-			return lastVertIdx, m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
+			// return lastVertIdx, m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
+			toSubFrom := m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
+			return edgeVectorT{
+				edge:        makeEdge(vertIdx, lastVertIdx),
+				fromVertIdx: vertIdx,
+				toVertIdx:   lastVertIdx,
+				toSubFrom:   toSubFrom,
+				length:      toSubFrom.Length(),
+			}
 		}
 	}
 
 	log.Fatalf("connectedEdgeVectorFromVertOnFace: programming error for face %+v", face)
-	return 0, Vec3{}
+	return edgeVectorT{}
 }
 
 // This preserves the order of vertex indicies as they appear in the face definition.
@@ -217,10 +241,43 @@ func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [
 	return [2]VertIndexT{}
 }
 
-// edgeHeight returns an edge's height.
-func (is *infoSetT) edgeHeight(edge edgeT) float64 {
+// edgeLength returns an edge's length.
+func (is *infoSetT) edgeLength(edge edgeT) float64 {
 	m := is.faceInfo.m
 	return m.Verts[edge[0]].Sub(m.Verts[edge[1]]).Length()
+}
+
+// getFaceSideEdges returns a slice of edge vectors that are connected to (but not on) this face.
+func (is *infoSetT) getFaceSideEdgeVectors(baseFaceIdx faceIndexT) []edgeVectorT {
+	face := is.faces[baseFaceIdx]
+	result := make([]edgeVectorT, 0, len(face))
+	for i, vertIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		edge := makeEdge(vertIdx, nextIdx)
+		facesFromEdge := is.edgeToFaces[edge]
+		for _, otherFaceIdx := range facesFromEdge {
+			if otherFaceIdx == baseFaceIdx {
+				continue
+			}
+			// take one edge from each connected face
+			ev := is.connectedEdgeVectorFromVertOnFace(vertIdx, edge, otherFaceIdx)
+			result = append(result, ev)
+			break
+		}
+	}
+
+	return result
+}
+
+// replaceFaceVertIdx finds and replaces the vertIdx on a face.
+func (is *infoSetT) replaceFaceVertIdx(faceIdx faceIndexT, fromVertIdx, toVertIdx VertIndexT) {
+	face := is.faces[faceIdx]
+	for i, vertIdx := range face {
+		if vertIdx == fromVertIdx {
+			face[i] = toVertIdx
+			return
+		}
+	}
 }
 
 func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesToEdges, dstFaceIndicesToEdges face2EdgesMapT) {
@@ -236,7 +293,7 @@ func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesTo
 	return srcFaceIndicesToEdges, dstFaceIndicesToEdges
 }
 
-func reverseMapBadEdges(badEdges edge2FacesMapT) (faceIndicesToEdges face2EdgesMapT) {
+func reverseMapBadEdges(badEdges edgeToFacesMapT) (faceIndicesToEdges face2EdgesMapT) {
 	faceIndicesToEdges = face2EdgesMapT{}
 	for edge, faceIndices := range badEdges {
 		for _, faceIdx := range faceIndices {
