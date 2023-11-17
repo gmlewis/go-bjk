@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	}
 
 	repoPath := filepath.Join(homeDir, repoDir)
-	c, err = New(repoPath, true)
+	c, err = New(repoPath, false)
 	if err != nil {
 		log.Fatal("unable to create test Client")
 	}

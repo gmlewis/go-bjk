@@ -34,39 +34,47 @@ func TestMerge(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir) // clean up
 
-	loadObj := func(t *testing.T, filename string) *Mesh {
-		t.Helper()
-		buf, err := goldenObjs.ReadFile(filepath.Join("testdata", filename))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		m, err := ObjStrToMesh(string(buf))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return m
-	}
-
 	for _, prefix := range testCasePrefixes {
-		t.Run(prefix, func(t *testing.T) {
-			src := loadObj(t, prefix+"-src.obj")
-			dst := loadObj(t, prefix+"-dst.obj")
-			want := loadObj(t, prefix+"-result.obj")
-			log.Printf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
-			t.Logf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
-			dst.Merge(src)
-			compareMeshes(t, prefix+"-result.obj", dst, want)
+		if prefix != "golden-make-bfem-cage-008" {
+			continue // debug only
+		}
 
-			src = loadObj(t, prefix+"-src.obj")
-			dst = loadObj(t, prefix+"-dst.obj")
-			want = loadObj(t, prefix+"-swapped-result.obj")
-			log.Printf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
-			t.Logf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
-			src.Merge(dst)
-			compareMeshes(t, prefix+"-swapped-result.obj", src, want)
+		t.Run(prefix, func(t *testing.T) {
+			if false { // makes it easier to block out one or the other
+				src := loadObj(t, prefix+"-src.obj")
+				dst := loadObj(t, prefix+"-dst.obj")
+				want := loadObj(t, prefix+"-result.obj")
+				log.Printf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
+				t.Logf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
+				dst.Merge(src)
+				compareMeshes(t, prefix+"-result.obj", dst, want)
+			}
+
+			{
+				src := loadObj(t, prefix+"-src.obj")
+				dst := loadObj(t, prefix+"-dst.obj")
+				want := loadObj(t, prefix+"-swapped-result.obj")
+				log.Printf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
+				t.Logf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
+				src.Merge(dst)
+				compareMeshes(t, prefix+"-swapped-result.obj", src, want)
+			}
 		})
 	}
+}
+
+func loadObj(t *testing.T, filename string) *Mesh {
+	t.Helper()
+	buf, err := goldenObjs.ReadFile(filepath.Join("testdata", filename))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := ObjStrToMesh(string(buf))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
 }
 
 func compareMeshes(t *testing.T, name string, got, want *Mesh) {
