@@ -24,8 +24,9 @@ type Mesh struct {
 // copyVertsFaces performs a deep copy of only the Verts and Faces.
 func (m *Mesh) copyVertsFaces() (dup *Mesh) {
 	dup = &Mesh{
-		Verts: append([]Vec3{}, m.Verts...),   // Vec3 is a struct value - OK to copy.
-		Faces: make([]FaceT, 0, len(m.Faces)), // FaceT is a slice - need to make a deep copy.
+		Verts:       append([]Vec3{}, m.Verts...), // Vec3 is a struct value - OK to copy.
+		uniqueVerts: make(map[vertKeyT]VertIndexT, len(m.uniqueVerts)),
+		Faces:       make([]FaceT, 0, len(m.Faces)), // FaceT is a slice - need to make a deep copy.
 	}
 	for _, face := range m.Faces {
 		dup.Faces = append(dup.Faces, append(FaceT{}, face...))
