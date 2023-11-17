@@ -4,6 +4,10 @@ github.com/alecthomas/participle/v2 v2.1.0 h1:z7dElHRrOEEq45F2TG5cbQihMtNTv8vwld
 github.com/alecthomas/participle/v2 v2.1.0/go.mod h1:Y1+hAs8DHPmc3YUFzqllV+eSQ9ljPTk0ZkPMtEdAx2c=
 github.com/alecthomas/repr v0.2.0 h1:HAzS41CIzNW5syS8Mf9UwXhNH1J9aix/BvDRf1Ml2Yk=
 github.com/alecthomas/repr v0.2.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
+github.com/fogleman/fauxgl v0.0.0-20180524200717-d89117924388 h1:bl5jk3ATFRVczgNCbv2Y9abQZ98/ggiHMkZE/KVJmG4=
+github.com/fogleman/fauxgl v0.0.0-20180524200717-d89117924388/go.mod h1:7f7F8EvO8MWvDx9sIoloOfZBCKzlWuZV/h3TjpXOO3k=
+github.com/fogleman/simplify v0.0.0-20170216171241-d32f302d5046 h1:n3RPbpwXSFT0G8FYslzMUBDO09Ix8/dlqzvUkcJm4Jk=
+github.com/fogleman/simplify v0.0.0-20170216171241-d32f302d5046/go.mod h1:KDwyDqFmVUxUmo7tmqXtyaaJMdGon06y8BD2jmh84CQ=
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/frankban/quicktest v1.14.3/go.mod h1:mgiwOwqx65TmIk1wJ6Q7wvnVMocbUorkibMOrVTHZps=
 github.com/gmlewis/go3d v0.0.4 h1:2ymApzgFXKZJ0nFgItUAAXt2z8n5tPOz5Wtu/SGZ1As=

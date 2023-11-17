@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/fogleman/fauxgl"
 	"github.com/gmlewis/go-bjk/ast"
 	"github.com/gmlewis/irmf-slicer/v3/stl"
 )
@@ -39,6 +40,26 @@ func (m *Mesh) WriteSTL(filename string) error {
 		}
 	}
 	return out.Close()
+}
+
+// STLToMesh reads an STL file and returns a new (triangulated) Mesh.
+func STLToMesh(filename string) (*Mesh, error) {
+	mesh, err := fauxgl.LoadSTL(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	m := NewMesh()
+	for _, tri := range mesh.Triangles {
+		v1, v2, v3 := tri.V1.Position, tri.V2.Position, tri.V3.Position
+		verts := []Vec3{
+			Vec3{X: v1.X, Y: v1.Y, Z: v1.Z},
+			Vec3{X: v2.X, Y: v2.Y, Z: v2.Z},
+			Vec3{X: v3.X, Y: v3.Y, Z: v3.Z},
+		}
+		m.AddFace(verts)
+	}
+	return m, nil
 }
 
 type stlWriter interface {

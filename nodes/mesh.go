@@ -125,6 +125,11 @@ func registerMeshType(ls *lua.LState) {
 	// }
 }
 
+// NewMesh returns a new, empty mesh.
+func NewMesh() *Mesh {
+	return newMeshFrom(nil, nil, nil, nil)
+}
+
 func newMeshFrom(verts, normals, tangents []Vec3, faces []FaceT) *Mesh {
 	m := &Mesh{
 		Verts:       make([]Vec3, 0, len(verts)),
