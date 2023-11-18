@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"log"
 	"slices"
 )
 
@@ -35,7 +36,9 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 				newCutFace = append(newCutFace, newIdx)
 			}
 		}
-		if makeEdge(oldCutFace[0], oldCutFace[1]) == edge || makeEdge(newCutFace[0], newCutFace[1]) == edge {
+		// log.Printf("cutNeighborsAndShortenFaceOnEdge: edge=%v, oldCutFace=%+v, newCutFace=%+v", edge, oldCutFace, newCutFace)
+		if (len(oldCutFace) >= 2 && makeEdge(oldCutFace[0], oldCutFace[1]) == edge) ||
+			(len(newCutFace) >= 2 && makeEdge(newCutFace[0], newCutFace[1]) == edge) {
 			// log.Printf("cutNeighborsAndShortenFaceOnEdge: will NOT create a face on this edge! oldCutFace=%v, newCutFace=%v", oldCutFace, newCutFace)
 			continue
 		}
@@ -50,15 +53,15 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 				slices.Reverse(oldCutFace)
 				newFaceNormal = is.faceInfo.m.CalcFaceNormal(oldCutFace)
 				if !newFaceNormal.AboutEq(originalFaceNormal) {
-					// log.Printf("WARNING: unable to make new face %+v normal (%v) same as original %+v (%v), skipping", oldCutFace, newFaceNormal, face, originalFaceNormal)
+					log.Printf("WARNING: unable to make new face %+v normal (%v) same as original %+v (%v), skipping", oldCutFace, newFaceNormal, face, originalFaceNormal)
 					continue
 				}
 			}
 
 			// log.Printf("adding new cut face: %+v", oldCutFace)
 			is.faces = append(is.faces, oldCutFace)
-			//		} else {
-			//			log.Printf("NOT ADDING new cut face: %+v !!!", oldCutFace)
+			// } else {
+			// 	log.Printf("NOT ADDING new cut face: %+v !!!", oldCutFace)
 		}
 	}
 

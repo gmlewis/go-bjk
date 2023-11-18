@@ -35,28 +35,28 @@ func TestMerge(t *testing.T) {
 	defer os.RemoveAll(tempDir) // clean up
 
 	for _, prefix := range testCasePrefixes {
-		if prefix != "golden-bifilar-electromagnet-048" {
-			continue // debug only
-		}
+		// if prefix != "golden-bifilar-electromagnet-053" {
+		// 	continue // debug only
+		// }
 
 		t.Run(prefix, func(t *testing.T) {
 			{ // These blocks make it easy to disable one or the other with a leading "if false".
 				src := loadObj(t, prefix+"-src.obj")
 				dst := loadObj(t, prefix+"-dst.obj")
-				want := loadObj(t, prefix+"-result.obj")
 				log.Printf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
 				t.Logf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
 				dst.Merge(src)
+				want := loadObj(t, prefix+"-result.obj")
 				compareMeshes(t, prefix+"-result.obj", dst, want)
 			}
 
 			{
 				src := loadObj(t, prefix+"-src.obj")
 				dst := loadObj(t, prefix+"-dst.obj")
-				want := loadObj(t, prefix+"-swapped-result.obj")
 				log.Printf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
 				t.Logf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
 				src.Merge(dst)
+				want := loadObj(t, prefix+"-swapped-result.obj")
 				compareMeshes(t, prefix+"-swapped-result.obj", src, want)
 			}
 		})
