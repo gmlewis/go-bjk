@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 // ToObj "renders" a BJK design to a Wavefront obj file.
 // It always swaps Y and Z because Blackjack is always Y-up and Blender is always Z-up.
+// It also reverses every face order to preserve the normals correctly.
 func (c *Client) ToObj(design *ast.BJK, filename string) error {
 	if design == nil || design.Graph == nil {
 		return errors.New("design missing graph")
@@ -36,6 +38,7 @@ func (c *Client) ToObj(design *ast.BJK, filename string) error {
 // See: https://en.wikipedia.org/wiki/Wavefront_.obj_file
 //
 // It always swaps Y and Z because Blackjack is always Y-up and Blender is always Z-up.
+// It also reverses every face order to preserve the normals correctly.
 func ObjStrToMesh(objData string) (*Mesh, error) {
 	var maxVertIdx int
 	m := NewMesh()
@@ -89,6 +92,7 @@ func ObjStrToMesh(objData string) (*Mesh, error) {
 				}
 				face = append(face, VertIndexT(v))
 			}
+			slices.Reverse(face) // preserve face normal
 			m.Faces = append(m.Faces, face)
 		}
 	}
@@ -97,6 +101,7 @@ func ObjStrToMesh(objData string) (*Mesh, error) {
 
 // WriteObj writes a mesh to a simple Wavefront obj file, preserving only vertices and faces.
 // It always swaps Y and Z because Blackjack is always Y-up and Blender is always Z-up.
+// It also reverses every face order to preserve the normals correctly.
 func (m *Mesh) WriteObj(filename string) error {
 	w, err := os.Create(filename)
 	if err != nil {
@@ -134,6 +139,7 @@ func (m *Mesh) WriteObj(filename string) error {
 }
 
 // reorderFace reorders the vertices such that the smallest index is listed first.
+// It also takes care of reversing the vertex order to preserve the face normals.
 func reorderFace(face FaceT) FaceT {
 	f := make(FaceT, 0, len(face))
 	start := 0
@@ -147,6 +153,7 @@ func reorderFace(face FaceT) FaceT {
 	for i := 0; i < len(face); i++ {
 		f = append(f, face[(i+start)%len(face)])
 	}
+	slices.Reverse(f)
 	return f
 }
 

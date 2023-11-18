@@ -45,10 +45,10 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 		dstFaces[0], dstFaces[1] = dstFaces[1], dstFaces[0]
 	}
 
-	// log.Printf("merge2manisOneEdge: sorted srcFaces by area desc:\n%v\n%v",
-	// 	fi.m.dumpFace(srcFaces[0], fi.src.faces[srcFaces[0]]), fi.m.dumpFace(srcFaces[1], fi.src.faces[srcFaces[1]]))
-	// log.Printf("merge2manisOneEdge: sorted dstFaces by area asc:\n%v\n%v",
-	// 	fi.m.dumpFace(dstFaces[0], fi.dst.faces[dstFaces[0]]), fi.m.dumpFace(dstFaces[1], fi.dst.faces[dstFaces[1]]))
+	log.Printf("merge2manisOneEdge: edge=%v, sorted srcFaces by area desc:\n%v\n%v",
+		edge, fi.m.dumpFace(srcFaces[0], fi.src.faces[srcFaces[0]]), fi.m.dumpFace(srcFaces[1], fi.src.faces[srcFaces[1]]))
+	log.Printf("merge2manisOneEdge: edge=%v, sorted dstFaces by area asc:\n%v\n%v",
+		edge, fi.m.dumpFace(dstFaces[0], fi.dst.faces[dstFaces[0]]), fi.m.dumpFace(dstFaces[1], fi.dst.faces[dstFaces[1]]))
 	srcFaceIdx, dstFaceIdx := srcFaces[0], dstFaces[0]
 
 	if len(fi.src.faces[srcFaceIdx]) != 4 {
@@ -137,11 +137,11 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 
 /*
 manifoldMerge: srcFaces=[[0 8 9 3] [0 3 11 10] [0 10 13 8] [8 13 12 9] [9 12 11 3] [10 11 12 13]]
-face[0]={[0 8 9 3]}: {{0. 0. 0.} {2. 0. 0.} {2. 0. 1.} {0. 0. 1.}}
-face[1]={[0 3 11 10]}: {{0. 0. 0.} {0. 0. 1.} {0. 1. 1.} {0. 1. 0.}}
-face[2]={[0 10 13 8]}: {{0. 0. 0.} {0. 1. 0.} {2. 1. 0.} {2. 0. 0.}}
-face[3]={[8 13 12 9]}: {{2. 0. 0.} {2. 1. 0.} {2. 1. 1.} {2. 0. 1.}}
-face[4]={[9 12 11 3]}: {{2. 0. 1.} {2. 1. 1.} {0. 1. 1.} {0. 0. 1.}}
+face[0]={[0   8  9  3]}: {{0. 0. 0.} {2. 0. 0.} {2. 0. 1.} {0. 0. 1.}}
+face[1]={[0   3 11 10]}: {{0. 0. 0.} {0. 0. 1.} {0. 1. 1.} {0. 1. 0.}}
+face[2]={[0  10 13  8]}: {{0. 0. 0.} {0. 1. 0.} {2. 1. 0.} {2. 0. 0.}}
+face[3]={[8  13 12  9]}: {{2. 0. 0.} {2. 1. 0.} {2. 1. 1.} {2. 0. 1.}}
+face[4]={[9  12 11  3]}: {{2. 0. 1.} {2. 1. 1.} {0. 1. 1.} {0. 0. 1.}}
 face[5]={[10 11 12 13]}: {{0. 1. 0.} {0. 1. 1.} {2. 1. 1.} {2. 1. 0.}}
 
 2023/11/17 19:46:51 manifoldMerge: dstFaces=[[0 1 2 3] [0 3 5 4] [0 4 7 1] [1 7 6 2] [2 6 5 3] [4 5 6 7]]
@@ -154,6 +154,13 @@ face[5]={[4 5 6 7]}: {{0. 2. 0.} {0. 2. 1.} {1. 2. 1.} {1. 2. 0.}}
 
 2023/11/17 19:46:51 manifoldMerge: src.badEdges=0=map[]
 2023/11/17 19:46:51 manifoldMerge: dst.badEdges=0=map[]
+
+2023/11/17 20:46:54 merge2manisOneEdge: edge=[0 3], sorted srcFaces by area desc:
+face[0]={[0 8  9  3]}: {{0. 0. 0.} {2. 0. 0.} {2. 0. 1.} {0. 0. 1.}}
+face[1]={[0 3 11 10]}: {{0. 0. 0.} {0. 0. 1.} {0. 1. 1.} {0. 1. 0.}}
+2023/11/17 20:46:54 merge2manisOneEdge: edge=[0 3], sorted dstFaces by area asc:
+face[0]={[0 1 2 3]}: {{0. 0. 0.} {1. 0. 0.} {1. 0. 1.} {0. 0. 1.}}
+face[1]={[0 3 5 4]}: {{0. 0. 0.} {0. 0. 1.} {0. 2. 1.} {0. 2. 0.}}
 
 2023/11/17 19:46:51 connectedEdgeVectorFromVertOnFace(vertIdx=0, edge=[0 3], faceIdx=0): i=0, pIdx=0, nextIdx=8, returning ({2. 0. 0.}).Sub({0. 0. 0.})
 2023/11/17 19:46:51 merge2manisOneEdge: srcLongEV={edge:[0 8] fromVertIdx:0 toVertIdx:8 toSubFrom:{X:2 Y:0 Z:0} length:2}
@@ -277,15 +284,15 @@ face[5]={[4 5 6 7]}: {{-0.50 1.50 -0.50} {-0.50 1.50 0.50} {0.50 1.50 0.50} {0.5
 2023/11/17 19:24:24 connectedEdgeVectorFromVertOnFace(vertIdx=0, edge=[0 3], faceIdx=1): i=0, pIdx=0, lastVertIdx=10, returning ({-0.50 0.50 -0.50}).Sub({-0.50 -0.50 -0.50})
 2023/11/17 19:24:24 merge2manisOneEdge: srcShortEV={edge:[0 10] fromVertIdx:0 toVertIdx:10 toSubFrom:{X:0 Y:1 Z:0} length:1}  // THIS IS NOT ALONG THE DST LONG EDGE - interesting
 
-2023/11/17 18:57:43 merge2manisOneEdge: srcLongEdgeUV={1.00 0.00 0.00}
-2023/11/17 18:57:43 merge2manisOneEdge: dstShortEdgeUV={1.00 0.00 0.00}
-2023/11/17 18:57:43 merge2manisOneEdge: edge unit vectors match: {1.00 0.00 0.00}, srcLongEdgeVector={2.00 0.00 0.00}, dstShortEdgeVector={1.00 0.00 0.00}
+2023/11/17 18:57:43 merge2manisOneEdge: srcLongEdgeUV={1. 0. 0.}
+2023/11/17 18:57:43 merge2manisOneEdge: dstShortEdgeUV={1. 0. 0.}
+2023/11/17 18:57:43 merge2manisOneEdge: edge unit vectors match: {1. 0. 0.}, srcLongEdgeVector={2. 0. 0.}, dstShortEdgeVector={1. 0. 0.}
 2023/11/17 19:24:24 merge2manisOneEdge: dstShortConnectedEdge=[0 1] - SUSPECT!!!
 2023/11/17 19:24:24 connectedEdgeVectorFromVertOnFace(vertIdx=1, edge=[0 1], faceIdx=0): i=1, pIdx=1, nextIdx=2, returning ({0.50 -0.50 0.50}).Sub({0.50 -0.50 -0.50})
 2023/11/17 18:57:43 merge2manisOneEdge: dstShortNextEV={edge:[1 2] fromVertIdx:1 toVertIdx:2 toSubFrom:{X:0 Y:0 Z:1} length:1}  // WHERE DID THIS COME FROM?
 2023/11/17 18:57:43 merge2manisOneEdge: shortenFaceEdge=[1 2]  // WRONG!!! - SHOULD BE [1 15] !!!
 
-2023/11/17 19:09:40 BEFORE deleteFaceAndMoveNeighbors(deleteFaceIdx=1, move={1.00 0.00 0.00}), #faces=6
+2023/11/17 19:09:40 BEFORE deleteFaceAndMoveNeighbors(deleteFaceIdx=1, move={1. 0. 0.}), #faces=6
 face[0]={[0 8 9 3]}: {{-0.50 -0.50 -0.50} {1.50 -0.50 -0.50} {1.50 -0.50 0.50} {-0.50 -0.50 0.50}}
 face[1]={[0 3 11 10]}: {{-0.50 -0.50 -0.50} {-0.50 -0.50 0.50} {-0.50 0.50 0.50} {-0.50 0.50 -0.50}}
 face[2]={[0 10 13 8]}: {{-0.50 -0.50 -0.50} {-0.50 0.50 -0.50} {1.50 0.50 -0.50} {1.50 -0.50 -0.50}}
@@ -302,7 +309,7 @@ face[5]={[10 11 12 13]}: {{-0.50 0.50 -0.50} {-0.50 0.50 0.50} {1.50 0.50 0.50} 
 2023/11/17 19:09:40 changing face[5][0] from vertIdx=10 to vertIdx=15
 2023/11/17 19:09:40 changing face[5][1] from vertIdx=11 to vertIdx=14
 
-2023/11/17 19:09:40 AFTER deleteFaceAndMoveNeighbors(deleteFaceIdx=1, move={1.00 0.00 0.00}), #faces=6
+2023/11/17 19:09:40 AFTER deleteFaceAndMoveNeighbors(deleteFaceIdx=1, move={1. 0. 0.}), #faces=6
 face[0]={[1 8 9 2]}: {{0.50 -0.50 -0.50} {1.50 -0.50 -0.50} {1.50 -0.50 0.50} {0.50 -0.50 0.50}}
 face[1]={[0 3 11 10]}: {{-0.50 -0.50 -0.50} {-0.50 -0.50 0.50} {-0.50 0.50 0.50} {-0.50 0.50 -0.50}}
 face[2]={[1 15 13 8]}: {{0.50 -0.50 -0.50} {0.50 0.50 -0.50} {1.50 0.50 -0.50} {1.50 -0.50 -0.50}}
@@ -310,7 +317,7 @@ face[3]={[8 13 12 9]}: {{1.50 -0.50 -0.50} {1.50 0.50 -0.50} {1.50 0.50 0.50} {1
 face[4]={[9 12 14 2]}: {{1.50 -0.50 0.50} {1.50 0.50 0.50} {0.50 0.50 0.50} {0.50 -0.50 0.50}}
 face[5]={[15 14 12 13]}: {{0.50 0.50 -0.50} {0.50 0.50 0.50} {1.50 0.50 0.50} {1.50 0.50 -0.50}}
 
-2023/11/17 19:09:40 BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=0, move={0.00 1.00 0.00}, edge=[1 2]), #faces=6
+2023/11/17 19:09:40 BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=0, move={0. 1. 0.}, edge=[1 2]), #faces=6
 face[0]={[0 1 2 3]}: {{-0.50 -0.50 -0.50} {0.50 -0.50 -0.50} {0.50 -0.50 0.50} {-0.50 -0.50 0.50}}
 face[1]={[0 3 5 4]}: {{-0.50 -0.50 -0.50} {-0.50 -0.50 0.50} {-0.50 1.50 0.50} {-0.50 1.50 -0.50}}
 face[2]={[0 4 7 1]}: {{-0.50 -0.50 -0.50} {-0.50 1.50 -0.50} {0.50 1.50 -0.50} {0.50 -0.50 -0.50}}
@@ -333,7 +340,7 @@ face[5]={[4 5 6 7]}: {{-0.50 1.50 -0.50} {-0.50 1.50 0.50} {0.50 1.50 0.50} {0.5
 2023/11/17 19:09:40 changing face[1][1] from vertIdx=3={-0.50 -0.50 0.50} to vertIdx=11={-0.50 0.50 0.50}
 2023/11/17 19:09:40 adding new cut face: [0 3 11 10]
 
-2023/11/17 19:09:40 AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=0, move={0.00 1.00 0.00}, edge=[1 2]), #faces=10
+2023/11/17 19:09:40 AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=0, move={0. 1. 0.}, edge=[1 2]), #faces=10
 face[0]={[0 1 2 3]}: {{-0.50 -0.50 -0.50} {0.50 -0.50 -0.50} {0.50 -0.50 0.50} {-0.50 -0.50 0.50}}
 face[1]={[10 11 5 4]}: {{-0.50 0.50 -0.50} {-0.50 0.50 0.50} {-0.50 1.50 0.50} {-0.50 1.50 -0.50}}
 face[2]={[10 4 7 15]}: {{-0.50 0.50 -0.50} {-0.50 1.50 -0.50} {0.50 1.50 -0.50} {0.50 0.50 -0.50}}
