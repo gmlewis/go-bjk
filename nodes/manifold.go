@@ -64,6 +64,19 @@ func makeEdge(v1, v2 VertIndexT) edgeT {
 	return edgeT{v2, v1} // swap
 }
 
+func makeFaceFromEdges(edges []edgeT) FaceT {
+	face := make(FaceT, 0, len(edges))
+	for i, edge := range edges {
+		nextEdge := edges[(i+1)%len(edges)]
+		if edge[0] != nextEdge[0] && edge[0] != nextEdge[1] {
+			face = append(face, edge[0])
+		} else {
+			face = append(face, edge[1])
+		}
+	}
+	return face
+}
+
 // genFaceInfo calculates the face normals for every src and dst face
 // and generates a map of good and bad edges (mapped to their respective faces).
 func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
@@ -91,9 +104,9 @@ func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 		faceIdx := faceIndexT(i)
 		infoSet.faceNormals = append(infoSet.faceNormals, fi.m.CalcFaceNormal(face))
 		infoSet.faceStrToFaceIdx[face.toKey()] = faceIdx
-		for i, vertIdx := range face {
+		for j, vertIdx := range face {
 			infoSet.vertToFaces[vertIdx] = append(infoSet.vertToFaces[vertIdx], faceIdx)
-			nextVertIdx := face[(i+1)%len(face)]
+			nextVertIdx := face[(j+1)%len(face)]
 			edge := makeEdge(vertIdx, nextVertIdx)
 			infoSet.edgeToFaces[edge] = append(infoSet.edgeToFaces[edge], faceIdx)
 		}
@@ -153,7 +166,43 @@ type edgeVectorT struct {
 	length      float64
 }
 
-// Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on edge)
+// Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on `edge`)
+// and therefore is completely independent of the winding order of the face!
+// Both edges are found in the `badEdges` map.
+// In addition to the edge vector, it also returns the VertIndexT of the other vertex.
+func (is *infoSetT) connectedBadEdgeVectorFromVert(vertIdx VertIndexT, edge edgeT) edgeVectorT {
+	notVertIdx := edge[0]
+	if notVertIdx == vertIdx {
+		notVertIdx = edge[1]
+	}
+
+	for otherEdge := range is.badEdges {
+		var nextIdx VertIndexT
+		switch {
+		case otherEdge[0] == vertIdx && otherEdge[1] != notVertIdx:
+			nextIdx = otherEdge[1]
+		case otherEdge[1] == vertIdx && otherEdge[0] != notVertIdx:
+			nextIdx = otherEdge[0]
+		default:
+			continue
+		}
+
+		m := is.faceInfo.m
+		toSubFrom := m.Verts[nextIdx].Sub(m.Verts[vertIdx])
+		return edgeVectorT{
+			edge:        makeEdge(vertIdx, nextIdx),
+			fromVertIdx: vertIdx,
+			toVertIdx:   nextIdx,
+			toSubFrom:   toSubFrom,
+			length:      toSubFrom.Length(),
+		}
+	}
+
+	log.Fatalf("connectedBadEdgeVectorFromVert: programming error for edge %v", edge)
+	return edgeVectorT{}
+}
+
+// Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on `edge`)
 // and therefore is completely independent of the winding order of the face!
 // In addition to the edge vector, it also returns the VertIndexT of the other vertex.
 func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge edgeT, faceIdx faceIndexT) edgeVectorT {

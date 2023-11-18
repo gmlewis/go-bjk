@@ -21,10 +21,10 @@ func TestBadEdgesToConnectedEdgeLoops(t *testing.T) {
 		{
 			name: "one edge loop",
 			badEdges: []edgeT{
-				{0, 1},
-				{2, 3},
-				{3, 0},
-				{1, 2},
+				makeEdge(0, 1),
+				makeEdge(2, 3),
+				makeEdge(3, 0),
+				makeEdge(1, 2),
 			},
 			want: []faceKeyT{"[0 1 2 3]"},
 		},

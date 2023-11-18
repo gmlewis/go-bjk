@@ -113,6 +113,7 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 	fi := dst.genFaceInfo(dstFaces, srcFaces)
 	// log.Printf("manifoldMerge: src.badEdges=%v=%+v", len(fi.src.badEdges), fi.src.badEdges)
 	// log.Printf("manifoldMerge: dst.badEdges=%v=%+v", len(fi.dst.badEdges), fi.dst.badEdges)
+
 	// fi.m.Faces = fi.src.faces
 	// fi.m.WriteObj(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-src.obj", len(fi.src.badEdges), len(fi.dst.badEdges)))
 	// fi.m.Faces = fi.dst.faces

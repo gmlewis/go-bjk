@@ -85,19 +85,64 @@ func (is *infoSetT) fixEdge2OverlapingFaces(edge edgeT, f0, f1, otherFaceIdx fac
 
 func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 	edgeLoops := fi.src.badEdgesToConnectedEdgeLoops()
-	for faceStr, vertIndices := range edgeLoops {
+	// log.Printf("src:\n%v", fi.m.dumpFaces(fi.src.faces))
+	// log.Printf("dst:\n%v", fi.m.dumpFaces(fi.dst.faces))
+	// log.Printf("edgeLoops: %+v", edgeLoops)
+	for faceStr, edges := range edgeLoops {
 		if deleteFaceIdx, ok := fi.dst.faceStrToFaceIdx[faceStr]; ok {
 			fi.dst.facesTargetedForDeletion[deleteFaceIdx] = true
 			continue
 		}
 
-		// Using this imaginary face "signature", find a dst face that shares one edge
-		// and has the inverse normal to this face, then cut it and modify its neighbors.
-		var matchingEdges []edgeT
-		for i, vertIdx := range vertIndices {
-			nextIdx := vertIndices[(i+1)%len(vertIndices)]
-			edge := makeEdge(vertIdx, nextIdx)
+		// log.Printf("connectOpenSrcExtrusionsToDst: src.badEdges: %+v", fi.src.badEdges)
+		// log.Printf("connectOpenSrcExtrusionsToDst: dst.edgeToFaces: %+v", fi.dst.edgeToFaces)
 
+		// Using this imaginary face "signature", find a dst face that shares one edge whose
+		// two other edges have the same unit edge vectors as this missing src face.
+		// Then cut it and modify its neighbors.
+		for _, edge := range edges {
+			srcFaceIndices, ok := fi.src.badEdges[edge]
+			if !ok || len(srcFaceIndices) != 1 {
+				// this is not a valid edge connected to a singular face so keep looking
+				continue
+			}
+			// srcFaceIdx := srcFaceIndices[0] // This is the only src face that shares an edge with a dst face.
+			// log.Printf("Looking at shared edge: %v from src %v", edge, fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+			srcE1EV := fi.src.connectedBadEdgeVectorFromVert(edge[0], edge)
+			srcE1UV := srcE1EV.toSubFrom.Normalized()
+			srcE2EV := fi.src.connectedBadEdgeVectorFromVert(edge[1], edge)
+			srcE2UV := srcE2EV.toSubFrom.Normalized()
+
+			// log.Printf("srcE1EV=%+v", srcE1EV)
+			// log.Printf("srcE1UV=%+v", srcE1UV)
+			// log.Printf("srcE2EV=%+v", srcE2EV)
+			// log.Printf("srcE2UV=%+v", srcE2UV)
+
+			dstFaceIndices, ok := fi.dst.edgeToFaces[edge]
+			if !ok {
+				continue
+			}
+
+			for _, dstFaceIdx := range dstFaceIndices {
+				// log.Printf("Looking at dstFaceIdx: %v: %+v", dstFaceIdx, fi.dst.faces[dstFaceIdx])
+
+				dstE1EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[0], edge, dstFaceIdx)
+				dstE1UV := dstE1EV.toSubFrom.Normalized()
+				dstE2EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[1], edge, dstFaceIdx)
+				dstE2UV := dstE2EV.toSubFrom.Normalized()
+				// log.Printf("dstE1EV=%+v", dstE1EV)
+				// log.Printf("dstE1UV=%+v", dstE1UV)
+				// log.Printf("dstE2EV=%+v", dstE2EV)
+				// log.Printf("dstE2UV=%+v", dstE2UV)
+
+				if !srcE1UV.AboutEq(dstE1UV) || !srcE2UV.AboutEq(dstE2UV) {
+					continue
+				}
+
+				// log.Printf("Found matching face: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+				fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcE1EV.toSubFrom, edge, nil)
+				return
+			}
 		}
 
 		log.Printf("WARNING: connectOpenSrcExtrusionsToDst: dst face not found: %v", faceStr)
@@ -105,38 +150,38 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 }
 
 type edgeLoopT struct {
-	face FaceT
+	edges []edgeT
 }
 
-func (el *edgeLoopT) addVertIdx(vIdx VertIndexT) {
-	for _, vertIdx := range el.face {
-		if vertIdx == vIdx {
+func (el *edgeLoopT) addEdge(edge edgeT) {
+	for _, v := range el.edges {
+		if v == edge {
 			return
 		}
 	}
-	el.face = append(el.face, vIdx)
+	el.edges = append(el.edges, edge)
 }
 
-func (is *infoSetT) badEdgesToConnectedEdgeLoops() map[faceKeyT]FaceT {
+func (is *infoSetT) badEdgesToConnectedEdgeLoops() map[faceKeyT][]edgeT {
 	vertsToEdgeLoops := map[VertIndexT]*edgeLoopT{}
 	edgeLoops := map[*edgeLoopT]*edgeLoopT{}
 	newEdgeLoop := func(edge edgeT) {
-		el := &edgeLoopT{face: FaceT{edge[0], edge[1]}}
+		el := &edgeLoopT{edges: []edgeT{edge}}
 		vertsToEdgeLoops[edge[0]] = el
 		vertsToEdgeLoops[edge[1]] = el
 		edgeLoops[el] = el
 	}
 	addEdgeToLoop := func(edge edgeT, el *edgeLoopT) {
-		el.addVertIdx(edge[0])
-		el.addVertIdx(edge[1])
+		el.addEdge(edge)
 		vertsToEdgeLoops[edge[0]] = el
 		vertsToEdgeLoops[edge[1]] = el
 	}
 	mergeTwoEdgeLoopsWithEdge := func(edge edgeT, edgeLoop1, edgeLoop2 *edgeLoopT) {
 		addEdgeToLoop(edge, edgeLoop1)
-		for _, vertIdx := range edgeLoop2.face {
-			edgeLoop1.addVertIdx(vertIdx)
-			vertsToEdgeLoops[vertIdx] = edgeLoop1
+		for _, v := range edgeLoop2.edges {
+			edgeLoop1.addEdge(v)
+			vertsToEdgeLoops[v[0]] = edgeLoop1
+			vertsToEdgeLoops[v[1]] = edgeLoop1
 		}
 		delete(edgeLoops, edgeLoop2)
 	}
@@ -158,9 +203,10 @@ func (is *infoSetT) badEdgesToConnectedEdgeLoops() map[faceKeyT]FaceT {
 		}
 	}
 
-	result := make(map[faceKeyT]FaceT, len(edgeLoops))
+	result := make(map[faceKeyT][]edgeT, len(edgeLoops))
 	for _, edgeLoop := range edgeLoops {
-		result[edgeLoop.face.toKey()] = edgeLoop.face
+		face := makeFaceFromEdges(edgeLoop.edges)
+		result[face.toKey()] = edgeLoop.edges
 	}
 
 	return result

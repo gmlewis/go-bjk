@@ -51,7 +51,7 @@ func ObjStrToMesh(objData string) (*Mesh, error) {
 		case strings.HasPrefix(line, "vp "):
 		case strings.HasPrefix(line, "vt "):
 		case strings.HasPrefix(line, "v "):
-			parts := strings.Split(line, " ")
+			parts := strings.Fields(line)
 			if len(parts) < 4 {
 				return nil, fmt.Errorf("unable to parse Wavefront obj file line #%v: %v", i+1, line)
 			}
@@ -72,7 +72,7 @@ func ObjStrToMesh(objData string) (*Mesh, error) {
 				maxVertIdx = int(vertIdx)
 			}
 		case strings.HasPrefix(line, "f "):
-			parts := strings.Split(line, " ")
+			parts := strings.Fields(line)
 			if len(parts) < 4 {
 				return nil, fmt.Errorf("unable to parse Wavefront obj file line #%v: %v", i+1, line)
 			}
