@@ -54,7 +54,7 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 	if srcSideEVs[0].length > dstSideEVs[0].length {
 		// If all the verts of the shorter (dst) side are only used by this dstOtherEndFace, all
 		// the faces of this dst object can be deleted, leaving only the src object!
-		dstFaceToDeleteIdx, ok := fi.dst.faceStr2FaceIdx[dstOtherEndFace.toKey()]
+		dstFaceToDeleteIdx, ok := fi.dst.faceStrToFaceIdx[dstOtherEndFace.toKey()]
 		if !ok {
 			log.Fatalf("mergeExtrusion: unable to get dstFace to delete from %+v", dstOtherEndFace)
 		}
@@ -67,7 +67,7 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 
 	// If all the verts of the shorter (src) side are only used by this srcOtherEndFace, all
 	// the faces of this src object can be deleted, leaving only the dst object!
-	srcFaceToDeleteIdx, ok := fi.src.faceStr2FaceIdx[srcOtherEndFace.toKey()]
+	srcFaceToDeleteIdx, ok := fi.src.faceStrToFaceIdx[srcOtherEndFace.toKey()]
 	if !ok {
 		log.Fatalf("mergeExtrusion: unable to get srcFace to delete from %+v", srcOtherEndFace)
 	}

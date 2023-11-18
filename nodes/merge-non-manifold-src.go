@@ -7,8 +7,12 @@ import (
 // mergeNonManifoldSrc merges the non-manifold srcFaces mesh into the manifold dstFaces mesh,
 // creating a final manifold mesh (ideally, although it is possible that it is still non-manifold).
 func (fi *faceInfoT) mergeNonManifoldSrc() {
-	// first step - if all bad edges are owned by a set of faces with two edges each,
-	// chances are high that those faces should simply be deleted.
+	// If there are N bad edges and N bad faces, chances are good that these are simply open
+	// (unconnected) extrusions looking to join the dst mesh.
+	if len(fi.src.badEdges) == len(fi.src.badFaces) {
+		fi.connectOpenSrcExtrusionsToDst()
+		return
+	}
 
 	// srcFaceIndicesToEdges := reverseMapBadEdges(fi.src.badEdges)
 	// debugFaces := make([]FaceT, 0, len(srcFaceIndicesToEdges))
@@ -77,4 +81,87 @@ func (is *infoSetT) fixEdge2OverlapingFaces(edge edgeT, f0, f1, otherFaceIdx fac
 	// } else {
 	// 	log.Printf("fixEdge2OverlapingFaces(edge=%v): faces DIFFER!\nf0VertKey=%v\nf1VertKey=%v", edge, f0VertKey, f1VertKey)
 	// }
+}
+
+func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
+	edgeLoops := fi.src.badEdgesToConnectedEdgeLoops()
+	for faceStr, vertIndices := range edgeLoops {
+		if deleteFaceIdx, ok := fi.dst.faceStrToFaceIdx[faceStr]; ok {
+			fi.dst.facesTargetedForDeletion[deleteFaceIdx] = true
+			continue
+		}
+
+		// Using this imaginary face "signature", find a dst face that shares one edge
+		// and has the inverse normal to this face, then cut it and modify its neighbors.
+		var matchingEdges []edgeT
+		for i, vertIdx := range vertIndices {
+			nextIdx := vertIndices[(i+1)%len(vertIndices)]
+			edge := makeEdge(vertIdx, nextIdx)
+
+		}
+
+		log.Printf("WARNING: connectOpenSrcExtrusionsToDst: dst face not found: %v", faceStr)
+	}
+}
+
+type edgeLoopT struct {
+	face FaceT
+}
+
+func (el *edgeLoopT) addVertIdx(vIdx VertIndexT) {
+	for _, vertIdx := range el.face {
+		if vertIdx == vIdx {
+			return
+		}
+	}
+	el.face = append(el.face, vIdx)
+}
+
+func (is *infoSetT) badEdgesToConnectedEdgeLoops() map[faceKeyT]FaceT {
+	vertsToEdgeLoops := map[VertIndexT]*edgeLoopT{}
+	edgeLoops := map[*edgeLoopT]*edgeLoopT{}
+	newEdgeLoop := func(edge edgeT) {
+		el := &edgeLoopT{face: FaceT{edge[0], edge[1]}}
+		vertsToEdgeLoops[edge[0]] = el
+		vertsToEdgeLoops[edge[1]] = el
+		edgeLoops[el] = el
+	}
+	addEdgeToLoop := func(edge edgeT, el *edgeLoopT) {
+		el.addVertIdx(edge[0])
+		el.addVertIdx(edge[1])
+		vertsToEdgeLoops[edge[0]] = el
+		vertsToEdgeLoops[edge[1]] = el
+	}
+	mergeTwoEdgeLoopsWithEdge := func(edge edgeT, edgeLoop1, edgeLoop2 *edgeLoopT) {
+		addEdgeToLoop(edge, edgeLoop1)
+		for _, vertIdx := range edgeLoop2.face {
+			edgeLoop1.addVertIdx(vertIdx)
+			vertsToEdgeLoops[vertIdx] = edgeLoop1
+		}
+		delete(edgeLoops, edgeLoop2)
+	}
+
+	for edge := range is.badEdges {
+		edgeLoop1, ok1 := vertsToEdgeLoops[edge[0]]
+		edgeLoop2, ok2 := vertsToEdgeLoops[edge[1]]
+		switch {
+		case ok1 && ok2 && edgeLoop1 == edgeLoop2:
+			addEdgeToLoop(edge, edgeLoop1)
+		case ok1 && ok2: // && edgeLoop1!=edgeLoop2: - delete the one edge loop and merge into the other
+			mergeTwoEdgeLoopsWithEdge(edge, edgeLoop1, edgeLoop2)
+		case ok1:
+			addEdgeToLoop(edge, edgeLoop1)
+		case ok2:
+			addEdgeToLoop(edge, edgeLoop2)
+		default:
+			newEdgeLoop(edge)
+		}
+	}
+
+	result := make(map[faceKeyT]FaceT, len(edgeLoops))
+	for _, edgeLoop := range edgeLoops {
+		result[edgeLoop.face.toKey()] = edgeLoop.face
+	}
+
+	return result
 }

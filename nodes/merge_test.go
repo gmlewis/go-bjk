@@ -35,9 +35,9 @@ func TestMerge(t *testing.T) {
 	defer os.RemoveAll(tempDir) // clean up
 
 	for _, prefix := range testCasePrefixes {
-		// if prefix != "golden-bifilar-electromagnet-053" {
-		// 	continue // debug only
-		// }
+		if prefix != "golden-bifilar-electromagnet-139" {
+			continue // debug only
+		}
 
 		t.Run(prefix, func(t *testing.T) {
 			{ // These blocks make it easy to disable one or the other with a leading "if false".

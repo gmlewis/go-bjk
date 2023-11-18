@@ -22,8 +22,8 @@ type vertToFacesMapT map[VertIndexT][]faceIndexT
 // face2EdgesMapT represents a mapping from a face index to edges.
 type face2EdgesMapT map[faceIndexT][]edgeT
 
-// faceStr2FaceIdxMapT maps a face "signature" (e.g. "0 1 2 3") to a face index.
-type faceStr2FaceIdxMapT map[faceKeyT]faceIndexT
+// faceStrToFaceIdxMapT maps a face "signature" (e.g. "0 1 2 3") to a face index.
+type faceStrToFaceIdxMapT map[faceKeyT]faceIndexT
 
 // sharedVertsMapT represents a collection of shared vertices and maps them back to src ([0]) and dst([1]) face indices.
 type sharedVertsMapT map[VertIndexT][2][]faceIndexT
@@ -42,14 +42,14 @@ type faceInfoT struct {
 }
 
 type infoSetT struct {
-	faceInfo        *faceInfoT
-	faces           []FaceT
-	faceNormals     []Vec3
-	vertToFaces     vertToFacesMapT
-	edgeToFaces     edgeToFacesMapT
-	faceStr2FaceIdx faceStr2FaceIdxMapT
-	badEdges        edgeToFacesMapT
-	badFaces        face2EdgesMapT
+	faceInfo         *faceInfoT
+	faces            []FaceT
+	faceNormals      []Vec3
+	vertToFaces      vertToFacesMapT
+	edgeToFaces      edgeToFacesMapT
+	faceStrToFaceIdx faceStrToFaceIdxMapT
+	badEdges         edgeToFacesMapT
+	badFaces         face2EdgesMapT
 
 	facesTargetedForDeletion map[faceIndexT]bool
 }
@@ -75,14 +75,14 @@ func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
 
 func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 	infoSet := &infoSetT{
-		faceInfo:        fi,
-		faces:           faces,
-		faceNormals:     make([]Vec3, 0, len(faces)),
-		vertToFaces:     vertToFacesMapT{}, // key=vertIdx, value=[]faceIdx
-		edgeToFaces:     edgeToFacesMapT{},
-		faceStr2FaceIdx: faceStr2FaceIdxMapT{},
-		badEdges:        edgeToFacesMapT{},
-		badFaces:        face2EdgesMapT{},
+		faceInfo:         fi,
+		faces:            faces,
+		faceNormals:      make([]Vec3, 0, len(faces)),
+		vertToFaces:      vertToFacesMapT{}, // key=vertIdx, value=[]faceIdx
+		edgeToFaces:      edgeToFacesMapT{},
+		faceStrToFaceIdx: faceStrToFaceIdxMapT{},
+		badEdges:         edgeToFacesMapT{},
+		badFaces:         face2EdgesMapT{},
 
 		facesTargetedForDeletion: map[faceIndexT]bool{},
 	}
@@ -90,7 +90,7 @@ func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 	for i, face := range faces {
 		faceIdx := faceIndexT(i)
 		infoSet.faceNormals = append(infoSet.faceNormals, fi.m.CalcFaceNormal(face))
-		infoSet.faceStr2FaceIdx[face.toKey()] = faceIdx
+		infoSet.faceStrToFaceIdx[face.toKey()] = faceIdx
 		for i, vertIdx := range face {
 			infoSet.vertToFaces[vertIdx] = append(infoSet.vertToFaces[vertIdx], faceIdx)
 			nextVertIdx := face[(i+1)%len(face)]
@@ -136,8 +136,8 @@ func (fi *faceInfoT) findSharedVEFs() (sharedVertsMapT, sharedEdgesMapT, sharedF
 	}
 
 	sharedFaces := sharedFacesMapT{}
-	for faceStr, dstFaceIdx := range fi.dst.faceStr2FaceIdx {
-		if srcFaceIdx, ok := fi.src.faceStr2FaceIdx[faceStr]; ok {
+	for faceStr, dstFaceIdx := range fi.dst.faceStrToFaceIdx {
+		if srcFaceIdx, ok := fi.src.faceStrToFaceIdx[faceStr]; ok {
 			sharedFaces[faceStr] = [2]faceIndexT{srcFaceIdx, dstFaceIdx}
 		}
 	}
