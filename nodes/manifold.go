@@ -64,17 +64,15 @@ func makeEdge(v1, v2 VertIndexT) edgeT {
 	return edgeT{v2, v1} // swap
 }
 
-func makeFaceFromEdges(edges []edgeT) FaceT {
-	face := make(FaceT, 0, len(edges))
-	for i, edge := range edges {
-		nextEdge := edges[(i+1)%len(edges)]
-		if edge[0] != nextEdge[0] && edge[0] != nextEdge[1] {
-			face = append(face, edge[0])
-		} else {
-			face = append(face, edge[1])
-		}
+func makeFaceKeyFromEdges(edges []edgeT) faceKeyT {
+	verts := map[VertIndexT]struct{}{}
+	for _, edge := range edges {
+		verts[edge[0]] = struct{}{}
+		verts[edge[1]] = struct{}{}
 	}
-	return face
+
+	face := FaceT(maps.Keys(verts))
+	return face.toKey()
 }
 
 // genFaceInfo calculates the face normals for every src and dst face
@@ -267,6 +265,44 @@ func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [
 func (is *infoSetT) edgeLength(edge edgeT) float64 {
 	m := is.faceInfo.m
 	return m.Verts[edge[0]].Sub(m.Verts[edge[1]]).Length()
+}
+
+// moveVerts creates new (or reuses old) vertices and returns the mapping from the
+// old face's vertIndexes to the new vertices, without modifying the face.
+func (is *infoSetT) moveVerts(face FaceT, move Vec3) map[VertIndexT]VertIndexT {
+	m := is.faceInfo.m
+
+	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(face))
+	for _, vertIdx := range face {
+		v := m.Verts[vertIdx].Add(move)
+		newVertIdx := m.AddVert(v)
+		vertsOldToNew[vertIdx] = newVertIdx
+	}
+
+	return vertsOldToNew
+}
+
+// moveVertsAlongEdges creates new (or reuses old) vertices and returns the mapping from the
+// old face's vertIndexes to the new vertices, without modifying the face. It moves the
+// vertices a given amount along each edge.
+func (is *infoSetT) moveVertsAlongEdges(faceIdx faceIndexT, amount float64) map[VertIndexT]VertIndexT {
+	m := is.faceInfo.m
+	face := is.faces[faceIdx]
+
+	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(face))
+	for i, vertIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		edge := makeEdge(vertIdx, nextIdx)
+
+		cev := is.connectedEdgeVectorFromVertOnFace(vertIdx, edge, faceIdx)
+		move := cev.toSubFrom.Normalized().MulScalar(amount)
+
+		v := m.Verts[vertIdx].Add(move)
+		newVertIdx := m.AddVert(v)
+		vertsOldToNew[vertIdx] = newVertIdx
+	}
+
+	return vertsOldToNew
 }
 
 // getFaceSideEdges returns a slice of edge vectors that are connected to (but not on) this face.

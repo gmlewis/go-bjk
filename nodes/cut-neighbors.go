@@ -5,6 +5,25 @@ import (
 	"slices"
 )
 
+func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, amount float64, edge edgeT) {
+	oldVertsToNewMap := is.moveVertsAlongEdges(baseFaceIdx, amount)
+	log.Printf("oldVertsToNewMap: %+v", oldVertsToNewMap)
+	affectedFaces := map[faceIndexT]bool{}
+
+	for vertIdx := range oldVertsToNewMap {
+		for _, faceIdx := range is.vertToFaces[vertIdx] {
+			if faceIdx == baseFaceIdx {
+				continue
+			}
+			affectedFaces[faceIdx] = true
+		}
+	}
+
+	log.Printf("affectedFaces: %+v", affectedFaces)
+
+	// TODO...
+}
+
 func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, move Vec3, edge edgeT, newCutFaceOKToAdd func(FaceT) bool) {
 	// log.Printf("BEFORE cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
 	baseFace := is.faces[baseFaceIdx]
@@ -66,19 +85,4 @@ func (is *infoSetT) cutNeighborsAndShortenFaceOnEdge(baseFaceIdx faceIndexT, mov
 	}
 
 	// log.Printf("AFTER cutNeighborsAndShortenFaceOnEdge(baseFaceIdx=%v, move=%v, edge=%v), #faces=%v\n%v", baseFaceIdx, move, edge, len(is.faces), is.faceInfo.m.dumpFaces(is.faces))
-}
-
-// moveVerts creates new (or reuses old) vertices and returns the mapping from the
-// old face's vertIndexes to the new vertices, without modifying the face.
-func (is *infoSetT) moveVerts(face FaceT, move Vec3) map[VertIndexT]VertIndexT {
-	m := is.faceInfo.m
-
-	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(face))
-	for _, vertIdx := range face {
-		v := m.Verts[vertIdx].Add(move)
-		newVertIdx := m.AddVert(v)
-		vertsOldToNew[vertIdx] = newVertIdx
-	}
-
-	return vertsOldToNew
 }

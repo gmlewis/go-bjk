@@ -140,7 +140,7 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 				}
 
 				// log.Printf("Found matching face: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
-				fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcE1EV.toSubFrom, edge, nil)
+				fi.dst.cutNeighborsAndShortenAlongEdges(dstFaceIdx, srcE1EV.length, edge)
 				return
 			}
 		}
@@ -205,8 +205,8 @@ func (is *infoSetT) badEdgesToConnectedEdgeLoops() map[faceKeyT][]edgeT {
 
 	result := make(map[faceKeyT][]edgeT, len(edgeLoops))
 	for _, edgeLoop := range edgeLoops {
-		face := makeFaceFromEdges(edgeLoop.edges)
-		result[face.toKey()] = edgeLoop.edges
+		key := makeFaceKeyFromEdges(edgeLoop.edges)
+		result[key] = edgeLoop.edges
 	}
 
 	return result

@@ -12,7 +12,7 @@ func TestBadEdgesToConnectedEdgeLoops(t *testing.T) {
 	tests := []struct {
 		name     string
 		badEdges []edgeT
-		want     []faceKeyT
+		want     []faceKeyT // sorted order
 	}{
 		{
 			name: "empty",
@@ -36,7 +36,7 @@ func TestBadEdgesToConnectedEdgeLoops(t *testing.T) {
 				badEdges: edgeToFacesMapT{},
 			}
 			for _, edge := range tt.badEdges {
-				is.badEdges[edge] = nil // value doesn't matter, key does.
+				is.badEdges[edge] = nil // testing just the key
 			}
 
 			gotMap := is.badEdgesToConnectedEdgeLoops()
@@ -45,6 +45,39 @@ func TestBadEdgesToConnectedEdgeLoops(t *testing.T) {
 
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("badEdgesToConnectedEdgeLoops mismatch (-want +got):\n%v", diff)
+			}
+		})
+	}
+}
+
+func TestMakeFaceFromEdges(t *testing.T) {
+	tests := []struct {
+		name  string
+		edges []edgeT
+		want  faceKeyT
+	}{
+		{
+			name: "empty",
+			want: "[]",
+		},
+		{
+			name: "one edge loop",
+			edges: []edgeT{
+				makeEdge(0, 1),
+				makeEdge(2, 3),
+				makeEdge(3, 0),
+				makeEdge(1, 2),
+			},
+			want: "[0 1 2 3]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := makeFaceKeyFromEdges(tt.edges)
+
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("makeFaceFromEdges mismatch (-want +got):\n%v", diff)
 			}
 		})
 	}
