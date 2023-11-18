@@ -17,7 +17,7 @@ import (
 var (
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
 	golden  = flag.Bool("golden", false, "Generate golden test files")
-	objOut  = flag.String("obj", "extrude-helix.obj", "Output filename for Wavefront obj file")
+	objOut  = flag.String("obj", "make-elbows.obj", "Output filename for Wavefront obj file")
 	outBJK  = flag.String("o", "make-elbows.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut  = flag.String("stl", "make-elbows.stl", "Output filename for binary STL file")
