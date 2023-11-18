@@ -51,23 +51,52 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 
 	// all edgeVectors for src are identical and all EVs for dst are also identical. Find out which is longer and truncate it.
 	if srcSideEVs[0].length > dstSideEVs[0].length {
-		fi.truncateExtrusion(fi.src, srcSideEVs, dstSideEVs)
-		fi.src.facesTargetedForDeletion[srcFaceIdx] = true
+		// If all the verts of the shorter (dst) side are only used by this dstOtherEndFace, all
+		// the faces of this dst object can be deleted, leaving only the src object!
+		// if fi.dst.vertsOnlyUsedByOneFace(dstOtherEndFace) {
+		// 	log.Printf("deleting unused dst object with all its faces!")
+		// }
+		//
+		// fi.truncateExtrusion(fi.src, srcSideEVs, dstSideEVs)
+		// fi.src.facesTargetedForDeletion[srcFaceIdx] = true
+		// dstFaceToDeleteIdx, ok := fi.dst.faceStr2FaceIdx[dstOtherEndFace.toKey()]
+		// if !ok {
+		// 	log.Fatalf("mergeExtrusion: unable to get dstFace to delete from %+v", dstOtherEndFace)
+		// }
+		// fi.dst.facesTargetedForDeletion[dstFaceToDeleteIdx] = true
+
 		dstFaceToDeleteIdx, ok := fi.dst.faceStr2FaceIdx[dstOtherEndFace.toKey()]
 		if !ok {
 			log.Fatalf("mergeExtrusion: unable to get dstFace to delete from %+v", dstOtherEndFace)
 		}
 		fi.dst.facesTargetedForDeletion[dstFaceToDeleteIdx] = true
+		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
+		fi.dst.deleteSideFaces(dstSideEVs)
+
 		return
 	}
 
-	fi.truncateExtrusion(fi.dst, dstSideEVs, srcSideEVs)
-	fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
+	// If all the verts of the shorter (src) side are only used by this srcOtherEndFace, all
+	// the faces of this src object can be deleted, leaving only the dst object!
+	// if fi.src.vertsOnlyUsedByOneFace(srcOtherEndFace) {
+	// 	log.Printf("deleting unused src object with all its faces!")
+	// }
+
+	// fi.truncateExtrusion(fi.dst, dstSideEVs, srcSideEVs)
+	// fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
+	// srcFaceToDeleteIdx, ok := fi.src.faceStr2FaceIdx[srcOtherEndFace.toKey()]
+	// if !ok {
+	// 	log.Fatalf("mergeExtrusion: unable to get srcFace to delete from %+v", srcOtherEndFace)
+	// }
+	// fi.src.facesTargetedForDeletion[srcFaceToDeleteIdx] = true
+
 	srcFaceToDeleteIdx, ok := fi.src.faceStr2FaceIdx[srcOtherEndFace.toKey()]
 	if !ok {
 		log.Fatalf("mergeExtrusion: unable to get srcFace to delete from %+v", srcOtherEndFace)
 	}
 	fi.src.facesTargetedForDeletion[srcFaceToDeleteIdx] = true
+	fi.src.facesTargetedForDeletion[srcFaceIdx] = true
+	fi.src.deleteSideFaces(srcSideEVs)
 }
 
 func (fi *faceInfoT) truncateExtrusion(is *infoSetT, evsToTruncate, otherEVs []edgeVectorT) {
@@ -79,6 +108,15 @@ func (fi *faceInfoT) truncateExtrusion(is *infoSetT, evsToTruncate, otherEVs []e
 		for _, faceIdx := range is.edgeToFaces[ev.edge] {
 			// log.Printf("truncateExtrusion: shortening edge %v on faceIdx=%v from vertIdx=%v to vertIdx=%v", ev.edge, faceIdx, ev.fromVertIdx, otherEV.toVertIdx)
 			is.replaceFaceVertIdx(faceIdx, ev.fromVertIdx, otherEV.toVertIdx)
+		}
+	}
+}
+
+func (is *infoSetT) deleteSideFaces(evs []edgeVectorT) {
+	for _, ev := range evs {
+		for _, faceIdx := range is.edgeToFaces[ev.edge] {
+			// log.Printf("deleteSideFaces: deleting faceIdx=%v", faceIdx)
+			is.facesTargetedForDeletion[faceIdx] = true
 		}
 	}
 }

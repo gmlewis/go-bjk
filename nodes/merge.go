@@ -103,20 +103,20 @@ func (dst *Mesh) mergeWithFaces(src *Mesh) {
 	dst.manifoldMerge(faces, srcFaces)
 	// dst.Faces = append(faces, srcFaces...) // ONLY FOR DEBUGGING WHEN NOT RUNNING MANIFOLD MERGE!!!
 
-	log.Printf("\n\nAFTER MERGE:\nfaces:\n%v", dst.dumpFaces(dst.Faces))
+	// log.Printf("\n\nAFTER MERGE:\nfaces:\n%v", dst.dumpFaces(dst.Faces))
 }
 
 func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
-	log.Printf("\n\nmanifoldMerge: srcFaces=%+v\n%v", srcFaces, dst.dumpFaces(srcFaces))
-	log.Printf("manifoldMerge: dstFaces=%+v\n%v", dstFaces, dst.dumpFaces(dstFaces))
+	// log.Printf("\n\nmanifoldMerge: srcFaces=%+v\n%v", srcFaces, dst.dumpFaces(srcFaces))
+	// log.Printf("manifoldMerge: dstFaces=%+v\n%v", dstFaces, dst.dumpFaces(dstFaces))
 
 	fi := dst.genFaceInfo(dstFaces, srcFaces)
-	log.Printf("manifoldMerge: src.badEdges=%v=%+v", len(fi.src.badEdges), fi.src.badEdges)
-	log.Printf("manifoldMerge: dst.badEdges=%v=%+v", len(fi.dst.badEdges), fi.dst.badEdges)
-	fi.m.Faces = fi.src.faces
-	fi.m.WriteObj(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-src.obj", len(fi.src.badEdges), len(fi.dst.badEdges)))
-	fi.m.Faces = fi.dst.faces
-	fi.m.WriteObj(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-dst.obj", len(fi.src.badEdges), len(fi.dst.badEdges)))
+	// log.Printf("manifoldMerge: src.badEdges=%v=%+v", len(fi.src.badEdges), fi.src.badEdges)
+	// log.Printf("manifoldMerge: dst.badEdges=%v=%+v", len(fi.dst.badEdges), fi.dst.badEdges)
+	// fi.m.Faces = fi.src.faces
+	// fi.m.WriteObj(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-src.obj", len(fi.src.badEdges), len(fi.dst.badEdges)))
+	// fi.m.Faces = fi.dst.faces
+	// fi.m.WriteObj(fmt.Sprintf("before-merge-badSrcEdges-%v-badDstEdges-%v-dst.obj", len(fi.src.badEdges), len(fi.dst.badEdges)))
 
 	switch {
 	case len(fi.src.badEdges) == 0 && len(fi.dst.badEdges) == 0:
