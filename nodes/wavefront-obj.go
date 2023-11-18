@@ -1,18 +1,41 @@
 package nodes
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/gmlewis/go-bjk/ast"
 )
+
+// ToObj "renders" a BJK design to a Wavefront obj file.
+// It always swaps Y and Z because Blackjack is always Y-up and Blender is always Z-up.
+func (c *Client) ToObj(design *ast.BJK, filename string) error {
+	if design == nil || design.Graph == nil {
+		return errors.New("design missing graph")
+	}
+
+	if c.cachedMesh == nil {
+		mesh, err := c.Eval(design)
+		if err != nil {
+			return err
+		}
+		c.cachedMesh = mesh
+	}
+
+	return c.cachedMesh.WriteObj(filename)
+}
 
 // ObjStrToMesh converts a simple Wavefront obj file
 // (passed as a string) to a Mesh. Note that it only
 // supports the bare minimum verts and faces.
 //
 // See: https://en.wikipedia.org/wiki/Wavefront_.obj_file
+//
+// It always swaps Y and Z because Blackjack is always Y-up and Blender is always Z-up.
 func ObjStrToMesh(objData string) (*Mesh, error) {
 	var maxVertIdx int
 	m := NewMesh()
@@ -41,7 +64,7 @@ func ObjStrToMesh(objData string) (*Mesh, error) {
 			if err != nil {
 				return nil, err
 			}
-			vertIdx := m.AddVert(Vec3{X: x, Y: y, Z: z})
+			vertIdx := m.AddVert(Vec3{X: x, Y: z, Z: y}) // Since Blackjack is a Y-up system and Blender is Z-up, swap Y<=>Z.
 			if int(vertIdx) > maxVertIdx {
 				maxVertIdx = int(vertIdx)
 			}
@@ -73,6 +96,7 @@ func ObjStrToMesh(objData string) (*Mesh, error) {
 }
 
 // WriteObj writes a mesh to a simple Wavefront obj file, preserving only vertices and faces.
+// It always swaps Y and Z because Blackjack is always Y-up and Blender is always Z-up.
 func (m *Mesh) WriteObj(filename string) error {
 	w, err := os.Create(filename)
 	if err != nil {
@@ -80,7 +104,8 @@ func (m *Mesh) WriteObj(filename string) error {
 	}
 
 	for _, vert := range m.Verts {
-		fmt.Fprintf(w, "v %0.5f %0.5f %0.5f\n", vert.X, vert.Y, vert.Z)
+		// Since Blackjack is a Y-up system and Blender is Z-up, swap Y<=>Z.
+		fmt.Fprintf(w, "v %0.5f %0.5f %0.5f\n", vert.X, vert.Z, vert.Y)
 	}
 
 	// Since the face order doesn't matter, sort them to make diffs easier.

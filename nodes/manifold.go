@@ -167,8 +167,8 @@ func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge e
 	for i, pIdx := range face {
 		nextIdx := face[(i+1)%len(face)]
 		if pIdx == vertIdx && nextIdx != notVertIdx {
-			// log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, nextIdx=%v, returning (%v).Sub(%v)",
-			//   vertIdx, edge, faceIdx, i, pIdx, nextIdx, m.Verts[nextIdx], m.Verts[vertIdx])
+			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, nextIdx=%v, returning (%v).Sub(%v)",
+				vertIdx, edge, faceIdx, i, pIdx, nextIdx, m.Verts[nextIdx], m.Verts[vertIdx])
 			toSubFrom := m.Verts[nextIdx].Sub(m.Verts[vertIdx])
 			return edgeVectorT{
 				edge:        makeEdge(vertIdx, nextIdx),
@@ -180,8 +180,8 @@ func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge e
 		}
 		if pIdx == vertIdx {
 			lastVertIdx := face[(i-1+len(face))%len(face)]
-			// log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, lastVertIdx=%v, returning (%v).Sub(%v)",
-			//   vertIdx, edge, faceIdx, i, pIdx, lastVertIdx, m.Verts[lastVertIdx], m.Verts[vertIdx])
+			log.Printf("connectedEdgeVectorFromVertOnFace(vertIdx=%v, edge=%v, faceIdx=%v): i=%v, pIdx=%v, lastVertIdx=%v, returning (%v).Sub(%v)",
+				vertIdx, edge, faceIdx, i, pIdx, lastVertIdx, m.Verts[lastVertIdx], m.Verts[vertIdx])
 			toSubFrom := m.Verts[lastVertIdx].Sub(m.Verts[vertIdx])
 			return edgeVectorT{
 				edge:        makeEdge(vertIdx, lastVertIdx),

@@ -19,7 +19,7 @@ func TestTesselateFace(t *testing.T) {
 		})
 
 	out := &fakeSTLWriter{}
-	if err := tesselateFace(out, mesh, 0); err != nil {
+	if err := tesselateFace(out, mesh, 0, false); err != nil {
 		t.Fatal(err)
 	}
 

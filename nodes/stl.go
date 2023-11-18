@@ -14,28 +14,31 @@ import (
 )
 
 // ToSTL "renders" a BJK design to a binary STL file.
-func (c *Client) ToSTL(design *ast.BJK, filename string) error {
+func (c *Client) ToSTL(design *ast.BJK, filename string, swapYZ bool) error {
 	if design == nil || design.Graph == nil {
 		return errors.New("design missing graph")
 	}
 
-	mesh, err := c.Eval(design)
-	if err != nil {
-		return err
+	if c.cachedMesh == nil {
+		mesh, err := c.Eval(design)
+		if err != nil {
+			return err
+		}
+		c.cachedMesh = mesh
 	}
 
-	return mesh.WriteSTL(filename)
+	return c.cachedMesh.WriteSTL(filename, swapYZ)
 }
 
 // WriteSTL writes the mesh to a new STL file.
-func (m *Mesh) WriteSTL(filename string) error {
+func (m *Mesh) WriteSTL(filename string, swapYZ bool) error {
 	out, err := stl.New(filename)
 	if err != nil {
 		return err
 	}
 
 	for faceIndex := range m.Faces {
-		if err := tesselateFace(out, m, faceIndex); err != nil {
+		if err := tesselateFace(out, m, faceIndex, swapYZ); err != nil {
 			return err
 		}
 	}
@@ -43,7 +46,7 @@ func (m *Mesh) WriteSTL(filename string) error {
 }
 
 // STLToMesh reads an STL file and returns a new (triangulated) Mesh.
-func STLToMesh(filename string) (*Mesh, error) {
+func STLToMesh(filename string, swapYZ bool) (*Mesh, error) {
 	mesh, err := fauxgl.LoadSTL(filename)
 	if err != nil {
 		return nil, err
@@ -52,6 +55,11 @@ func STLToMesh(filename string) (*Mesh, error) {
 	m := NewMesh()
 	for _, tri := range mesh.Triangles {
 		v1, v2, v3 := tri.V1.Position, tri.V2.Position, tri.V3.Position
+		if swapYZ {
+			v1.Y, v1.Z = v1.Z, v1.Y
+			v2.Y, v2.Z = v2.Z, v2.Y
+			v3.Y, v3.Z = v3.Z, v3.Y
+		}
 		verts := []Vec3{
 			Vec3{X: v1.X, Y: v1.Y, Z: v1.Z},
 			Vec3{X: v2.X, Y: v2.Y, Z: v2.Z},
@@ -70,7 +78,7 @@ func (v Vec3) tof32arr() [3]float32 {
 	return [3]float32{float32(v.X), float32(v.Y), float32(v.Z)}
 }
 
-func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int) error {
+func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int, swapYZ bool) error {
 	face := mesh.Faces[faceIndex]
 	if len(face) < 3 {
 		return fmt.Errorf("face <3 verts: %+v", face)
@@ -78,6 +86,9 @@ func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int) error {
 
 	faceNormal := mesh.CalcFaceNormal(mesh.Faces[faceIndex])
 	n := faceNormal.tof32arr()
+	if swapYZ {
+		n[1], n[2] = n[2], n[1]
+	}
 
 	// Note that this function is sent convex and concave polygons.
 	// This simple algorithm does not always choose the face with the smallest
@@ -102,6 +113,11 @@ func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int) error {
 	}
 
 	for _, t := range faceTris {
+		if swapYZ {
+			t.V1[1], t.V1[2] = t.V1[2], t.V1[1]
+			t.V2[1], t.V2[2] = t.V2[2], t.V2[1]
+			t.V3[1], t.V3[2] = t.V3[2], t.V3[1]
+		}
 		if err := out.Write(t); err != nil {
 			return err
 		}

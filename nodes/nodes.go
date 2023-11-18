@@ -22,6 +22,10 @@ type Client struct {
 	debug bool
 	ls    *lua.LState
 
+	// cached Eval ensures that a design is only evaluated once even if it
+	// is written ToSTL, ToObj, or any other formats.
+	cachedMesh *Mesh
+
 	// used during Eval:
 	extParamsLookup map[string]*ast.ValueEnum
 }

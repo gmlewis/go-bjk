@@ -17,9 +17,11 @@ import (
 var (
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
 	golden  = flag.Bool("golden", false, "Generate golden test files")
+	objOut  = flag.String("obj", "extrude-helix.obj", "Output filename for Wavefront obj file")
 	outBJK  = flag.String("o", "make-box.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut  = flag.String("stl", "make-box.stl", "Output filename for binary STL file")
+	swapYZ  = flag.Bool("swapyz", false, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
 )
 
 func main() {
@@ -49,8 +51,12 @@ func main() {
 		must(os.WriteFile(*outBJK, []byte(design.String()+"\n"), 0644))
 	}
 
+	if *objOut != "" {
+		must(c.ToObj(design, *objOut))
+	}
+
 	if *stlOut != "" {
-		must(c.ToSTL(design, *stlOut))
+		must(c.ToSTL(design, *stlOut, *swapYZ))
 	}
 
 	log.Printf("Done.")
