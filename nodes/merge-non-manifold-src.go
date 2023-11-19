@@ -123,12 +123,12 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 				continue
 			}
 
-			for _, dstFaceIdx := range dstFaceIndices {
-				// log.Printf("Looking at dstFaceIdx: %v: %+v", dstFaceIdx, fi.dst.faces[dstFaceIdx])
+			for _, baseDstFaceIdx := range dstFaceIndices {
+				log.Printf("Looking at baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
 
-				dstE1EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[0], edge, dstFaceIdx)
+				dstE1EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[0], edge, baseDstFaceIdx)
 				dstE1UV := dstE1EV.toSubFrom.Normalized()
-				dstE2EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[1], edge, dstFaceIdx)
+				dstE2EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[1], edge, baseDstFaceIdx)
 				dstE2UV := dstE2EV.toSubFrom.Normalized()
 				// log.Printf("dstE1EV=%+v", dstE1EV)
 				// log.Printf("dstE1UV=%+v", dstE1UV)
@@ -136,17 +136,18 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 				// log.Printf("dstE2UV=%+v", dstE2UV)
 
 				if srcE1UV.AboutEq(dstE1UV) && srcE2UV.AboutEq(dstE2UV) {
-					// log.Printf("Found matching face: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+					// log.Printf("Found matching face: %v", fi.m.dumpFace(baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx]))
 					// Note that the matching face is not the dstBaseFaceIdx! We want the other face on this edge.
 					continue
 				}
 
-				fi.dst.cutNeighborsAndShortenAlongEdges(dstFaceIdx, srcE1EV, srcE2EV)
-				return
+				// log.Printf("Cutting neighbors of baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
+				fi.dst.cutNeighborsAndShortenAlongEdges(baseDstFaceIdx, srcE1EV, srcE2EV)
+				break
 			}
 		}
 
-		log.Printf("WARNING: connectOpenSrcExtrusionsToDst: dst face not found: %v", faceStr)
+		// log.Printf("WARNING: connectOpenSrcExtrusionsToDst: dst face not found: %v", faceStr)
 	}
 }
 
