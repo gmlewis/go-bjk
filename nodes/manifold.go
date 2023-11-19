@@ -310,6 +310,7 @@ func (is *infoSetT) moveVertsAlongEdges(baseFaceIdx faceIndexT, amount float64) 
 
 		v := m.Verts[vertIdx].Add(move)
 		newVertIdx := m.AddVert(v)
+		// log.Printf("moveVertsAlongEdges: creating new vert %v at %v", newVertIdx, v.toKey())
 		vertsOldToNew[vertIdx] = newVertIdx
 		// log.Printf("moveVertsAlongEdges: cev=%v, uv=%v, move=%v, oldVert[%v]=%v, newVert[%v]=%v",
 		//   cev, uv, move, vertIdx, m.Verts[vertIdx], newVertIdx, m.Verts[newVertIdx])

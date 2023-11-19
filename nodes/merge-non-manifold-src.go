@@ -124,7 +124,7 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 			}
 
 			for _, baseDstFaceIdx := range dstFaceIndices {
-				log.Printf("Looking at baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
+				// log.Printf("Looking at baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
 
 				dstE1EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[0], edge, baseDstFaceIdx)
 				dstE1UV := dstE1EV.toSubFrom.Normalized()

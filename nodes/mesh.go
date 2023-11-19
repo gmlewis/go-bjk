@@ -10,6 +10,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+const (
+	vertSnappingResolution = "%0.3f %0.3f %0.3f"
+)
+
 // Mesh represents a mesh of points, edges, and faces.
 type Mesh struct {
 	// Do not manually add to Verts. Use AddVert instead.
@@ -48,6 +52,8 @@ type vertKeyT string
 
 // toKey generates a vertex vertKeyT (or "signature") which is a string representation of the vertex.
 // Note that "positive zero" and "negative zero" map to different strings, so convert negative zeros to positive zeros.
+// This essentially "snaps" vertices together that are within the "vertSnappingResolution".
+// Note that since these keys are used in maps, they hash better without the surrounding curly braces {} or brackets [].
 func (v Vec3) toKey() vertKeyT {
 	if AboutEq(v.X, 0) {
 		v.X = 0
@@ -58,7 +64,7 @@ func (v Vec3) toKey() vertKeyT {
 	if AboutEq(v.Z, 0) {
 		v.Z = 0
 	}
-	return vertKeyT(fmt.Sprintf("%0.5f %0.5f %0.5f", v.X, v.Y, v.Z)) // better hashing without surrounding {}
+	return vertKeyT(fmt.Sprintf(vertSnappingResolution, v.X, v.Y, v.Z))
 }
 
 // faceKeyT represents a face key (or "signature") which uniquely identifies a face consisting of the same verts.

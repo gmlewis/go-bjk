@@ -27,7 +27,7 @@ func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, e1E
 	}
 
 	for faceIdx := range shortenedFaces {
-		log.Printf("cutNeighborsAndShortenAlongEdges: cutting face %v", faceIdx)
+		// log.Printf("cutNeighborsAndShortenAlongEdges: cutting face %v", faceIdx)
 		is.moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx, oldVertsToNewMap, edge)
 	}
 }
