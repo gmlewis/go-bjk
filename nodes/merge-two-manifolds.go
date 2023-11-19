@@ -119,7 +119,6 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 			return
 		}
 
-		log.Printf("TODO - FIX THIS")
 		fi.src.cutNeighborsAndShortenFaceOnEdge(srcFaceToDelete, dstShortEdgeVector, edge, nil)
 		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
 		return

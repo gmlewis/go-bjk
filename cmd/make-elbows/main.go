@@ -21,7 +21,7 @@ var (
 	outBJK  = flag.String("o", "make-elbows.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut  = flag.String("stl", "make-elbows.stl", "Output filename for binary STL file")
-	swapYZ  = flag.Bool("swapyz", false, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
+	swapYZ  = flag.Bool("swapyz", true, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
 )
 
 func main() {

@@ -30,7 +30,7 @@ var (
 	outBJK    = flag.String("o", "bifilar-electromagnet.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir   = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	stlOut    = flag.String("stl", "bifilar-electromagnet.stl", "Output filename for binary STL file")
-	swapYZ    = flag.Bool("swapyz", false, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
+	swapYZ    = flag.Bool("swapyz", true, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
 	thickness = flag.Float64("th", 2.0, "Thickness of outer enclosing connecting wires in millimeters")
 	vertTurns = flag.Float64("vt", 11.0, "Vertical turns of wire in electromagnet")
 	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")

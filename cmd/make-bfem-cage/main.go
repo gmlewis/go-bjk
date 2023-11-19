@@ -22,7 +22,7 @@ var (
 	repoDir  = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	segments = flag.Int("ns", 36, "Number of segments")
 	stlOut   = flag.String("stl", "make-bfem-cage.stl", "Output filename for binary STL file")
-	swapYZ   = flag.Bool("swapyz", false, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
+	swapYZ   = flag.Bool("swapyz", true, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
 )
 
 func main() {
