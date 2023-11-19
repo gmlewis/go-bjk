@@ -35,7 +35,7 @@ func TestMerge(t *testing.T) {
 	defer os.RemoveAll(tempDir) // clean up
 
 	for _, prefix := range testCasePrefixes {
-		if prefix != "golden-cut-neighbors" {
+		if prefix != "golden-3-edge-cut" {
 			continue // debug only
 		}
 
@@ -101,10 +101,10 @@ func compareMeshes(t *testing.T, name string, got, want *Mesh) {
 	t.Helper()
 
 	if len(got.uniqueVerts) != len(want.uniqueVerts) {
-		t.Fatalf("%v: got %v uniqueVerts, want %v", name, len(got.uniqueVerts), len(want.uniqueVerts))
+		t.Errorf("%v: got %v uniqueVerts, want %v", name, len(got.uniqueVerts), len(want.uniqueVerts))
 	}
 
 	if len(got.Faces) != len(want.Faces) {
-		t.Fatalf("%v: got %v faces, want %v", name, len(got.Faces), len(want.Faces))
+		t.Errorf("%v: got %v faces, want %v", name, len(got.Faces), len(want.Faces))
 	}
 }
