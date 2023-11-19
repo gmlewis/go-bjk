@@ -43,20 +43,32 @@ func TestMerge(t *testing.T) {
 			{ // These blocks make it easy to disable one or the other with a leading "if false".
 				src := loadObj(t, prefix+"-src.obj")
 				dst := loadObj(t, prefix+"-dst.obj")
-				log.Printf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
-				t.Logf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
+				// log.Printf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
+				// t.Logf("merging src '%v' into dst '%v'", prefix+"-src.obj", prefix+"-dst.obj")
 				dst.Merge(src)
-				want := loadObj(t, prefix+"-result.obj")
+				want, err := maybeLoadObj(t, prefix+"-result.obj")
+				if err != nil {
+					t.Error(err)
+					log.Printf("writing %v-got-result.obj", prefix)
+					dst.WriteObj(prefix + "-got-result.obj")
+					return
+				}
 				compareMeshes(t, prefix+"-result.obj", dst, want)
 			}
 
 			{
 				src := loadObj(t, prefix+"-src.obj")
 				dst := loadObj(t, prefix+"-dst.obj")
-				log.Printf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
-				t.Logf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
+				// log.Printf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
+				// t.Logf("merging dst '%v' into src '%v'", prefix+"-dst.obj", prefix+"-src.obj")
 				src.Merge(dst)
-				want := loadObj(t, prefix+"-swapped-result.obj")
+				want, err := maybeLoadObj(t, prefix+"-swapped-result.obj")
+				if err != nil {
+					t.Error(err)
+					log.Printf("writing %v-got-swapped-result.obj", prefix)
+					src.WriteObj(prefix + "-got-swapped-result.obj")
+					return
+				}
 				compareMeshes(t, prefix+"-swapped-result.obj", src, want)
 			}
 		})
@@ -65,16 +77,24 @@ func TestMerge(t *testing.T) {
 
 func loadObj(t *testing.T, filename string) *Mesh {
 	t.Helper()
-	buf, err := goldenObjs.ReadFile(filepath.Join("testdata", filename))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m, err := ObjStrToMesh(string(buf))
+	m, err := maybeLoadObj(t, filename)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return m
+}
+
+func maybeLoadObj(t *testing.T, filename string) (*Mesh, error) {
+	buf, err := goldenObjs.ReadFile(filepath.Join("testdata", filename))
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := ObjStrToMesh(string(buf))
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func compareMeshes(t *testing.T, name string, got, want *Mesh) {

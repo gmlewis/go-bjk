@@ -135,12 +135,13 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 				// log.Printf("dstE2EV=%+v", dstE2EV)
 				// log.Printf("dstE2UV=%+v", dstE2UV)
 
-				if !srcE1UV.AboutEq(dstE1UV) || !srcE2UV.AboutEq(dstE2UV) {
+				if srcE1UV.AboutEq(dstE1UV) && srcE2UV.AboutEq(dstE2UV) {
+					// log.Printf("Found matching face: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+					// Note that the matching face is not the dstBaseFaceIdx! We want the other face on this edge.
 					continue
 				}
 
-				// log.Printf("Found matching face: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
-				fi.dst.cutNeighborsAndShortenAlongEdges(dstFaceIdx, srcE1EV.length, edge)
+				fi.dst.cutNeighborsAndShortenAlongEdges(dstFaceIdx, srcE1EV, srcE2EV)
 				return
 			}
 		}

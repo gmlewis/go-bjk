@@ -284,22 +284,35 @@ func (is *infoSetT) moveVerts(face FaceT, move Vec3) map[VertIndexT]VertIndexT {
 
 // moveVertsAlongEdges creates new (or reuses old) vertices and returns the mapping from the
 // old face's vertIndexes to the new vertices, without modifying the face. It moves the
-// vertices a given amount along each edge.
-func (is *infoSetT) moveVertsAlongEdges(faceIdx faceIndexT, amount float64) map[VertIndexT]VertIndexT {
+// vertices a given amount along each _connected_ edge (not along the baseFaceIdx edge).
+func (is *infoSetT) moveVertsAlongEdges(baseFaceIdx faceIndexT, amount float64) map[VertIndexT]VertIndexT {
 	m := is.faceInfo.m
-	face := is.faces[faceIdx]
+	baseFace := is.faces[baseFaceIdx]
+	// log.Printf("moveVertsAlongEdges: amount=%v, baseFace=%v", amount, is.faceInfo.m.dumpFace(baseFaceIdx, baseFace))
 
-	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(face))
-	for i, vertIdx := range face {
-		nextIdx := face[(i+1)%len(face)]
+	vertsOldToNew := make(map[VertIndexT]VertIndexT, len(baseFace))
+	for i, vertIdx := range baseFace {
+		nextIdx := baseFace[(i+1)%len(baseFace)]
 		edge := makeEdge(vertIdx, nextIdx)
 
-		cev := is.connectedEdgeVectorFromVertOnFace(vertIdx, edge, faceIdx)
-		move := cev.toSubFrom.Normalized().MulScalar(amount)
+		faceIndices, ok := is.edgeToFaces[edge]
+		if !ok || len(faceIndices) != 2 {
+			log.Fatalf("moveVertsAlongEdges: programming error: %v faces on edge %v", len(faceIndices), edge)
+		}
+		otherFaceIdx := faceIndices[0]
+		if otherFaceIdx == baseFaceIdx {
+			otherFaceIdx = faceIndices[1]
+		}
+
+		cev := is.connectedEdgeVectorFromVertOnFace(vertIdx, edge, otherFaceIdx)
+		uv := cev.toSubFrom.Normalized()
+		move := uv.MulScalar(amount)
 
 		v := m.Verts[vertIdx].Add(move)
 		newVertIdx := m.AddVert(v)
 		vertsOldToNew[vertIdx] = newVertIdx
+		// log.Printf("moveVertsAlongEdges: cev=%v, uv=%v, move=%v, oldVert[%v]=%v, newVert[%v]=%v",
+		//   cev, uv, move, vertIdx, m.Verts[vertIdx], newVertIdx, m.Verts[newVertIdx])
 	}
 
 	return vertsOldToNew
