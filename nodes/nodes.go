@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gmlewis/go-bjk/ast"
+	"github.com/mitchellh/go-homedir"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -31,7 +32,20 @@ type Client struct {
 }
 
 // New creates a new instance of nodes.Client.
+// blackjackRepoPath is either the absolute path to the Blackjack repo or
+// is the relative-to-$HOME-dir path of the repo.
 func New(blackjackRepoPath string, debug bool) (*Client, error) {
+	if _, err := os.Stat(blackjackRepoPath); err != nil {
+		homeDir, err := homedir.Dir()
+		if err != nil {
+			return nil, err
+		}
+		blackjackRepoPath = filepath.Join(homeDir, blackjackRepoPath)
+		if _, err = os.Stat(blackjackRepoPath); err != nil {
+			return nil, err
+		}
+	}
+
 	ls := lua.NewState()
 	ls.OpenLibs()
 	if debug {
@@ -64,10 +78,7 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 			if err != nil {
 				return err
 			}
-			if d.IsDir() {
-				return nil
-			}
-			if !strings.HasSuffix(path, ".lua") {
+			if d.IsDir() || !strings.HasSuffix(path, ".lua") {
 				return nil
 			}
 			fullPath := filepath.Join(root, path)
@@ -76,7 +87,7 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 			}
 			return ls.DoFile(fullPath)
 		}); err != nil {
-			return nil, fmt.Errorf("unable to find root %v: %w", root, err)
+			return nil, err
 		}
 	}
 

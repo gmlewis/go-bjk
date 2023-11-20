@@ -14,10 +14,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/gmlewis/go-bjk/nodes"
-	"github.com/mitchellh/go-homedir"
 )
 
 var (
@@ -64,15 +62,8 @@ func main() {
 		log.Fatalf("nothing to do: must supply -o or -stl or both")
 	}
 
-	homeDir, err := homedir.Dir()
+	c, err := nodes.New(*repoDir, *debug)
 	must(err)
-
-	repoPath := filepath.Join(homeDir, *repoDir)
-	c, err := nodes.New(repoPath, *debug)
-	if err != nil {
-		c, err = nodes.New(*repoDir, *debug)
-		must(err)
-	}
 	defer c.Close()
 
 	log.Printf("Got %v nodes.", len(c.Nodes))

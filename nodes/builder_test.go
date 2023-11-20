@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/gmlewis/go-bjk/ast"
 	"github.com/google/go-cmp/cmp"
-	"github.com/mitchellh/go-homedir"
 )
 
 const (
-	repoDir = "src/github.com/gmlewis/blackjack"
+	repoPath = "src/github.com/gmlewis/blackjack"
 )
 
 var (
@@ -22,15 +20,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	homeDir, err := homedir.Dir()
+	c, err := New(repoPath, false)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	repoPath := filepath.Join(homeDir, repoDir)
-	c, err = New(repoPath, false)
-	if err != nil {
-		log.Fatal("unable to create test Client")
+		log.Fatalf("unable to create test Client: %v", err)
 	}
 	defer c.Close()
 
