@@ -177,11 +177,16 @@ func newVec3(ls *lua.LState) int {
 		Y: float64(ls.CheckNumber(2)),
 		Z: float64(ls.CheckNumber(3)),
 	}
+	ud := newVec3LValue(ls, vec3)
+	ls.Push(ud)
+	return 1
+}
+
+func newVec3LValue(ls *lua.LState, vec3 *Vec3) lua.LValue {
 	ud := ls.NewUserData()
 	ud.Value = vec3
 	ls.SetMetatable(ud, ls.GetTypeMetatable(luaVec3TypeName))
-	ls.Push(ud)
-	return 1
+	return ud
 }
 
 func vec3Index(ls *lua.LState) int {

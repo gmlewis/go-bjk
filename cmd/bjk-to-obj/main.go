@@ -1,3 +1,5 @@
+// -*- compile-command: "go run main.go ../../make-box.bjk"; -*-
+
 // bjk-to-obj loads a Blackjack BJK file and writes a Wavefront Obj file.
 // See: https://github.com/setzer22/blackjack
 //
@@ -29,17 +31,31 @@ func main() {
 	must(err)
 	defer c.Close()
 
+	client := &clientT{c: c}
+
 	for _, arg := range flag.Args() {
-		buf, err := os.ReadFile(arg)
-		must(err)
-		design, err := ast.Parser.ParseString("", string(buf), participle.Trace(os.Stderr))
-		must(err)
-		outFilename := strings.Replace(arg, ".bjk", ".obj", -1)
-		log.Printf("Writing Wavefront obj file: %v", outFilename)
-		must(c.ToObj(design, outFilename))
+		client.processFile(arg)
 	}
 
 	log.Printf("Done.")
+}
+
+type clientT struct {
+	c *nodes.Client
+}
+
+func (c *clientT) processFile(arg string) {
+	buf, err := os.ReadFile(arg)
+	must(err)
+	var opts []participle.ParseOption
+	if *debug {
+		opts = append(opts, participle.Trace(os.Stderr))
+	}
+	design, err := ast.Parser.ParseString("", string(buf), opts...)
+	must(err)
+	outFilename := strings.Replace(arg, ".bjk", ".obj", -1)
+	log.Printf("Writing Wavefront obj file: %v", outFilename)
+	must(c.c.ToObj(design, outFilename))
 }
 
 func must(err error) {

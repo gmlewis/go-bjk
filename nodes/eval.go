@@ -79,6 +79,12 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			if c.debug {
 				log.Printf("runNode: external ValueEnum=%#v", *ve)
 			}
+			lval := valueEnumToLValue(c.ls, ve)
+			if input.Props == nil {
+				input.Props = map[string]lua.LValue{}
+			}
+			input.Props[input.Name] = lval
+			inputsTable.RawSet(lua.LString(input.Name), lval)
 			continue
 		}
 		if conn := input.Kind.Connection; conn != nil {
@@ -167,4 +173,22 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 	}
 
 	return nil
+}
+
+// valueEnumToLValue converts an ast.ValueEnum to a lua.LValue.
+func valueEnumToLValue(ls *lua.LState, ve *ast.ValueEnum) lua.LValue {
+	switch {
+	case ve.Scalar != nil:
+		return lua.LNumber(ve.Scalar.X)
+	case ve.Selection != nil:
+		return lua.LString(ve.Selection.Selection)
+	case ve.StrVal != nil:
+		return lua.LString(ve.StrVal.S)
+	case ve.Vector != nil:
+		vec3 := &Vec3{X: ve.Vector.X, Y: ve.Vector.Y, Z: ve.Vector.Z}
+		return newVec3LValue(ls, vec3)
+	default:
+		log.Fatalf("programming error: eval.go: valueEnumToLValue: unhandled ValueEnum: %#v", *ve)
+	}
+	return lua.LNumber(0)
 }
