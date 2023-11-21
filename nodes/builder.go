@@ -544,7 +544,7 @@ func setInputProp(input *ast.Input, valStr string) error {
 		return setInputEnumValue(t, input, valStr)
 	case "string":
 		return setInputStringValue(t, input, valStr)
-	case "selection":
+	case "selection", "lua_string":
 		return setInputSelectionValue(t, input, valStr)
 	default:
 		return fmt.Errorf("setInputProp: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
@@ -779,10 +779,10 @@ func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 		return getEnumValue(t, input)
 	case "string":
 		return getStringValue(t, input)
-	case "file", "lua_string":
+	case "file":
 		log.Printf("getValueEnum: WARNING: value of type '%v' not supported yet.", t)
 		return &ast.ValueEnum{StrVal: &ast.StringValue{S: "TODO"}}, nil
-	case "selection":
+	case "selection", "lua_string":
 		return getSelectionValue(t, input)
 	case "mesh":
 		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)

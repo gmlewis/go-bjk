@@ -30,6 +30,7 @@ func registerPrimitivesType(ls *lua.LState) {
 var primitivesMethods = map[string]lua.LGFunction{
 	"cube":              cube,
 	"line":              line,
+	"line_from_points":  lineFromPoints,
 	"line_with_normals": lineWithNormals,
 	"polygon":           polygon,
 	"quad":              quad,
@@ -114,13 +115,44 @@ func line(ls *lua.LState) int {
 	v2 := checkVec3(ls, 2)
 	numSegs := int(ls.CheckNumber(3))
 
-	mesh := NewMeshFromLine(v1, v2, numSegs)
+	mesh := NewLine(v1, v2, numSegs)
 
 	ud := ls.NewUserData()
 	ud.Value = mesh
 	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
+}
+
+func lineFromPoints(ls *lua.LState) int {
+	pointsTbl := ls.CheckTable(1)
+	numVerts := pointsTbl.Len()
+	points := make([]Vec3, 0, numVerts)
+
+	for i := 1; i <= numVerts; i++ {
+		v := getVec3(pointsTbl, i)
+		points = append(points, *v)
+	}
+
+	mesh := NewLineFromPoints(points)
+
+	ud := ls.NewUserData()
+	ud.Value = mesh
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
+	ls.Push(ud)
+	return 1
+}
+
+func getVec3(tbl *lua.LTable, index int) *Vec3 {
+	ud, ok := tbl.RawGetInt(index).(*lua.LUserData)
+	if !ok {
+		log.Fatalf("lineWithNormals: tbl[i=%v], want vec3, got %T", index, tbl.RawGetInt(index))
+	}
+	v, ok := ud.Value.(*Vec3)
+	if !ok {
+		log.Fatalf("lineWithNormals: tbl[i=%v], want vec3, got %T", index, ud.Value)
+	}
+	return v
 }
 
 func lineWithNormals(ls *lua.LState) int {
@@ -132,18 +164,6 @@ func lineWithNormals(ls *lua.LState) int {
 	points := make([]Vec3, 0, numSegments+1)
 	normals := make([]Vec3, 0, numSegments+1)
 	tangents := make([]Vec3, 0, numSegments+1)
-
-	getVec3 := func(tbl *lua.LTable, index int) *Vec3 {
-		ud, ok := tbl.RawGetInt(index).(*lua.LUserData)
-		if !ok {
-			log.Fatalf("lineWithNormals: tbl[i=%v], want vec3, got %T", index, tbl.RawGetInt(index))
-		}
-		v, ok := ud.Value.(*Vec3)
-		if !ok {
-			log.Fatalf("lineWithNormals: tbl[i=%v], want vec3, got %T", index, ud.Value)
-		}
-		return v
-	}
 
 	for i := 1; i <= numSegments+1; i++ {
 		v := getVec3(pointsTbl, i)

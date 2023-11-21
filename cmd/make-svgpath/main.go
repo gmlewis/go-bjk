@@ -1,4 +1,4 @@
-// -*- compile-command: "go run main.go"; -*-
+// -*- compile-command: "go run main.go -o '' -stl '' -obj ../../make-svgpath.obj"; -*-
 
 // make-svgpath tests the STL output for SVGPath.
 package main
@@ -12,8 +12,23 @@ import (
 	"github.com/gmlewis/go-bjk/nodes"
 )
 
+// test sword from: https://yqnn.github.io/svg-path-editor/
+// M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C 7 11 8 12 7 12 A 1.42 1.42 0 0 1 6 13 A 5 5 0 0 0 4 10 Q 3.5 9.9 3.5 10.5 T 2 11.8 T 1.2 11 T 2.5 9.5 T 3 9 A 5 5 90 0 0 0 7 A 1.42 1.42 0 0 1 1 6 C 1 5 2 6 3 6 C 2 7 3 7 4 8 M 10 1 L 10 3 L 12 3 L 10.2 2.8 L 10 1
+// test examples from: https://www.w3.org/TR/SVG2/paths.html
+// M300,200 h-150 a150,150 0 1,0 150,-150 z
+// M275,175 v-150 a150,150 0 0,0 -150,150 z
+
 var (
-	dPath   = flag.String("d", "M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C 7 11 8 12 7 12 A 1.42 1.42 0 0 1 6 13 A 5 5 0 0 0 4 10 Q 3.5 9.9 3.5 10.5 T 2 11.8 T 1.2 11 T 2.5 9.5 T 3 9 A 5 5 90 0 0 0 7 A 1.42 1.42 0 0 1 1 6 C 1 5 2 6 3 6 C 2 7 3 7 4 8 M 10 1 L 10 3 L 12 3 L 10.2 2.8 L 10 1", "SVG path ('d') to generate")
+	dPath = flag.String("d",
+		`M 4 8 L 10 1 L 13 0 L 12 3 L 5 9 C 6 10 6 11 7 10 C 7 11 8 12 7 12 A 1.42 1.42 0 0 1 6 13 A 5 5 0 0 0 4 10 `+
+			`Q 3.5 9.9 3.5 10.5 `+
+			`T 2 11.8 `+
+			`T 1.2 11 `+
+			`T 2.5 9.5 `+
+			`T 3 9 `+
+			`A 5 5 90 0 0 0 7 `+
+			`A 1.42 1.42 0 0 1 1 6 C 1 5 2 6 3 6 C 2 7 3 7 4 8 M 10 1 L 10 3 L 12 3 L 10.2 2.8 L 10 1`,
+		"SVG path ('d') to generate")
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
 	golden  = flag.Bool("golden", false, "Generate golden test files")
 	objOut  = flag.String("obj", "make-svgpath.obj", "Output filename for Wavefront obj file")
@@ -25,6 +40,10 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *dPath == "" {
+		log.Fatal("empty SVG -d path - nothing to output")
+	}
 
 	if *golden {
 		nodes.GenerateGoldenFilesPrefix = "golden-make-svgpath"

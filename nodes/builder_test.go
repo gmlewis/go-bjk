@@ -20,7 +20,8 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	c, err := New(repoPath, false)
+	var err error
+	c, err = New(repoPath, false)
 	if err != nil {
 		log.Fatalf("unable to create test Client: %v", err)
 	}
@@ -34,6 +35,9 @@ var bifilarElectromagnet string
 
 func TestBuild(t *testing.T) {
 	t.Parallel()
+	if c == nil {
+		t.Fatalf("c is nil")
+	}
 	design, err := c.NewBuilder().
 		// nodes:
 		AddNode("MakeQuad.wire-outline", "size=vector(1,1,1)", "normal=vector(0,0,1)").   // node_idx: 0

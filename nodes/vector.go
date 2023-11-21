@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/gmlewis/go3d/float64/mat3"
 	"github.com/gmlewis/go3d/float64/mat4"
 	"github.com/gmlewis/go3d/float64/quaternion"
 	"github.com/gmlewis/go3d/float64/vec3"
@@ -110,6 +111,28 @@ func Vec3Cross(v1, v2 Vec3) Vec3 {
 // Vec3Dot performs the dot product of v1 x v2 and returns a new vector.
 func Vec3Dot(v1, v2 Vec3) float64 {
 	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
+}
+
+// Vec3RotateAroundAxis, given an angle in radians, returns a function that operates on two Vec3s
+// to rotate a point around an axis by the given angle.
+func Vec3RotateAroundAxis(angle float64) func(v1, v2 Vec3) Vec3 {
+	cosθ := math.Cos(angle)
+	nCosθ := 1 - cosθ
+	sinθ := math.Sin(angle)
+	return func(v, axis Vec3) Vec3 {
+		axis = axis.Normalized()
+		xx := axis.X * axis.X
+		yy := axis.Y * axis.Y
+		zz := axis.Z * axis.Z
+		// from: https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle
+		m := &mat3.T{
+			vec3.T{cosθ + xx*nCosθ, axis.X*axis.Y*nCosθ - axis.Z*sinθ, axis.X*axis.Z*nCosθ + axis.Y*sinθ},
+			vec3.T{axis.Y*axis.Z*nCosθ + axis.Z*sinθ, cosθ + yy*nCosθ, axis.Y*axis.Z*nCosθ - axis.X*sinθ},
+			vec3.T{axis.Z*axis.X*nCosθ - axis.Y*sinθ, axis.X*axis.Y*nCosθ + axis.X*sinθ, cosθ + zz*nCosθ},
+		}
+		result := m.MulVec3(&vec3.T{v.X, v.Y, v.Z})
+		return Vec3{X: result[0], Y: result[1], Z: result[2]}
+	}
 }
 
 // Rotation calculates the rotation between two normalized vectors.
@@ -249,6 +272,12 @@ func vec3Mul(ls *lua.LState) int {
 func vec3Cross(ls *lua.LState) int {
 	// log.Printf("GML: RUNNING vec3Cross from Lua")
 	return vec3op2(ls, Vec3Cross)
+}
+
+func rotateAroundAxis(ls *lua.LState) int {
+	angle := ls.CheckNumber(3)
+	// log.Printf("GML: RUNNING rotateAroundAxis from Lua")
+	return vec3op2(ls, Vec3RotateAroundAxis(float64(angle)))
 }
 
 // GenXform represents a rotation (defined by the normal and tangent vectors) about the origin,

@@ -176,6 +176,12 @@ func meshClone(ls *lua.LState) int {
 	return 1
 }
 
+// NewLineFromPoints creates a new mesh with only verts.
+func NewLineFromPoints(pts []Vec3) *Mesh {
+	m := newMeshFrom(pts, nil, nil, nil)
+	return m
+}
+
 // NewPolygonFromPoints creates a new mesh from points.
 func NewPolygonFromPoints(pts []Vec3) *Mesh {
 	m := newMeshFrom(pts, nil, nil, nil)
@@ -193,8 +199,8 @@ func NewMeshFromLineWithNormals(points, normals, tangents []Vec3) *Mesh {
 	return newMeshFrom(points, normals, tangents, nil)
 }
 
-// NewMeshFromLine creates a new mesh from two points, divided into numSegs.
-func NewMeshFromLine(v1, v2 *Vec3, numSegs int) *Mesh {
+// NewLine creates a new mesh from two points, divided into numSegs.
+func NewLine(v1, v2 *Vec3, numSegs int) *Mesh {
 	// log.Printf("NewMeshFromLine: 2 points, %v segments", numSegs)
 	verts := make([]Vec3, 0, numSegs+1)
 	lerp := func(val1, val2 float64, i int) float64 {

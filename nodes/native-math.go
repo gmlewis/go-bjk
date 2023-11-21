@@ -7,7 +7,8 @@ import (
 const luaNativeMathTypeName = "NativeMath"
 
 var nativeMathFuncs = map[string]lua.LGFunction{
-	"cross": vec3Cross,
+	"cross":              vec3Cross,
+	"rotate_around_axis": rotateAroundAxis,
 }
 
 func registerNativeMathType(ls *lua.LState) {
