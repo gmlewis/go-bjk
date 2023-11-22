@@ -26,8 +26,10 @@ func (c *Client) Eval(design *ast.BJK) (*Mesh, error) {
 		c.extParamsLookup[key] = &pv.ValueEnum
 	}
 
-	// assume that the very last node is the "active" node.
 	targetNodeIdx := len(nodes) - 1
+	if design.Graph.DefaultNode != nil {
+		targetNodeIdx = int(*design.Graph.DefaultNode)
+	}
 	if err := c.runNode(nodes, targetNodeIdx); err != nil {
 		return nil, err
 	}
