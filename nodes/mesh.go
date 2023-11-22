@@ -106,11 +106,27 @@ func (m *Mesh) AddVert(v Vec3) VertIndexT {
 }
 
 // AddFace adds a face to a mesh and returns its FaceT.
+// Note that some lua code could create a face where an
+// edge has two vert indices are identical. AddFace
+// prevents that from happening.
 func (m *Mesh) AddFace(verts []Vec3) FaceT {
 	face := make([]VertIndexT, 0, len(verts))
-	for _, vert := range verts {
+	for i, vert := range verts {
 		vertIdx := m.AddVert(vert)
+		if i > 0 && vertIdx == face[i-1] {
+			continue // prevent two identical consecutive vert indices.
+		}
 		face = append(face, vertIdx)
+	}
+	// now check that the ending vertex does not match the initial one.
+	for len(face) > 1 {
+		if face[0] != face[len(face)-1] {
+			break
+		}
+		face = face[:len(face)-1]
+	}
+	if len(face) < 3 {
+		log.Fatalf("programming error: AddFace: %+v, face=%v", verts, face)
 	}
 	m.Faces = append(m.Faces, face)
 	return face
