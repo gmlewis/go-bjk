@@ -19,20 +19,22 @@ import (
 )
 
 var (
-	debug     = flag.Bool("debug", false, "Turn on debugging info")
-	golden    = flag.Bool("golden", false, "Generate golden test files")
-	innerDiam = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
-	numPairs  = flag.Int("np", 11, "Number of coil pairs (minimum 2)")
-	numSegs   = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
-	objOut    = flag.String("obj", "bifilar-electromagnet.obj", "Output filename for Wavefront obj file")
-	outBJK    = flag.String("o", "bifilar-electromagnet.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
-	repoDir   = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
-	stlOut    = flag.String("stl", "bifilar-electromagnet.stl", "Output filename for binary STL file")
-	swapYZ    = flag.Bool("swapyz", true, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
-	thickness = flag.Float64("th", 2.0, "Thickness of outer enclosing connecting wires in millimeters")
-	vertTurns = flag.Float64("vt", 11.0, "Vertical turns of wire in electromagnet")
-	wireGap   = flag.Float64("wg", 0.5, "Wire gap in millimeters")
-	wireWidth = flag.Float64("ww", 1.0, "Wire width in millimeters")
+	debug           = flag.Bool("debug", false, "Turn on debugging info")
+	golden          = flag.Bool("golden", false, "Generate golden test files")
+	innerDiam       = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
+	numPairs        = flag.Int("np", 11, "Number of coil pairs (minimum 2)")
+	numSegs         = flag.Int("ns", 144, "Number of segments per 360-degree turn of helix")
+	objOut          = flag.String("obj", "bifilar-electromagnet.obj", "Output filename for Wavefront obj file")
+	outBJK          = flag.String("o", "bifilar-electromagnet.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
+	repoDir         = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
+	stlOut          = flag.String("stl", "bifilar-electromagnet.stl", "Output filename for binary STL file")
+	swapYZ          = flag.Bool("swapyz", true, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
+	backThickness   = flag.Float64("bt", 1.0, "Back thickness of wires in millimeters")
+	frontThickness  = flag.Float64("ft", 1.0, "Front thickness of wires in millimeters")
+	radialThickness = flag.Float64("rt", 2.0, "Radial thickness of outer enclosing connecting wires in millimeters")
+	vertTurns       = flag.Float64("vt", 11.0, "Vertical turns of wire in electromagnet")
+	wireGap         = flag.Float64("wg", 0.5, "Wire gap in millimeters")
+	wireWidth       = flag.Float64("ww", 1.0, "Wire width in millimeters")
 )
 
 func set(name string, value any) string {
@@ -90,8 +92,8 @@ func main() {
 		AddNode("MakeComment.vert-turns", nextNodePos(), "comment=This Scalar node controls\nthe number of vertical turns\nof the coil, thereby affecting\nits overall height.\nA value of 5\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.vert-turns", set("x", *vertTurns)).
 		//
-		AddNode("MakeComment.thickness", nextNodePos(), "comment=This Scalar node controls\nthe thickness of the outer\nenclosing connecting wires\nin millimeters.").
-		AddNode("MakeScalar.thickness", set("x", *thickness)).
+		AddNode("MakeComment.radial_thickness", nextNodePos(), "comment=This Scalar node controls\nthe thickness of the outer\nenclosing connecting wires\nin millimeters.").
+		AddNode("MakeScalar.radial_thickness", set("x", *thickness)).
 		//
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", set("x", *numSegs)).
@@ -143,13 +145,17 @@ func main() {
 	}
 
 	b = b.
-		AddNode("BFEMCage.cage", set("num_pairs", *numPairs)).
+		AddNode("BFEMCage.cage",
+			set("num_pairs", *numPairs),
+			set("back_thickness", *backThickness),
+			set("front_thickness", *frontThickness),
+		).
 		Connect(lastSizeOut, "BFEMCage.cage.size").
 		Connect("SizedQuad.wire-outline.wire-width", "BFEMCage.cage.wire_width").
 		Connect("WireGaps.wire-gap.wire_gap", "BFEMCage.cage.wire_gap").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
-		Connect("MakeScalar.thickness.x", "BFEMCage.cage.thickness").
+		Connect("MakeScalar.radial_thickness.x", "BFEMCage.cage.radial_thickness").
 		MergeMesh("BFEMCage.cage.out_mesh")
 
 	design, err := b.Build()
