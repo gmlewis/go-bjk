@@ -295,7 +295,7 @@ type faceSetT map[faceIndexT]struct{}
 // Note that this must operate not only on this base face, but also on every face that
 // shares two edges with this one.
 func (is *infoSetT) moveVertsAlongEdgeLoop(baseFaceIdx faceIndexT, amount float64) (vToVMap, faceSetT) {
-	log.Printf("moveVertsAlongEdgeLoop(baseFaceIdx=%v, amount=%v)", baseFaceIdx, amount)
+	// log.Printf("moveVertsAlongEdgeLoop(baseFaceIdx=%v, amount=%v)", baseFaceIdx, amount)
 	edgeLoop, shortenedFaces := is.findEdgeLoop(baseFaceIdx)
 	if len(edgeLoop) != len(shortenedFaces) {
 		log.Fatalf("moveVertsAlongEdgeLoop: programming error: #edgeLoop(%v) != #shortenedFaces(%v)", len(edgeLoop), len(shortenedFaces))
@@ -333,27 +333,27 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 				continue
 			}
 			sharedEdge := is.findSharedEdge(baseFaceIdx, fIdx)
-			log.Printf("findEdgeLoop: common case: checking out face %v", m.dumpFace(fIdx, is.faces[fIdx]))
+			// log.Printf("findEdgeLoop: common case: checking out face %v", m.dumpFace(fIdx, is.faces[fIdx]))
 			ev := is.connectedEdgeVectorFromVertOnFace(sharedEdge[0], sharedEdge, fIdx)
-			log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[0], len(result)+1, ev, fIdx)
+			// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[0], len(result)+1, ev, fIdx)
 			affectedFaces[fIdx] = struct{}{}
 			result[ev.edge] = ev
 			for _, otherFaceOnEdge := range is.edgeToFaces[ev.edge] {
 				if _, ok := affectedFaces[otherFaceOnEdge]; ok || otherFaceOnEdge == fIdx {
 					continue
 				}
-				log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[0], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
+				// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[0], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
 				affectedFaces[otherFaceOnEdge] = struct{}{}
 			}
 
 			ev = is.connectedEdgeVectorFromVertOnFace(sharedEdge[1], sharedEdge, fIdx) // add other edge
-			log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[1], len(result)+1, ev, fIdx)
+			// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[1], len(result)+1, ev, fIdx)
 			result[ev.edge] = ev
 			for _, otherFaceOnEdge := range is.edgeToFaces[ev.edge] {
 				if _, ok := affectedFaces[otherFaceOnEdge]; ok || otherFaceOnEdge == fIdx {
 					continue
 				}
-				log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[1], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
+				// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[1], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
 				affectedFaces[otherFaceOnEdge] = struct{}{}
 			}
 		}
@@ -369,13 +369,13 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 		refEV = v
 		break
 	}
-	log.Printf("findEdgeLoop: refEV=%v", refEV)
+	// log.Printf("findEdgeLoop: refEV=%v", refEV)
 
 	// second pass - only process vertices that share 4 connected faces to find extended edge loops
 	for i, vertIdx := range baseFace {
 		nextIdx := baseFace[(i+1)%len(baseFace)]
 		edge := makeEdge(vertIdx, nextIdx)
-		log.Printf("findEdgeLoop: second pass: vertIdx=%v, edge=%v", vertIdx, edge)
+		// log.Printf("findEdgeLoop: second pass: vertIdx=%v, edge=%v", vertIdx, edge)
 		if _, ok := result[edge]; ok {
 			continue // already processed edge by looping around faces below
 		}
@@ -390,7 +390,7 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 				if _, ok := affectedFaces[fIdx]; ok || fIdx == baseFaceIdx {
 					continue
 				}
-				log.Printf("findEdgeLoop: adding affectedFaces: %v", m.dumpFace(fIdx, is.faces[fIdx]))
+				// log.Printf("findEdgeLoop: adding affectedFaces: %v", m.dumpFace(fIdx, is.faces[fIdx]))
 				affectedFaces[fIdx] = struct{}{}
 			}
 			continue
@@ -404,15 +404,15 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 			if otherFaceIdx == baseFaceIdx {
 				continue
 			}
-			log.Printf("findEdgeLoop: second pass: checking out face %v", m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
+			// log.Printf("findEdgeLoop: second pass: checking out face %v", m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
 			ev := is.connectedEdgeVectorFromVertOnFace(vertIdx, edge, otherFaceIdx)
 			if _, ok := result[ev.edge]; !ok {
 				dotProduct := Vec3Dot(refEV.toSubFrom, ev.toSubFrom)
 				if AboutEq(dotProduct, 0) {
 					continue
 				}
-				log.Printf("findEdgeLoop: face #%v of 4: %v", i+1, m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
-				log.Printf("findEdgeLoop: dotProduct=%v, found ev #%v: %v on faceIdx %v", dotProduct, len(result)+1, ev, otherFaceIdx)
+				// log.Printf("findEdgeLoop: face #%v of 4: %v", i+1, m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
+				// log.Printf("findEdgeLoop: dotProduct=%v, found ev #%v: %v on faceIdx %v", dotProduct, len(result)+1, ev, otherFaceIdx)
 				affectedFaces[otherFaceIdx] = struct{}{}
 				result[ev.edge] = ev
 			}
@@ -444,16 +444,16 @@ func (is *infoSetT) findSharedEdge(f1Idx, f2Idx faceIndexT) edgeT {
 			return edge
 		}
 	}
-	log.Printf("findSharedEdge: programming error: no shared edges between face index %v and %v", f1Idx, f2Idx)
-	m := is.faceInfo.m
-	log.Printf("findSharedEdge: %v", m.dumpFace(f1Idx, is.faces[f1Idx]))
-	log.Fatalf("findSharedEdge: %v", m.dumpFace(f2Idx, is.faces[f2Idx]))
+	// log.Printf("findSharedEdge: programming error: no shared edges between face index %v and %v", f1Idx, f2Idx)
+	// m := is.faceInfo.m
+	// log.Printf("findSharedEdge: %v", m.dumpFace(f1Idx, is.faces[f1Idx]))
+	// log.Fatalf("findSharedEdge: %v", m.dumpFace(f2Idx, is.faces[f2Idx]))
 	return edgeT{}
 }
 
 func (is *infoSetT) followQuadFacesEdgeLoop(result map[edgeT]edgeVectorT, affectedFaces faceSetT, knownEdge edgeT, faceIdx faceIndexT) {
-	m := is.faceInfo.m
-	log.Printf("followQuadFacesEdgeLoop(knownEdge=%v) face: %v", knownEdge, m.dumpFace(faceIdx, is.faces[faceIdx]))
+	// m := is.faceInfo.m
+	// log.Printf("followQuadFacesEdgeLoop(knownEdge=%v) face: %v", knownEdge, m.dumpFace(faceIdx, is.faces[faceIdx]))
 	for {
 		otherEdgeVector, ok := is.otherQuadEdge(knownEdge, faceIdx)
 		if !ok {
@@ -465,7 +465,7 @@ func (is *infoSetT) followQuadFacesEdgeLoop(result map[edgeT]edgeVectorT, affect
 		if _, ok := result[knownEdge]; ok { // done with the loop
 			return
 		}
-		log.Printf("followQuadFacesEdgeLoop: found next ev #%v: %v on faceIdx %v", len(result)+1, otherEdgeVector, faceIdx)
+		// log.Printf("followQuadFacesEdgeLoop: found next ev #%v: %v on faceIdx %v", len(result)+1, otherEdgeVector, faceIdx)
 		affectedFaces[faceIdx] = struct{}{}
 		result[knownEdge] = otherEdgeVector
 
@@ -571,10 +571,10 @@ func (is *infoSetT) moveEdge(ev edgeVectorT, amount float64, vertsOldToNew vToVM
 	m := is.faceInfo.m
 	v := m.Verts[ev.fromVertIdx].Add(move)
 	newVertIdx := m.AddVert(v)
-	log.Printf("moveEdge: from old vert %v=%v, creating new vert %v at %v", ev.fromVertIdx, m.Verts[ev.fromVertIdx].toKey(), newVertIdx, v.toKey())
+	// log.Printf("moveEdge: from old vert %v=%v, creating new vert %v at %v", ev.fromVertIdx, m.Verts[ev.fromVertIdx].toKey(), newVertIdx, v.toKey())
 	vertsOldToNew[ev.fromVertIdx] = newVertIdx
-	log.Printf("moveEdge: ev=%v, uv=%v, move=%v, oldVert[%v]=%v, newVert[%v]=%v",
-		ev, uv, move, ev.fromVertIdx, m.Verts[ev.fromVertIdx], newVertIdx, m.Verts[newVertIdx])
+	// log.Printf("moveEdge: ev=%v, uv=%v, move=%v, oldVert[%v]=%v, newVert[%v]=%v",
+	// 	ev, uv, move, ev.fromVertIdx, m.Verts[ev.fromVertIdx], newVertIdx, m.Verts[newVertIdx])
 }
 
 // getFaceSideEdges returns a slice of edge vectors that are connected to (but not on) this face.
