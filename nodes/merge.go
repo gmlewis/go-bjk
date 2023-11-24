@@ -121,6 +121,10 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 
 	switch {
 	case len(fi.src.badEdges) == 0 && len(fi.dst.badEdges) == 0:
+		if len(fi.src.faces) > len(fi.dst.faces) {
+			// swap src and dst so that src has the fewest faces
+			fi.swapSrcAndDst(nil)
+		}
 		fi.merge2manifolds()
 	case len(fi.src.badEdges) == 0:
 		// swap src and dst so that src is the non-manifold mesh:

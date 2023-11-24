@@ -8,6 +8,7 @@ import (
 func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, e1EV, e2EV edgeVectorT) {
 	edge := makeEdge(e1EV.fromVertIdx, e2EV.fromVertIdx)
 	amount := 0.5 * (e1EV.length + e2EV.length)
+	log.Printf("cutNeighborsAndShortenAlongEdges: baseFaceIdx=%v, e1EV=%v, e2EV=%v", baseFaceIdx, e1EV, e2EV)
 	log.Printf("cutNeighborsAndShortenAlongEdges: amount=%v, edge=%v, face %v",
 		amount, edge, is.faceInfo.m.dumpFace(baseFaceIdx, is.faces[baseFaceIdx]))
 
@@ -27,7 +28,7 @@ func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, e1E
 	// }
 
 	for faceIdx := range shortenedFaces {
-		// log.Printf("cutNeighborsAndShortenAlongEdges: cutting face %v", faceIdx)
+		log.Printf("cutNeighborsAndShortenAlongEdges: cutting face %v", faceIdx)
 		is.moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx, oldVertsToNewMap, edge)
 	}
 }
