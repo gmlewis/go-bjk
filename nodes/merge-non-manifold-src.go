@@ -118,37 +118,47 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 			// log.Printf("srcE2EV=%+v", srcE2EV)
 			// log.Printf("srcE2UV=%+v", srcE2UV)
 
-			dstFaceIndices, ok := fi.dst.edgeToFaces[edge]
+			baseDstFaceIdx, ok := fi.dst.findBaseFaceSharingTwoEdgeUVs(edge, srcE1UV, srcE2UV)
 			if !ok {
 				continue
 			}
 
-			for _, baseDstFaceIdx := range dstFaceIndices {
-				// log.Printf("Looking at baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
-
-				dstE1EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[0], edge, baseDstFaceIdx)
-				dstE1UV := dstE1EV.toSubFrom.Normalized()
-				dstE2EV := fi.dst.connectedEdgeVectorFromVertOnFace(edge[1], edge, baseDstFaceIdx)
-				dstE2UV := dstE2EV.toSubFrom.Normalized()
-				// log.Printf("dstE1EV=%+v", dstE1EV)
-				// log.Printf("dstE1UV=%+v", dstE1UV)
-				// log.Printf("dstE2EV=%+v", dstE2EV)
-				// log.Printf("dstE2UV=%+v", dstE2UV)
-
-				if srcE1UV.AboutEq(dstE1UV) && srcE2UV.AboutEq(dstE2UV) {
-					// log.Printf("Found matching face: %v", fi.m.dumpFace(baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx]))
-					// Note that the matching face is not the dstBaseFaceIdx! We want the other face on this edge.
-					continue
-				}
-
-				// log.Printf("Cutting neighbors of baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
-				fi.dst.cutNeighborsAndShortenAlongEdges(baseDstFaceIdx, srcE1EV, srcE2EV)
-				break
-			}
+			// log.Printf("Cutting neighbors of baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
+			fi.dst.cutNeighborsAndShortenAlongEdges(baseDstFaceIdx, srcE1EV, srcE2EV)
+			break
 		}
 
 		// log.Printf("WARNING: connectOpenSrcExtrusionsToDst: dst face not found: %v", faceStr)
 	}
+}
+
+func (is *infoSetT) findBaseFaceSharingTwoEdgeUVs(edge edgeT, e1UV, e2UV Vec3) (faceIndexT, bool) {
+	faceIndices, ok := is.edgeToFaces[edge]
+	if !ok {
+		return 0, false
+	}
+
+	for _, baseFaceIdx := range faceIndices {
+		// log.Printf("Looking at baseFaceIdx: %v: %+v", baseFaceIdx, is.faces[baseFaceIdx])
+
+		myE1EV := is.connectedEdgeVectorFromVertOnFace(edge[0], edge, baseFaceIdx)
+		myE1UV := myE1EV.toSubFrom.Normalized()
+		myE2EV := is.connectedEdgeVectorFromVertOnFace(edge[1], edge, baseFaceIdx)
+		myE2UV := myE2EV.toSubFrom.Normalized()
+		// log.Printf("myE1EV=%+v", myE1EV)
+		// log.Printf("myE1UV=%+v", myE1UV)
+		// log.Printf("myE2EV=%+v", myE2EV)
+		// log.Printf("myE2UV=%+v", myE2UV)
+
+		if e1UV.AboutEq(myE1UV) && e2UV.AboutEq(myE2UV) {
+			// log.Printf("Found matching face: %v", is.faceInfo.m.dumpFace(baseFaceIdx, is.faces[baseFaceIdx]))
+			// Note that the matching face is not the baseFaceIdx! We want the other face on this edge.
+			continue
+		}
+
+		return baseFaceIdx, true
+	}
+	return 0, false
 }
 
 type edgeLoopT struct {

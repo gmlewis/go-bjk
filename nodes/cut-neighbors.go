@@ -8,23 +8,23 @@ import (
 func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, e1EV, e2EV edgeVectorT) {
 	edge := makeEdge(e1EV.fromVertIdx, e2EV.fromVertIdx)
 	amount := 0.5 * (e1EV.length + e2EV.length)
-	// log.Printf("cutNeighborsAndShortenAlongEdges: amount=%v, edge=%v, face %v",
-	//   amount, edge, is.faceInfo.m.dumpFace(baseFaceIdx, is.faces[baseFaceIdx]))
+	log.Printf("cutNeighborsAndShortenAlongEdges: amount=%v, edge=%v, face %v",
+		amount, edge, is.faceInfo.m.dumpFace(baseFaceIdx, is.faces[baseFaceIdx]))
 
-	oldVertsToNewMap := is.moveVertsAlongEdges(baseFaceIdx, amount)
-	// log.Printf("cutNeighborsAndShortenAlongEdges: oldVertsToNewMap: %+v", oldVertsToNewMap)
+	oldVertsToNewMap, shortenedFaces := is.moveVertsAlongEdgeLoop(baseFaceIdx, amount)
+	log.Printf("cutNeighborsAndShortenAlongEdges: oldVertsToNewMap: %+v", oldVertsToNewMap)
 
-	shortenedFaces := map[faceIndexT]struct{}{}
-	for vertIdx := range oldVertsToNewMap {
-		for _, faceIdx := range is.vertToFaces[vertIdx] {
-			if faceIdx == baseFaceIdx {
-				continue
-			}
-
-			// log.Printf("cutNeighborsAndShortenAlongEdges: affectedFace: vertIdx=%v, %v", vertIdx, is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
-			shortenedFaces[faceIdx] = struct{}{}
-		}
-	}
+	// shortenedFaces := faceSetT{}
+	// for vertIdx := range oldVertsToNewMap {
+	// 	for _, faceIdx := range is.vertToFaces[vertIdx] {
+	// 		if faceIdx == baseFaceIdx {
+	// 			continue
+	// 		}
+	//
+	// 		// log.Printf("cutNeighborsAndShortenAlongEdges: affectedFace: vertIdx=%v, %v", vertIdx, is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
+	// 		shortenedFaces[faceIdx] = struct{}{}
+	// 	}
+	// }
 
 	for faceIdx := range shortenedFaces {
 		// log.Printf("cutNeighborsAndShortenAlongEdges: cutting face %v", faceIdx)
@@ -36,7 +36,8 @@ func (is *infoSetT) moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx faceIndexT, oldV
 	face := is.faces[faceIdx]
 	cutFace := append(FaceT{}, face...)
 	faceNormal := is.faceNormals[faceIdx]
-	// log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: faceIdx=%v, avoidEdge=%v, faceNormal=%v", faceIdx, avoidEdge, faceNormal)
+	log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: face: %v", is.faceInfo.m.dumpFace(faceIdx, face))
+	log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: avoidEdge=%v, faceNormal=%v", avoidEdge, faceNormal)
 
 	oldCutFace := make(FaceT, 0, len(face))
 	newCutFace := make(FaceT, 0, len(face)/2)
@@ -45,12 +46,13 @@ func (is *infoSetT) moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx faceIndexT, oldV
 	for i, vertIdx := range face {
 		nextIdx := face[(i+1)%len(face)]
 		faceEdge := makeEdge(vertIdx, nextIdx)
-		// log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: faceEdge=%v", faceEdge)
+		log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: faceEdge=%v", faceEdge)
 		if faceEdge == avoidEdge {
-			// log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: SKIP ADDING FACE!")
+			log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: SKIP ADDING FACE due to face on avoidEdge")
 			skipAddingFace = true
 		}
 		if moveIdx, ok := oldVertsToNewMap[vertIdx]; ok {
+			log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: moving old vertIdx=%v to new moveIdx=%v", vertIdx, moveIdx)
 			cutFace[i] = moveIdx
 			oldCutFace = append(oldCutFace, vertIdx)
 			newCutFace = append(newCutFace, moveIdx)
@@ -58,20 +60,23 @@ func (is *infoSetT) moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx faceIndexT, oldV
 	}
 
 	is.faces[faceIdx] = cutFace
+	log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: shortened face: %v", is.faceInfo.m.dumpFace(faceIdx, cutFace))
+	log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: oldCutFace: %v", is.faceInfo.m.dumpFace(faceIdx, oldCutFace))
+	log.Printf("moveFaceEdgeAndAddFaceUnlessOnEdge: newCutFace: %v", is.faceInfo.m.dumpFace(faceIdx, newCutFace))
 
 	if !skipAddingFace {
 		slices.Reverse(newCutFace)
 		newFace := append(oldCutFace, newCutFace...)
 		newFaceNormal := is.faceInfo.m.CalcFaceNormal(newFace)
 		if !newFaceNormal.AboutEq(faceNormal) {
-			// log.Printf("reversing new face")
+			log.Printf("reversing new face because newFaceNormal=%v and was expecting faceNormal=%v", newFaceNormal, faceNormal)
 			slices.Reverse(newFace)
 			newFaceNormal = is.faceInfo.m.CalcFaceNormal(newFace)
 			if !newFaceNormal.AboutEq(faceNormal) {
-				log.Fatalf("moveFaceEdgeAndAddFaceUnlessOnEdge: programming error: new face normal=%v", newFaceNormal)
+				log.Fatalf("moveFaceEdgeAndAddFaceUnlessOnEdge: programming error: new face normal=%v, expecting %v", newFaceNormal, faceNormal)
 			}
 		}
-		// log.Printf("Adding new face: normal=%v, %v", newFaceNormal, is.faceInfo.m.dumpFace(faceIndexT(len(is.faces)), newFace))
+		log.Printf("Adding new face: normal=%v, %v", newFaceNormal, is.faceInfo.m.dumpFace(faceIndexT(len(is.faces)), newFace))
 		is.faces = append(is.faces, newFace)
 	}
 }

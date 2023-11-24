@@ -331,7 +331,7 @@ func (m *Mesh) generateTangents() {
 // This implementation uses a simple heuristic using a voting mechanism.
 func (m *Mesh) CalcFaceNormal(face FaceT) Vec3 {
 	if len(m.Verts) < 3 || len(face) < 3 {
-		log.Fatalf("CalcNormalAndTangent: want >=3 points >=1 face, got %#v", *m)
+		log.Fatalf("CalcFaceNormal: want >=3 verts >=1 face, got %v total verts and %v verts in face (ignore face index):\n%v", len(m.Verts), len(face), m.dumpFace(-1, face))
 	}
 
 	votes := map[Vec3]int{}

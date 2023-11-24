@@ -23,7 +23,7 @@ var (
 	golden          = flag.Bool("golden", false, "Generate golden test files")
 	innerDiam       = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
 	numPairs        = flag.Int("np", 11, "Number of coil pairs (minimum 2)")
-	numSegs         = flag.Int("ns", 144, "Number of segments per 360-degree turn of helix")
+	numSegs         = flag.Int("ns", 36, "Number of segments per 360-degree turn of helix")
 	objOut          = flag.String("obj", "bifilar-electromagnet.obj", "Output filename for Wavefront obj file")
 	outBJK          = flag.String("o", "bifilar-electromagnet.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
 	repoDir         = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
@@ -93,7 +93,7 @@ func main() {
 		AddNode("MakeScalar.vert-turns", set("x", *vertTurns)).
 		//
 		AddNode("MakeComment.radial_thickness", nextNodePos(), "comment=This Scalar node controls\nthe thickness of the outer\nenclosing connecting wires\nin millimeters.").
-		AddNode("MakeScalar.radial_thickness", set("x", *thickness)).
+		AddNode("MakeScalar.radial_thickness", set("x", *radialThickness)).
 		//
 		AddNode("MakeComment.segments", nextNodePos(), "comment=This Scalar node controls\nthe number segments in a\nsingle turn of the coil.\nA value of 36\nseems to keep the UI pretty responsive.").
 		AddNode("MakeScalar.segments", set("x", *numSegs)).

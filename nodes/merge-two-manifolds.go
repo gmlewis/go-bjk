@@ -45,15 +45,15 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 		dstFaces[0], dstFaces[1] = dstFaces[1], dstFaces[0]
 	}
 
-	//log.Printf("merge2manisOneEdge: edge=%v, sorted srcFaces by area desc:\n%v\n%v",
-	//		edge, fi.m.dumpFace(srcFaces[0], fi.src.faces[srcFaces[0]]), fi.m.dumpFace(srcFaces[1], fi.src.faces[srcFaces[1]]))
-	//log.Printf("merge2manisOneEdge: edge=%v, sorted dstFaces by area asc:\n%v\n%v",
-	//		edge, fi.m.dumpFace(dstFaces[0], fi.dst.faces[dstFaces[0]]), fi.m.dumpFace(dstFaces[1], fi.dst.faces[dstFaces[1]]))
+	log.Printf("merge2manisOneEdge: edge=%v, sorted srcFaces by area desc:\n%v\n%v",
+		edge, fi.m.dumpFace(srcFaces[0], fi.src.faces[srcFaces[0]]), fi.m.dumpFace(srcFaces[1], fi.src.faces[srcFaces[1]]))
+	log.Printf("merge2manisOneEdge: edge=%v, sorted dstFaces by area asc:\n%v\n%v",
+		edge, fi.m.dumpFace(dstFaces[0], fi.dst.faces[dstFaces[0]]), fi.m.dumpFace(dstFaces[1], fi.dst.faces[dstFaces[1]]))
 	srcFaceIdx, dstFaceIdx := srcFaces[0], dstFaces[0]
-	//	log.Printf("merge2manisOneEdge: edge=%v, srcFaces[0]=srcFaceIdx=%v normal: %v", edge, srcFaceIdx, fi.src.faceNormals[srcFaces[0]])
-	//	log.Printf("merge2manisOneEdge: edge=%v, srcFaces[1]=%v normal: %v", edge, srcFaces[1], fi.src.faceNormals[srcFaces[1]])
-	//	log.Printf("merge2manisOneEdge: edge=%v, dstFaces[0]=dstFaceIdx=%v normal: %v", edge, dstFaceIdx, fi.dst.faceNormals[dstFaces[0]])
-	//	log.Printf("merge2manisOneEdge: edge=%v, dstFaces[1]=%v normal: %v", edge, dstFaces[1], fi.dst.faceNormals[dstFaces[1]])
+	log.Printf("merge2manisOneEdge: edge=%v, srcFaces[0]=srcFaceIdx=%v normal: %v", edge, srcFaceIdx, fi.src.faceNormals[srcFaces[0]])
+	log.Printf("merge2manisOneEdge: edge=%v, srcFaces[1]=%v normal: %v", edge, srcFaces[1], fi.src.faceNormals[srcFaces[1]])
+	log.Printf("merge2manisOneEdge: edge=%v, dstFaces[0]=dstFaceIdx=%v normal: %v", edge, dstFaceIdx, fi.dst.faceNormals[dstFaces[0]])
+	log.Printf("merge2manisOneEdge: edge=%v, dstFaces[1]=%v normal: %v", edge, dstFaces[1], fi.dst.faceNormals[dstFaces[1]])
 
 	if len(fi.src.faces[srcFaceIdx]) != 4 {
 		log.Printf("WARNING: merge2manisOneEdge: unhandled case: src.faces[%v] len=%v=%+v", srcFaceIdx, len(fi.src.faces[srcFaceIdx]), fi.src.faces[srcFaceIdx])
@@ -73,24 +73,24 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 	}
 
 	srcFaceToDelete := srcFaces[1]
-	// log.Printf("merge2manisOneEdge: srcFaceToDelete=%v", srcFaceToDelete)
+	log.Printf("merge2manisOneEdge: srcFaceToDelete=%v", srcFaceToDelete)
 	vertIdx := edge[0]
 	srcLongEV := fi.src.connectedEdgeVectorFromVertOnFace(vertIdx, edge, srcFaceIdx)
 	srcLongEdgeVector := srcLongEV.toSubFrom
-	// 	log.Printf("merge2manisOneEdge: srcLongEV=%+v", srcLongEV)
+	log.Printf("merge2manisOneEdge: srcLongEV=%+v", srcLongEV)
 
 	dstShortEV := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaceIdx)
 	dstShortOtherVertIdx, dstShortEdgeVector := dstShortEV.toVertIdx, dstShortEV.toSubFrom
-	// 	log.Printf("merge2manisOneEdge: dstShortEV=%+v", dstShortEV)
+	log.Printf("merge2manisOneEdge: dstShortEV=%+v", dstShortEV)
 
 	srcShortEV := fi.src.connectedEdgeVectorFromVertOnFace(vertIdx, edge, srcFaceToDelete)
 	srcShortEdgeVector := srcShortEV.toSubFrom
-	//	log.Printf("merge2manisOneEdge: srcShortEV=%+v", srcShortEV)
+	log.Printf("merge2manisOneEdge: srcShortEV=%+v", srcShortEV)
 
 	srcLongEdgeUV := srcLongEdgeVector.Normalized()
-	//	log.Printf("merge2manisOneEdge: srcLongEdgeUV=%v", srcLongEdgeUV)
+	log.Printf("merge2manisOneEdge: srcLongEdgeUV=%v", srcLongEdgeUV)
 	dstShortEdgeUV := dstShortEdgeVector.Normalized()
-	//	log.Printf("merge2manisOneEdge: dstShortEdgeUV=%v", dstShortEdgeUV)
+	log.Printf("merge2manisOneEdge: dstShortEdgeUV=%v", dstShortEdgeUV)
 
 	if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx]) {
 		if !fi.src.faceNormals[srcFaceIdx].AboutEq(fi.dst.faceNormals[dstFaceIdx].Negated()) {
@@ -131,14 +131,30 @@ func (fi *faceInfoT) merge2manisOneEdge(sharedVerts sharedVertsMapT, edge edgeT,
 			return
 		}
 
-		// dstLongEV := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaces[1])
-		// log.Printf("merge2manisOneEdge: dstLongEV=%+v", dstLongEV)
+		dstLongEV := fi.dst.connectedEdgeVectorFromVertOnFace(vertIdx, edge, dstFaces[1])
+		log.Printf("merge2manisOneEdge: dstLongEV=%+v", dstLongEV)
 
-		// log.Printf("merge2manisOneEdge: srcFaceToDelete=%v, normal=%v", srcFaceToDelete, fi.src.faceNormals[srcFaceToDelete])
-		// log.Printf("merge2manisOneEdge: dstFaces[1]=%v, normal=%v", dstFaces[1], fi.dst.faceNormals[dstFaces[1]])
+		log.Printf("merge2manisOneEdge: srcFaceToDelete=%v, normal=%v", srcFaceToDelete, fi.src.faceNormals[srcFaceToDelete])
+		log.Printf("merge2manisOneEdge: dstFaces[1]=%v, normal=%v", dstFaces[1], fi.dst.faceNormals[dstFaces[1]])
 		if fi.src.faceNormals[srcFaceToDelete].AboutEq(fi.dst.faceNormals[dstFaces[1]].Negated()) {
 			fi.src.facesTargetedForDeletion[srcFaceToDelete] = true
-			fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge, nil)
+
+			// fi.dst.cutNeighborsAndShortenFaceOnEdge(dstFaceIdx, srcShortEdgeVector, edge, nil)  // old method
+
+			srcE1UV := srcShortEV.toSubFrom.Normalized()
+			log.Printf("merge2manisOneEdge: srcE1UV=%+v", srcE1UV)
+			srcE2EV := fi.src.connectedEdgeVectorFromVertOnFace(edge[1], edge, srcFaceToDelete)
+			log.Printf("merge2manisOneEdge: srcE2EV=%+v", srcE2EV)
+			srcE2UV := srcE2EV.toSubFrom.Normalized()
+			log.Printf("merge2manisOneEdge: srcE2UV=%+v", srcE2UV)
+
+			baseDstFaceIdx, ok := fi.dst.findBaseFaceSharingTwoEdgeUVs(edge, srcE1UV, srcE2UV)
+			if !ok {
+				log.Printf("WARNING: merge2manisOneEdge: unhandled case: could not find dst base on edge %v with UVs: %v, %v", edge, srcE1UV, srcE2UV)
+				return
+			}
+			log.Printf("merge2manisOneEdge: baseDstFaceIdx=%v", baseDstFaceIdx)
+			fi.dst.cutNeighborsAndShortenAlongEdges(baseDstFaceIdx, srcShortEV, srcE2EV)
 			return
 		}
 
