@@ -2,10 +2,8 @@ package ast
 
 import (
 	_ "embed"
-	"os"
 	"testing"
 
-	"github.com/alecthomas/participle/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hexops/valast"
 )
@@ -132,7 +130,8 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Parser.ParseString("", tt.input, participle.Trace(os.Stderr))
+			// got, err := Parser.ParseString("", tt.input, participle.Trace(os.Stderr))
+			got, err := Parser.ParseString("", tt.input)
 			if err != nil {
 				t.Logf("%v\n", tt.input)
 				t.Fatal(err)

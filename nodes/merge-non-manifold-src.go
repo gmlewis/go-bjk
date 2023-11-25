@@ -92,10 +92,12 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 cutsMade:
 	for faceStr, edges := range edgeLoops {
 		if deleteFaceIdx, ok := fi.dst.faceStrToFaceIdx[faceStr]; ok {
+			log.Printf("connectOpenSrcExtrusionsToDst: faceStr found in dst: %v, deleting face: %v", faceStr, deleteFaceIdx)
 			fi.dst.facesTargetedForDeletion[deleteFaceIdx] = true
 			continue
 		}
 
+		log.Printf("connectOpenSrcExtrusionsToDst: faceStr not found in dst: %v", faceStr)
 		log.Printf("connectOpenSrcExtrusionsToDst: src.badEdges: %+v", fi.src.badEdges)
 		log.Printf("connectOpenSrcExtrusionsToDst: dst.edgeToFaces: %+v", fi.dst.edgeToFaces)
 
@@ -296,6 +298,9 @@ func (is *infoSetT) badEdgesToConnectedEdgeLoops() map[faceKeyT][]edgeT {
 	result := make(map[faceKeyT][]edgeT, len(edgeLoops))
 	for _, edgeLoop := range edgeLoops {
 		key := makeFaceKeyFromEdges(edgeLoop.edges)
+		if v, ok := result[key]; ok {
+			log.Fatalf("badEdgesToConnectedEdgeLoops: programming error: already assigned faceStr key=%v: old=%+v, new=%+v", key, v, edgeLoop.edges)
+		}
 		result[key] = edgeLoop.edges
 	}
 

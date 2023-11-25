@@ -177,11 +177,14 @@ func (is *infoSetT) cutNeighborsAndShortenAlongTwoEdges(planarFaceIdx faceIndexT
 	}
 
 	// Since the above operation modified all the map lookups, we need to update this infoset.
+	// But we also need to preserve all the targeted faces for deletion.
 	log.Printf("cnasate: regenerating infoSetT after first base face cut")
 	newIS := is.faceInfo.genFaceInfoForSet(is.faces)
 	if is == is.faceInfo.dst {
+		newIS.facesTargetedForDeletion = is.faceInfo.dst.facesTargetedForDeletion
 		is.faceInfo.dst = newIS
 	} else {
+		newIS.facesTargetedForDeletion = is.faceInfo.src.facesTargetedForDeletion
 		is.faceInfo.src = newIS
 	}
 	is = newIS
