@@ -31,7 +31,7 @@ var (
 	swapYZ          = flag.Bool("swapyz", true, "Swap Y and Z values when writing STL file (Wavefront obj always swaps for Blender)")
 	backThickness   = flag.Float64("bt", 1.0, "Back thickness of wires in millimeters")
 	frontThickness  = flag.Float64("ft", 1.0, "Front thickness of wires in millimeters")
-	radialThickness = flag.Float64("rt", 1.0, "Radial thickness of outer enclosing connecting wires in millimeters")
+	radialThickness = flag.Float64("rt", 1.1, "Radial thickness of outer enclosing connecting wires in millimeters")
 	vertTurns       = flag.Float64("vt", 15.0, "Vertical turns of wire in electromagnet")
 	wireGap         = flag.Float64("wg", 0.5, "Wire gap in millimeters")
 	wireWidth       = flag.Float64("ww", 1.0, "Wire width in millimeters")

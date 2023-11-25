@@ -94,9 +94,14 @@ func Vec3Sub(v1, v2 Vec3) Vec3 {
 // Sub subtracts vector v2 from vector v1 and returns a new vector.
 func (v1 Vec3) Sub(v2 Vec3) Vec3 { return Vec3Sub(v1, v2) }
 
-// Vec3Mul multiplies two vectors (element by element) and returns a new vector.
+// Vec3Mul divides two vectors (element by element) and returns a new vector.
 func Vec3Mul(v1, v2 Vec3) Vec3 {
 	return Vec3{X: v1.X * v2.X, Y: v1.Y * v2.Y, Z: v1.Z * v2.Z}
+}
+
+// Vec3Div multiplies two vectors (element by element) and returns a new vector.
+func Vec3Div(v1, v2 Vec3) Vec3 {
+	return Vec3{X: v1.X / v2.X, Y: v1.Y / v2.Y, Z: v1.Z / v2.Z}
 }
 
 // Vec3Cross performs the cross product of v1 x v2 and returns a new vector.
@@ -159,6 +164,7 @@ var vec3Funcs = map[string]lua.LGFunction{
 	"__add":      vec3Add,
 	"__sub":      vec3Sub,
 	"__mul":      vec3Mul,
+	"__div":      vec3Div,
 	"__tostring": vec3String,
 }
 
@@ -272,6 +278,11 @@ func vec3Sub(ls *lua.LState) int {
 func vec3Mul(ls *lua.LState) int {
 	// log.Printf("GML: RUNNING vec3Mul from Lua")
 	return vec3op2(ls, Vec3Mul)
+}
+
+func vec3Div(ls *lua.LState) int {
+	// log.Printf("GML: RUNNING vec3Div from Lua")
+	return vec3op2(ls, Vec3Div)
 }
 
 func vec3Cross(ls *lua.LState) int {
