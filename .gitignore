@@ -2,3 +2,6 @@
 *.blend
 *.obj
 *.stl
+
+# Handy symlinks
+run
