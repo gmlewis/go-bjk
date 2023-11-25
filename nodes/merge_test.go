@@ -107,5 +107,8 @@ func compareMeshes(t *testing.T, name string, got, want *Mesh) {
 
 	if len(got.Faces) != len(want.Faces) {
 		t.Errorf("%v: got %v faces, want %v", name, len(got.Faces), len(want.Faces))
+		filename := strings.Replace(name, ".obj", "-failed.obj", -1)
+		log.Printf("writing %v", filename)
+		got.WriteObj(filename)
 	}
 }

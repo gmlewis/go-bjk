@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	lua "github.com/yuin/gopher-lua"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -324,33 +323,20 @@ func (m *Mesh) generateTangents() {
 }
 
 // CalcFaceNormal calculates the normal of a face.
-// Note that concave polygons are problematic if the wrong vertices are chosen.
-//
-// One way to solve this "correctly" would be to see if any edge used to create the normal
-// lies outside the polygon, but this is computationally and algorithmically complex.
-// This implementation uses a simple heuristic using a voting mechanism.
 func (m *Mesh) CalcFaceNormal(face FaceT) Vec3 {
 	if len(m.Verts) < 3 || len(face) < 3 {
 		log.Fatalf("CalcFaceNormal: want >=3 verts >=1 face, got %v total verts and %v verts in face (ignore face index):\n%v", len(m.Verts), len(face), m.dumpFace(-1, face))
 	}
 
-	votes := map[Vec3]int{}
-
-	numVerts := len(face)
-	for i, vIdx := range face {
-		va := m.Verts[vIdx]
-		vb := m.Verts[face[(i+1)%numVerts]]
-		vc := m.Verts[face[(i-1+numVerts)%numVerts]]
-		// log.Printf("i=%v, va=%v, vb=%v, vc=%v", i, va, vb, vc)
-		n := (vb.Sub(va)).Cross(vc.Sub(va)).Normalized()
-		// log.Printf("(vb-va)x(vc-va)=%v", n)
-		votes[n]++
+	var sum Vec3
+	for i, vertIdx := range face {
+		lastIdx := face[(i-1+len(face))%len(face)]
+		nextIdx := face[(i+1)%len(face)]
+		p1 := Vec3Sub(m.Verts[nextIdx], m.Verts[vertIdx])
+		p0 := Vec3Sub(m.Verts[lastIdx], m.Verts[vertIdx])
+		cross := Vec3Cross(p1, p0)
+		sum = Vec3Add(sum, cross)
 	}
 
-	keys := maps.Keys(votes)
-	sort.Slice(keys, func(i, j int) bool {
-		return votes[keys[i]] > votes[keys[j]]
-	})
-
-	return keys[0]
+	return sum.Normalized()
 }

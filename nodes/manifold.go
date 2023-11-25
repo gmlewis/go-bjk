@@ -185,15 +185,14 @@ func (is *infoSetT) connectedBadEdgeVectorFromVert(vertIdx VertIndexT, edge edge
 			continue
 		}
 
-		return is.makeEdgeVector(vertIdx, nextIdx)
+		return is.faceInfo.m.makeEdgeVector(vertIdx, nextIdx)
 	}
 
 	log.Fatalf("connectedBadEdgeVectorFromVert: programming error for edge %v", edge)
 	return edgeVectorT{}
 }
 
-func (is *infoSetT) makeEdgeVector(fromIdx, toIdx VertIndexT) edgeVectorT {
-	m := is.faceInfo.m
+func (m *Mesh) makeEdgeVector(fromIdx, toIdx VertIndexT) edgeVectorT {
 	toSubFrom := m.Verts[toIdx].Sub(m.Verts[fromIdx])
 	return edgeVectorT{
 		edge:        makeEdge(fromIdx, toIdx),
@@ -289,22 +288,61 @@ func (is *infoSetT) moveVerts(face FaceT, move Vec3) vToVMap {
 type vToVMap map[VertIndexT]VertIndexT
 type faceSetT map[faceIndexT]struct{}
 
-// moveVertsAlongEdges creates new (or reuses old) vertices and returns the mapping from the
+// moveVertsAlongEdgeLoop creates new (or reuses old) vertices and returns the mapping from the
 // old face's vertIndexes to the new vertices, without modifying the face. It moves the
 // vertices a given amount along each _connected_ edge (not along the baseFaceIdx edge).
 // Note that this must operate not only on this base face, but also on every face that
 // shares two edges with this one.
 func (is *infoSetT) moveVertsAlongEdgeLoop(baseFaceIdx faceIndexT, amount float64) (vToVMap, faceSetT) {
-	// log.Printf("moveVertsAlongEdgeLoop(baseFaceIdx=%v, amount=%v)", baseFaceIdx, amount)
+	log.Printf("moveVertsAlongEdgeLoop(baseFaceIdx=%v, amount=%v)", baseFaceIdx, amount)
 	edgeLoop, shortenedFaces := is.findEdgeLoop(baseFaceIdx)
-	if len(edgeLoop) != len(shortenedFaces) {
-		log.Fatalf("moveVertsAlongEdgeLoop: programming error: #edgeLoop(%v) != #shortenedFaces(%v)", len(edgeLoop), len(shortenedFaces))
-	}
+	/*
+		if len(edgeLoop) != len(shortenedFaces) {
+			log.Printf("moveVertsAlongEdgeLoop: programming error: #edgeLoop(%v) != #shortenedFaces(%v)", len(edgeLoop), len(shortenedFaces))
+			m := is.faceInfo.m
+			for _, ev := range edgeLoop {
+				log.Printf("findEdgeLoop: edge vector: %v", ev)
+			}
+			for faceIdx := range shortenedFaces {
+				log.Printf("findEdgeLoop: shortened face: %v", m.dumpFace(faceIdx, is.faces[faceIdx]))
+			}
+			log.Fatalf("STOP")
+		}
+	*/
 
+	m := is.faceInfo.m
 	result := vToVMap{}
+	evsByFace := map[faceIndexT][]edgeVectorT{}
 	for _, ev := range edgeLoop {
 		is.moveEdge(ev, amount, result)
+
+		for _, faceIdx := range is.edgeToFaces[ev.edge] {
+			if _, ok := shortenedFaces[faceIdx]; !ok {
+				continue
+			}
+			evsByFace[faceIdx] = append(evsByFace[faceIdx], ev)
+		}
 	}
+
+	// now move all verts along edge loops for faces that have more than 4 verts each.
+	for faceIdx := range shortenedFaces {
+		face := is.faces[faceIdx]
+		if len(face) <= 4 {
+			continue
+		}
+		evs := evsByFace[faceIdx]
+		log.Printf("moveVertsAlongEdgeLoop: processing face %v", m.dumpFace(faceIdx, face))
+		for i, ev := range evs {
+			log.Printf("moveVertsAlongEdgeLoop: face evs #%v of %v: %v", i+1, len(evs), ev)
+		}
+		if len(evs) != 2 {
+			log.Printf("WARNING: moveVertsAlongEdgeLoop: unhandled case len(evs)=%v, want 2", len(evs))
+			continue
+		}
+
+		is.lerpMoveEdgesAlongFace(faceIdx, amount, evs[0], evs[1], result)
+	}
+
 	return result, shortenedFaces
 }
 
@@ -324,7 +362,7 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 			log.Fatalf("programming error: findEdgeLoop: no connected faces to vertIdx=%v on edge %v", vertIdx, edge)
 		}
 
-		if len(connectedFaces) != 3 {
+		if len(connectedFaces) != 3 { // save for second pass
 			continue
 		}
 
@@ -333,27 +371,27 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 				continue
 			}
 			sharedEdge := is.findSharedEdge(baseFaceIdx, fIdx)
-			// log.Printf("findEdgeLoop: common case: checking out face %v", m.dumpFace(fIdx, is.faces[fIdx]))
+			log.Printf("findEdgeLoop: common case: checking out face %v", m.dumpFace(fIdx, is.faces[fIdx]))
 			ev := is.connectedEdgeVectorFromVertOnFace(sharedEdge[0], sharedEdge, fIdx)
-			// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[0], len(result)+1, ev, fIdx)
+			log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[0], len(result)+1, ev, fIdx)
 			affectedFaces[fIdx] = struct{}{}
 			result[ev.edge] = ev
 			for _, otherFaceOnEdge := range is.edgeToFaces[ev.edge] {
 				if _, ok := affectedFaces[otherFaceOnEdge]; ok || otherFaceOnEdge == fIdx {
 					continue
 				}
-				// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[0], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
+				log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[0], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
 				affectedFaces[otherFaceOnEdge] = struct{}{}
 			}
 
 			ev = is.connectedEdgeVectorFromVertOnFace(sharedEdge[1], sharedEdge, fIdx) // add other edge
-			// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[1], len(result)+1, ev, fIdx)
+			log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: found ev #%v: %v on faceIdx=%v", sharedEdge, sharedEdge[1], len(result)+1, ev, fIdx)
 			result[ev.edge] = ev
 			for _, otherFaceOnEdge := range is.edgeToFaces[ev.edge] {
 				if _, ok := affectedFaces[otherFaceOnEdge]; ok || otherFaceOnEdge == fIdx {
 					continue
 				}
-				// log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[1], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
+				log.Printf("findEdgeLoop: common case: from sharedEdge %v and vertIdx=%v: adding other affected face %v", sharedEdge, sharedEdge[1], m.dumpFace(otherFaceOnEdge, is.faces[otherFaceOnEdge]))
 				affectedFaces[otherFaceOnEdge] = struct{}{}
 			}
 		}
@@ -369,14 +407,15 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 		refEV = v
 		break
 	}
-	// log.Printf("findEdgeLoop: refEV=%v", refEV)
+	log.Printf("findEdgeLoop: refEV=%v", refEV)
 
 	// second pass - only process vertices that share 4 connected faces to find extended edge loops
 	for i, vertIdx := range baseFace {
 		nextIdx := baseFace[(i+1)%len(baseFace)]
 		edge := makeEdge(vertIdx, nextIdx)
-		// log.Printf("findEdgeLoop: second pass: vertIdx=%v, edge=%v", vertIdx, edge)
+		log.Printf("findEdgeLoop: second pass: vertIdx=%v, edge=%v", vertIdx, edge)
 		if _, ok := result[edge]; ok {
+			log.Printf("findEdgeLoop: second pass: skipping edge %v as already processed", edge)
 			continue // already processed edge by looping around faces below
 		}
 
@@ -390,29 +429,30 @@ func (is *infoSetT) findEdgeLoop(baseFaceIdx faceIndexT) (map[edgeT]edgeVectorT,
 				if _, ok := affectedFaces[fIdx]; ok || fIdx == baseFaceIdx {
 					continue
 				}
-				// log.Printf("findEdgeLoop: adding affectedFaces: %v", m.dumpFace(fIdx, is.faces[fIdx]))
+				log.Printf("findEdgeLoop: adding affectedFaces: %v", m.dumpFace(fIdx, is.faces[fIdx]))
 				affectedFaces[fIdx] = struct{}{}
 			}
 			continue
 		}
-		if len(connectedFaces) != 4 {
-			log.Printf("WARNING: findEdgeLoop: unhandled case connectedFaces=%v from %v", len(connectedFaces), m.dumpFace(baseFaceIdx, baseFace))
-			continue
-		}
+
+		// if len(connectedFaces) != 4 {
+		// 	log.Printf("WARNING: findEdgeLoop: unhandled case connectedFaces=%v from %v (want 4 connected faces)", len(connectedFaces), m.dumpFace(baseFaceIdx, baseFace))
+		// 	continue
+		// }
 
 		for _, otherFaceIdx := range connectedFaces {
 			if otherFaceIdx == baseFaceIdx {
 				continue
 			}
-			// log.Printf("findEdgeLoop: second pass: checking out face %v", m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
+			log.Printf("findEdgeLoop: second pass: checking out face %v", m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
 			ev := is.connectedEdgeVectorFromVertOnFace(vertIdx, edge, otherFaceIdx)
 			if _, ok := result[ev.edge]; !ok {
 				dotProduct := Vec3Dot(refEV.toSubFrom, ev.toSubFrom)
 				if AboutEq(dotProduct, 0) {
 					continue
 				}
-				// log.Printf("findEdgeLoop: face #%v of 4: %v", i+1, m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
-				// log.Printf("findEdgeLoop: dotProduct=%v, found ev #%v: %v on faceIdx %v", dotProduct, len(result)+1, ev, otherFaceIdx)
+				log.Printf("findEdgeLoop: face #%v of 4: %v", i+1, m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
+				log.Printf("findEdgeLoop: dotProduct=%v, found ev #%v: %v on faceIdx %v", dotProduct, len(result)+1, ev, otherFaceIdx)
 				affectedFaces[otherFaceIdx] = struct{}{}
 				result[ev.edge] = ev
 			}
@@ -452,9 +492,9 @@ func (is *infoSetT) findSharedEdge(f1Idx, f2Idx faceIndexT) edgeT {
 }
 
 func (is *infoSetT) followQuadFacesEdgeLoop(result map[edgeT]edgeVectorT, affectedFaces faceSetT, knownEdge edgeT, faceIdx faceIndexT) {
-	// m := is.faceInfo.m
-	// log.Printf("followQuadFacesEdgeLoop(knownEdge=%v) face: %v", knownEdge, m.dumpFace(faceIdx, is.faces[faceIdx]))
+	m := is.faceInfo.m
 	for {
+		log.Printf("followQuadFacesEdgeLoop: knownEdge=%v, face: %v", knownEdge, m.dumpFace(faceIdx, is.faces[faceIdx]))
 		otherEdgeVector, ok := is.otherQuadEdge(knownEdge, faceIdx)
 		if !ok {
 			log.Printf("WARNING: unhandled case: followQuadFacesEdgeLoop: face %v could not find other edge from %v", faceIdx, knownEdge)
@@ -465,7 +505,7 @@ func (is *infoSetT) followQuadFacesEdgeLoop(result map[edgeT]edgeVectorT, affect
 		if _, ok := result[knownEdge]; ok { // done with the loop
 			return
 		}
-		// log.Printf("followQuadFacesEdgeLoop: found next ev #%v: %v on faceIdx %v", len(result)+1, otherEdgeVector, faceIdx)
+		log.Printf("followQuadFacesEdgeLoop: found next ev #%v: %v on faceIdx %v", len(result)+1, otherEdgeVector, faceIdx)
 		affectedFaces[faceIdx] = struct{}{}
 		result[knownEdge] = otherEdgeVector
 
@@ -484,18 +524,34 @@ func (is *infoSetT) followQuadFacesEdgeLoop(result map[edgeT]edgeVectorT, affect
 
 // otherQuadEdge makes a new edge vector that is facing the SAME DIRECTION as the reference
 // edge (which always simply reverses the direction of the opposite edge vector).
-func (is *infoSetT) otherQuadEdge(edge edgeT, faceIdx faceIndexT) (edgeVectorT, bool) {
+// It is possible that the face is not a quad. So to find the opposing edge, we find
+// the opposite edge whose edge unit vertex normal points in the opposite direction of the reference edge.
+func (is *infoSetT) otherQuadEdge(refEdge edgeT, faceIdx faceIndexT) (edgeVectorT, bool) {
 	face := is.faces[faceIdx]
-	if len(face) != 4 {
-		return edgeVectorT{}, false
-	}
+	// first, find this edge in the face in order to get the edge unit vector.
+	var refUV Vec3
 	for i, vertIdx := range face {
 		nextIdx := face[(i+1)%len(face)]
-		if vertIdx == edge[0] || vertIdx == edge[1] || nextIdx == edge[0] || nextIdx == edge[1] {
+		edge := makeEdge(vertIdx, nextIdx)
+		if edge == refEdge {
+			refUV = is.faceInfo.m.makeEdgeVector(vertIdx, nextIdx).toSubFrom.Normalized()
+			log.Printf("otherQuadEdge: refUV=%v", refUV)
+			break
+		}
+	}
+
+	for i, vertIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		if vertIdx == refEdge[0] || vertIdx == refEdge[1] || nextIdx == refEdge[0] || nextIdx == refEdge[1] {
 			continue
 		}
-		return is.makeEdgeVector(nextIdx, vertIdx), true // VERTEX ORDER SWAPPED ON PURPOSE HERE!!!
+		negatedEV := is.faceInfo.m.makeEdgeVector(nextIdx, vertIdx) // VERTEX ORDER SWAPPED ON PURPOSE HERE!!!
+		uv := negatedEV.toSubFrom.Normalized()
+		if uv.AboutEq(refUV) {
+			return negatedEV, true
+		}
 	}
+	log.Printf("WARNING: otherQuadEdge: unable to find opposite edge for %v: %v", refEdge, refUV)
 	return edgeVectorT{}, false
 }
 
@@ -563,6 +619,73 @@ func (is *infoSetT) moveSingleFace(baseFaceIdx faceIndexT, amount float64, verts
 	}
 }
 */
+
+func (is *infoSetT) lerpMoveEdgesAlongFace(faceIdx faceIndexT, amount float64, ev1, ev2 edgeVectorT, result vToVMap) {
+	vertsBetweenEdges := is.vertsBetweenEdges(faceIdx, ev1, ev2)
+	if len(vertsBetweenEdges) == 0 {
+		return
+	}
+	log.Printf("lerpMoveEdgesAlongFace: vertsBetweenEdges=%+v", vertsBetweenEdges)
+
+	m := is.faceInfo.m
+	uv1 := ev1.toSubFrom.Normalized()
+	uv2 := ev2.toSubFrom.Normalized()
+	for i, vertIdx := range vertsBetweenEdges {
+		t := float64(i+1) / float64(len(vertsBetweenEdges)+1)
+		t1 := 1 - t
+		lerp := Vec3Add(uv1.MulScalar(t1), uv2.MulScalar(t))
+		move := lerp.MulScalar(amount)
+
+		v := m.Verts[vertIdx].Add(move)
+		newVertIdx := m.AddVert(v)
+		log.Printf("lerpMoveEdgeAlongFace: from old vert %v=%v, creating new vert %v at %v", vertIdx, m.Verts[vertIdx].toKey(), newVertIdx, v.toKey())
+		result[vertIdx] = newVertIdx
+		log.Printf("lerpMoveEdgeAlongFace: ev1=%v, ev2=%v, move=%v, oldVert[%v]=%v, newVert[%v]=%v",
+			ev1, ev2, move, vertIdx, m.Verts[vertIdx], newVertIdx, m.Verts[newVertIdx])
+	}
+}
+
+// Note that vertsBetweenEdges returns the verts in order from ev1 to ev2 so that they
+// can be linearly interpolated properly above.
+func (is *infoSetT) vertsBetweenEdges(faceIdx faceIndexT, ev1, ev2 edgeVectorT) []VertIndexT {
+	face := is.faces[faceIdx]
+	startI, endI := -1, -1
+	var startIVertIdx VertIndexT
+	for i, vIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		if (vIdx == ev1.fromVertIdx && nextIdx == ev2.fromVertIdx) ||
+			(vIdx == ev2.fromVertIdx && nextIdx == ev1.fromVertIdx) {
+			return nil // no intervening vertices
+		}
+		if (vIdx == ev1.fromVertIdx && nextIdx == ev1.toVertIdx) ||
+			(vIdx == ev2.fromVertIdx && nextIdx == ev2.toVertIdx) {
+			endI = (i - 1 + len(face)) % len(face) // inclusive
+		}
+		if vIdx == ev1.toVertIdx && nextIdx == ev1.fromVertIdx {
+			startIVertIdx = ev1.fromVertIdx
+			startI = (i + 2) % len(face) // inclusive
+		} else if vIdx == ev2.toVertIdx && nextIdx == ev2.fromVertIdx {
+			startIVertIdx = ev2.fromVertIdx
+			startI = (i + 2) % len(face) // inclusive
+		}
+	}
+
+	if startI < 0 || endI < 0 {
+		log.Printf("WARNING: vertsBetweenEdges: programming error: startI=%v, endI=%v, want >= 0", startI, endI)
+	}
+	if startI > endI {
+		startI, endI = endI, startI
+	}
+
+	result := make([]VertIndexT, 0, endI-startI+1)
+	for i := startI; i <= endI; i++ {
+		result = append(result, face[i])
+	}
+	if startIVertIdx == ev2.fromVertIdx {
+		slices.Reverse(result)
+	}
+	return result
+}
 
 func (is *infoSetT) moveEdge(ev edgeVectorT, amount float64, vertsOldToNew vToVMap) {
 	uv := ev.toSubFrom.Normalized()

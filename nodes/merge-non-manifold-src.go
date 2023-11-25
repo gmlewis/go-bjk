@@ -85,17 +85,19 @@ func (is *infoSetT) fixEdge2OverlapingFaces(edge edgeT, f0, f1, otherFaceIdx fac
 
 func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 	edgeLoops := fi.src.badEdgesToConnectedEdgeLoops()
-	// log.Printf("src:\n%v", fi.m.dumpFaces(fi.src.faces))
-	// log.Printf("dst:\n%v", fi.m.dumpFaces(fi.dst.faces))
-	// log.Printf("edgeLoops: %+v", edgeLoops)
+	log.Printf("connectOpenSrcExtrusionsToDst: src:\n%v", fi.m.dumpFaces(fi.src.faces))
+	log.Printf("connectOpenSrcExtrusionsToDst: dst:\n%v", fi.m.dumpFaces(fi.dst.faces))
+	log.Printf("connectOpenSrcExtrusionsToDst: edgeLoops: %+v", edgeLoops)
+
+cutsMade:
 	for faceStr, edges := range edgeLoops {
 		if deleteFaceIdx, ok := fi.dst.faceStrToFaceIdx[faceStr]; ok {
 			fi.dst.facesTargetedForDeletion[deleteFaceIdx] = true
 			continue
 		}
 
-		// log.Printf("connectOpenSrcExtrusionsToDst: src.badEdges: %+v", fi.src.badEdges)
-		// log.Printf("connectOpenSrcExtrusionsToDst: dst.edgeToFaces: %+v", fi.dst.edgeToFaces)
+		log.Printf("connectOpenSrcExtrusionsToDst: src.badEdges: %+v", fi.src.badEdges)
+		log.Printf("connectOpenSrcExtrusionsToDst: dst.edgeToFaces: %+v", fi.dst.edgeToFaces)
 
 		// Using this imaginary face "signature", find a dst face that shares one edge whose
 		// two other edges have the same unit edge vectors as this missing src face.
@@ -113,23 +115,99 @@ func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 			srcE2EV := fi.src.connectedBadEdgeVectorFromVert(edge[1], edge)
 			srcE2UV := srcE2EV.toSubFrom.Normalized()
 
-			// log.Printf("srcE1EV=%+v", srcE1EV)
-			// log.Printf("srcE1UV=%+v", srcE1UV)
-			// log.Printf("srcE2EV=%+v", srcE2EV)
-			// log.Printf("srcE2UV=%+v", srcE2UV)
+			log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE1EV=%+v", srcE1EV)
+			log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE1UV=%+v", srcE1UV)
+			log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE2EV=%+v", srcE2EV)
+			log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE2UV=%+v", srcE2UV)
 
 			baseDstFaceIdx, ok := fi.dst.findBaseFaceSharingTwoEdgeUVs(edge, srcE1UV, srcE2UV)
 			if !ok {
 				continue
 			}
 
-			// log.Printf("Cutting neighbors of baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
+			log.Printf("connectOpenSrcExtrusionsToDst: single cutting neighbors of baseDstFaceIdx: %v: %+v", baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx])
 			fi.dst.cutNeighborsAndShortenAlongEdges(baseDstFaceIdx, srcE1EV, srcE2EV)
-			break
+			continue cutsMade
 		}
 
-		// log.Printf("WARNING: connectOpenSrcExtrusionsToDst: dst face not found: %v", faceStr)
+		// No cuts were made at this point. Check if any dst face shares the same vertex with the same two edge vectors
+		// as the src face. If so, a double-cut along each direction needs to be performed.
+		for _, edge := range edges {
+			srcFaceIndices, ok := fi.src.badEdges[edge]
+			if !ok || len(srcFaceIndices) != 1 {
+				// this is not a valid edge connected to a singular face so keep looking
+				continue
+			}
+			srcFaceIdx := srcFaceIndices[0] // This is the only src face that shares an edge with a dst face.
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut looking at shared edge: %v from src %v", edge, fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+			srcE1EV := fi.src.connectedBadEdgeVectorFromVert(edge[0], edge)
+			srcE1UV := srcE1EV.toSubFrom.Normalized()
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE1EV=%+v", srcE1EV)
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE1UV=%+v", srcE1UV)
+
+			otherEdge := fi.src.otherBadEdgeFromVert(edge[0], edge)
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut otherEdge=%v from vertIdx=%v", otherEdge, edge[0])
+
+			srcE2EV := fi.src.connectedBadEdgeVectorFromVert(edge[0], otherEdge)
+			srcE2UV := srcE2EV.toSubFrom.Normalized()
+
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE2EV=%+v", srcE2EV)
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE2UV=%+v", srcE2UV)
+
+			baseDstFaceIdx, ok := fi.dst.findBaseFaceSharingTwoEdgeUVsFromVert(edge[0], srcE1UV, srcE2UV)
+			if !ok {
+				continue
+			}
+
+			log.Printf("connectOpenSrcExtrusionsToDst: double-cut found base dst face sharing two edges: %v", fi.m.dumpFace(baseDstFaceIdx, fi.dst.faces[baseDstFaceIdx]))
+
+			// now perform a double-cut.
+			fi.dst.cutNeighborsAndShortenAlongEdges(baseDstFaceIdx, srcE1EV, srcE2EV)
+			continue cutsMade
+		}
 	}
+}
+
+func (is *infoSetT) otherBadEdgeFromVert(fromVertIdx VertIndexT, refEdge edgeT) edgeT {
+	for edge := range is.badEdges {
+		if edge != refEdge && (edge[0] == fromVertIdx || edge[1] == fromVertIdx) {
+			return edge
+		}
+	}
+	log.Fatalf("otherBadEdgeFromVert: programming error")
+	return refEdge
+}
+
+func (is *infoSetT) findBaseFaceSharingTwoEdgeUVsFromVert(fromVertIdx VertIndexT, e1UV, e2UV Vec3) (faceIndexT, bool) {
+	faceIndices, ok := is.vertToFaces[fromVertIdx]
+	if !ok {
+		return 0, false
+	}
+
+	for _, baseFaceIdx := range faceIndices {
+		// log.Printf("Looking at baseFaceIdx: %v: %+v", baseFaceIdx, is.faces[baseFaceIdx])
+
+		face := is.faces[baseFaceIdx]
+		var matches int
+		for i, vIdx := range face {
+			nextIdx := face[(i+1)%len(face)]
+			if vIdx != fromVertIdx && nextIdx != fromVertIdx {
+				continue
+			}
+			edge := makeEdge(vIdx, nextIdx)
+
+			myEV := is.connectedEdgeVectorFromVertOnFace(fromVertIdx, edge, baseFaceIdx)
+			myUV := myEV.toSubFrom.Normalized()
+
+			if e1UV.AboutEq(myUV) || e2UV.AboutEq(myUV) {
+				matches++
+			}
+		}
+		if matches == 2 {
+			return baseFaceIdx, true
+		}
+	}
+	return 0, false
 }
 
 func (is *infoSetT) findBaseFaceSharingTwoEdgeUVs(edge edgeT, e1UV, e2UV Vec3) (faceIndexT, bool) {
