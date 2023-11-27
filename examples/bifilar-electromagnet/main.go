@@ -153,6 +153,7 @@ func main() {
 		Connect(lastSizeOut, "BFEMCage.cage.size").
 		Connect("SizedQuad.wire-outline.wire-width", "BFEMCage.cage.wire_width").
 		Connect("WireGaps.wire-gap.wire_gap", "BFEMCage.cage.wire_gap").
+		Connect("InnerRadius.inner-radius.x", "BFEMCage.cage.inner_radius").
 		Connect("MakeScalar.segments.x", "BFEMCage.cage.segments").
 		Connect("MakeScalar.vert-turns.x", "BFEMCage.cage.turns").
 		Connect("MakeScalar.radial_thickness.x", "BFEMCage.cage.radial_thickness").
@@ -276,7 +277,8 @@ func makeInnerRadius(b *nodes.Builder, nextNodePos func() string) *nodes.Builder
 		AddNode("MakeVector.inner-radius-xz").
 		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.x").
 		Connect("MakeScalar.inner-radius.x", "MakeVector.inner-radius-xz.z").
-		Output("MakeVector.inner-radius-xz.v", "vxz")
+		Output("MakeVector.inner-radius-xz.v", "vxz").
+		Output("MakeScalar.inner-radius.x", "x")
 }
 
 var _ embedNNPFunc = makeSizedQuad

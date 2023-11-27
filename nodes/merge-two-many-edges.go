@@ -1,6 +1,9 @@
+// -*- compile-command: "go test -v ./..."; -*-
+
 package nodes
 
 import (
+	"fmt"
 	"log"
 
 	"golang.org/x/exp/maps"
@@ -65,6 +68,36 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 		}
 	}
 
+	// Run this loop at most n times to repair shared edges.
+	n := len(sharedEdges)
+	for i := 0; i < n; i++ {
+		edge, v := firstPair(sharedEdges)
+		log.Printf("\n\nRunning sharedEdges loop #%v of %v: edge=%v, srcFaces=%+v, dstFaces=%+v", i+1, n, edge, v[0], v[1])
+		log.Printf("merge-two-many-edges.go: srcFaces:\n%v", fi.src.dumpFaceIndices(v[0]))
+		log.Printf("merge-two-many-edges.go: dstFaces:\n%v\n\n", fi.dst.dumpFaceIndices(v[1]))
+
+		fi.merge2manisOneEdge(edge, v[0], v[1])
+
+		// delete faces from merge
+		fi.src.deleteFacesLastToFirst(fi.src.facesTargetedForDeletion)
+		fi.src.facesTargetedForDeletion = map[faceIndexT]bool{}
+		fi.dst.deleteFacesLastToFirst(fi.dst.facesTargetedForDeletion)
+		fi.dst.facesTargetedForDeletion = map[faceIndexT]bool{}
+
+		// debug: write out temporary results of this step
+		prefix := fmt.Sprintf("merge-edge-after-step-%v-of-%v", i+1, n)
+		debugSrc := NewMeshFromPolygons(fi.m.Verts, fi.src.faces)
+		debugSrc.WriteObj(prefix + "-src.obj")
+		debugDst := NewMeshFromPolygons(fi.m.Verts, fi.dst.faces)
+		debugDst.WriteObj(prefix + "-dst.obj")
+
+		fi = regenerateFaceInfo(fi)
+		_, sharedEdges, _ = fi.findSharedVEFs()
+		if len(sharedEdges) == 0 {
+			return
+		}
+	}
+
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: numSharedEdges=%v", numSharedEdges)
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: sharedEdges keys=%v=%+v", len(sharedEdges), maps.Keys(sharedEdges))
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: srcEdgeCountToFaceIndices=%v=%+v", len(srcEdgeCountToFaceIndices), srcEdgeCountToFaceIndices)
@@ -83,6 +116,13 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	for faceIdx, edges := range dstFaceIndicesToEdges {
 		log.Printf("dstFaceIndicesToEdges[%v]=%v=%+v", faceIdx, len(edges), edges)
 	}
+}
+
+func firstPair[K comparable, V any](pairs map[K]V) (k K, v V) {
+	for k, v = range pairs {
+		return k, v
+	}
+	return k, v
 }
 
 func (fi *faceInfoT) findMatchingFaceNormals(opts *twoSeparateCutsOpts) bool {
