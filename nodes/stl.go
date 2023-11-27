@@ -61,9 +61,9 @@ func STLToMesh(filename string, swapYZ bool) (*Mesh, error) {
 			v3.Y, v3.Z = v3.Z, v3.Y
 		}
 		verts := []Vec3{
-			Vec3{X: v1.X, Y: v1.Y, Z: v1.Z},
-			Vec3{X: v2.X, Y: v2.Y, Z: v2.Z},
-			Vec3{X: v3.X, Y: v3.Y, Z: v3.Z},
+			{X: v1.X, Y: v1.Y, Z: v1.Z},
+			{X: v2.X, Y: v2.Y, Z: v2.Z},
+			{X: v3.X, Y: v3.Y, Z: v3.Z},
 		}
 		m.AddFace(verts)
 	}
@@ -96,19 +96,12 @@ func tesselateFace(out stlWriter, mesh *Mesh, faceIndex int, swapYZ bool) error 
 	// chose the face with the smallest final area.
 	numVerts := len(face)
 	faceTris, faceArea := simpleTesselator(mesh.Verts, n, face, 0, 1)
-	// log.Printf("face1Area=%0.5f", faceArea)
 	if faceTris2, face2Area := simpleTesselator(mesh.Verts, n, face, 1, 2); face2Area < faceArea {
-		// log.Printf("face2Area=%0.5f: face2 WINS!", face2Area)
 		faceTris, faceArea = faceTris2, face2Area
-		// 	} else {
-		// 		log.Printf("face2Area=%0.5f: face1 wins", face2Area)
 	}
 	if numVerts > 3 {
 		if faceTris3, face3Area := simpleTesselator(mesh.Verts, n, face, numVerts-1, 0); face3Area < faceArea {
-			//			log.Printf("face3Area=%0.5f: face3 WINS!", face3Area)
-			faceTris, faceArea = faceTris3, face3Area
-			//		} else {
-			//			log.Printf("face3Area=%0.5f: face1 wins", face3Area)
+			faceTris = faceTris3
 		}
 	}
 

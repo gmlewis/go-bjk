@@ -5,6 +5,7 @@ package nodes
 import (
 	"fmt"
 	"log"
+	"slices"
 
 	"golang.org/x/exp/maps"
 )
@@ -72,7 +73,7 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	n := len(sharedEdges)
 	for i := 0; i < n; i++ {
 		edge, v := firstPair(sharedEdges)
-		log.Printf("\n\nRunning sharedEdges loop #%v of %v: edge=%v, srcFaces=%+v, dstFaces=%+v", i+1, n, edge, v[0], v[1])
+		log.Printf("\n\nRunning sharedEdges(=%v) loop #%v of %v: edge=%v, srcFaces=%+v, dstFaces=%+v", len(sharedEdges), i+1, n, edge, v[0], v[1])
 		log.Printf("merge-two-many-edges.go: srcFaces:\n%v", fi.src.dumpFaceIndices(v[0]))
 		log.Printf("merge-two-many-edges.go: dstFaces:\n%v\n\n", fi.dst.dumpFaceIndices(v[1]))
 
@@ -87,8 +88,10 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 		// debug: write out temporary results of this step
 		prefix := fmt.Sprintf("merge-edge-after-step-%v-of-%v", i+1, n)
 		debugSrc := NewMeshFromPolygons(fi.m.Verts, fi.src.faces)
+		log.Printf("Writing %v src faces to file: %v", len(fi.src.faces), prefix+"-src.obj")
 		debugSrc.WriteObj(prefix + "-src.obj")
 		debugDst := NewMeshFromPolygons(fi.m.Verts, fi.dst.faces)
+		log.Printf("Writing %v dst faces to file: %v", len(fi.dst.faces), prefix+"-dst.obj")
 		debugDst.WriteObj(prefix + "-dst.obj")
 
 		fi = regenerateFaceInfo(fi)
@@ -118,12 +121,31 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	}
 }
 
-func firstPair[K comparable, V any](pairs map[K]V) (k K, v V) {
-	for k, v = range pairs {
+func cmpEdges(e1, e2 edgeT) int {
+	if e1[0] == e2[0] {
+		return int(e1[1] - e2[1])
+	}
+	return int(e1[0] - e2[0])
+}
+
+// firstPair always returns the next key in sorted order.
+func firstPair(pairs sharedEdgesMapT) (k edgeT, v [2][]faceIndexT) {
+	if len(pairs) == 0 {
 		return k, v
 	}
-	return k, v
+	keys := maps.Keys(pairs)
+	slices.SortFunc(keys, cmpEdges)
+	return keys[0], pairs[keys[0]]
 }
+
+// func firstPair[K cmp.Ordered, V any](pairs map[K]V) (k K, v V) {
+// 	if len(pairs) == 0 {
+// 		return k, v
+// 	}
+// 	keys := maps.Keys(pairs)
+// 	slices.Sort(keys)
+// 	return keys[0], pairs[keys[0]]
+// }
 
 func (fi *faceInfoT) findMatchingFaceNormals(opts *twoSeparateCutsOpts) bool {
 	// log.Printf("merge2manisManyEdges: finding main src and dst faces")

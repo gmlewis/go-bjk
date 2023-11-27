@@ -1,3 +1,5 @@
+// -*- compile-command: "go test -v ./..."; -*-
+
 package nodes
 
 import (
@@ -724,6 +726,11 @@ func (is *infoSetT) deleteFacesLastToFirst(facesToDeleteMap map[faceIndexT]bool)
 	facesToDelete := maps.Keys(facesToDeleteMap)
 	sort.Slice(facesToDelete, func(i, j int) bool { return facesToDelete[i] > facesToDelete[j] })
 	for _, faceIdx := range facesToDelete {
+		if is == is.faceInfo.src {
+			log.Printf("*** Deleting src face: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
+		} else {
+			log.Printf("*** Deleting dst face: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
+		}
 		is.deleteFace(faceIdx)
 	}
 }
