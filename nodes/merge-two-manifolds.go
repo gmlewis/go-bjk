@@ -28,9 +28,10 @@ func (fi *faceInfoT) merge2manifolds() {
 	case len(sharedEdges) > 1:
 		fi.merge2manisManyEdges(sharedEdges)
 	case len(sharedEdges) == 1:
-		edges := maps.Keys(sharedEdges)
-		edge := edges[0]
-		fi.merge2manisOneEdge(edge, sharedEdges[edge][0], sharedEdges[edge][1])
+		// edges := maps.Keys(sharedEdges)
+		// edge := edges[0]
+		// fi.merge2manisOneEdge(edge, sharedEdges[edge][0], sharedEdges[edge][1])
+		fi.merge2manis2edges(sharedEdges) // experiment
 	case len(sharedVerts) == 0 && len(sharedEdges) == 0 && len(sharedFaces) == 0: // simple concatenation - no sharing
 	default:
 		log.Printf("WARNING: merge2manifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))

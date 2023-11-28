@@ -37,7 +37,7 @@ func TestMerge(t *testing.T) {
 	defer os.RemoveAll(tempDir) // clean up
 
 	for _, prefix := range testCasePrefixes {
-		if prefix != "golden-spiral-staircase-131" {
+		if prefix != "golden-double-cut" {
 			continue // debug only
 		}
 		t.Logf("running test case prefix: %v", prefix)

@@ -8,7 +8,7 @@ import (
 )
 
 func (is *infoSetT) moveVertsAlongEdgeLoop(faceIdx faceIndexT, amount float64) (vToVMap, faceSetT) {
-	log.Printf("TEMPORARILY RETURNING NIL: moveVertsAlongEdgeLoop")
+	log.Fatalf("TEMPORARILY RETURNING NIL: moveVertsAlongEdgeLoop")
 	return nil, nil
 }
 
@@ -24,16 +24,17 @@ func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, e1E
 	log.Printf("cutNeighborsAndShortenAlongEdges: amount=%v, edge=%v, face %v",
 		amount, edge, is.faceInfo.m.dumpFace(baseFaceIdx, is.faces[baseFaceIdx]))
 
-	oldVertsToNewMap, shortenedFaces := is.moveVertsAlongEdgeLoop(baseFaceIdx, amount)
-	log.Printf("cutNeighborsAndShortenAlongEdges: oldVertsToNewMap: %+v", oldVertsToNewMap)
-	log.Printf("cutNeighborsAndShortenAlongEdges: %v faces to shorten", len(shortenedFaces))
-
-	var i int
-	for faceIdx := range shortenedFaces {
-		i++
-		log.Printf("\n\ncutNeighborsAndShortenAlongEdges: cutting face #%v of %v: faceIdx=%v", i, len(shortenedFaces), faceIdx)
-		is.moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx, oldVertsToNewMap, edge)
-	}
+	// oldVertsToNewMap, shortenedFaces := is.moveVertsAlongEdgeLoop(baseFaceIdx, amount)
+	// log.Printf("cutNeighborsAndShortenAlongEdges: oldVertsToNewMap: %+v", oldVertsToNewMap)
+	// log.Printf("cutNeighborsAndShortenAlongEdges: %v faces to shorten", len(shortenedFaces))
+	//
+	// var i int
+	// for faceIdx := range shortenedFaces {
+	// 	i++
+	// 	log.Printf("\n\ncutNeighborsAndShortenAlongEdges: cutting face #%v of %v: faceIdx=%v", i, len(shortenedFaces), faceIdx)
+	// 	is.moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx, oldVertsToNewMap, edge)
+	// }
+	log.Fatalf("TEMPORARILY STOPPING: cutNeighborsAndShortenAlongEdges")
 }
 
 func (is *infoSetT) moveFaceVertsAndAddFaceUnlessOnEdge(faceIdx faceIndexT, oldVertsToNewMap map[VertIndexT]VertIndexT, avoidEdge edgeT) {

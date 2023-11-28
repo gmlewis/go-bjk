@@ -250,6 +250,24 @@ func (is *infoSetT) makeEdgeVectors(edge edgeT, faceIdx faceIndexT) [2]edgeVecto
 	}
 }
 
+// makeEdgeVectorsFromVert returns two edgeVectorTs for the given faceIdx, both from the vertex.
+func (is *infoSetT) makeEdgeVectorsFromVert(vertIdx VertIndexT, faceIdx faceIndexT) [2]edgeVectorT {
+	m := is.faceInfo.m
+	face := is.faces[faceIdx]
+	for i, vIdx := range face {
+		lastIdx := face[(i-1+len(face))%len(face)]
+		nextIdx := face[(i+1)%len(face)]
+		if vIdx == vertIdx {
+			return [2]edgeVectorT{
+				m.makeEdgeVector(vIdx, lastIdx),
+				m.makeEdgeVector(vIdx, nextIdx),
+			}
+		}
+	}
+	log.Fatalf("makeEdgeVectorsFromVert: programming error")
+	return [2]edgeVectorT{}
+}
+
 // Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on `edge`)
 // and therefore is completely independent of the winding order of the face!
 // In addition to the edge vector, it also returns the VertIndexT of the other vertex.

@@ -94,7 +94,7 @@ func (ai *abutInfoT) mergeAbuttedFacesOnEdge(edge edgeT, srcFaceIdx, dstFaceIdx 
 	}
 }
 
-func (is *infoSetT) resizeFace(abuttedFaces map[faceIndexT]bool, faceIdx faceIndexT, affectedEdge0, affectedEdge1 edgeT, evs [2]edgeVectorT) {
+func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndexT, affectedEdge0, affectedEdge1 edgeT, evs [2]edgeVectorT) {
 	face := is.faces[faceIdx]
 	for i, vIdx := range face {
 		switch {
@@ -110,7 +110,7 @@ func (is *infoSetT) resizeFace(abuttedFaces map[faceIndexT]bool, faceIdx faceInd
 	// now handle all the affected edges
 	handle := func(edge edgeT) {
 		for _, fIdx := range is.edgeToFaces[edge] {
-			if fIdx == faceIdx || is.facesTargetedForDeletion[fIdx] || abuttedFaces[fIdx] {
+			if fIdx == faceIdx || is.facesTargetedForDeletion[fIdx] || (avoidFaces != nil && avoidFaces[fIdx]) {
 				continue
 			}
 			is.insertVertOnEdge(fIdx, edge, evs)
