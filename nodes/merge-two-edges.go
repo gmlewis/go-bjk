@@ -41,6 +41,11 @@ func (fi *faceInfoT) merge2manis2edgesSrcFewerThanDst(sharedEdges sharedEdgesMap
 
 	for i, edge := range edgeKeys {
 		log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edge #%v of %v: %v, %v abutted faces:", i+1, len(edgeKeys), edge, len(abutInfo.edgesToAbuttedFaces[edge]))
+		if len(abutInfo.edgesToAbuttedFaces[edge]) == 0 {
+			fi.checkCompleteOverlapOnEdge(edge, sharedEdges, srcFaceIndicesToEdges, dstFaceIndicesToEdges)
+			continue
+		}
+
 		for srcNormalKey, faceIndices := range abutInfo.edgesToAbuttedFaces[edge] {
 			srcFaceIndices := faceIndices[0]
 			dstFaceIndices := faceIndices[1]
@@ -107,7 +112,7 @@ func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndex
 		}
 	}
 
-	// now handle all the affected edges
+	// now handle both affected edges
 	handle := func(edge edgeT) {
 		for _, fIdx := range is.edgeToFaces[edge] {
 			if fIdx == faceIdx || is.facesTargetedForDeletion[fIdx] || (avoidFaces != nil && avoidFaces[fIdx]) {
@@ -202,4 +207,68 @@ func (ai *abutInfoT) addResult(edge edgeT, srcNormalKey vertKeyT, srcFaces []fac
 		return
 	}
 	vs[1] = append(vs[1], dstFaceIdx)
+}
+
+func (fi *faceInfoT) checkCompleteOverlapOnEdge(edge edgeT, sharedEdges sharedEdgesMapT, srcFaceIndicesToEdges, dstFaceIndicesToEdges face2EdgesMapT) {
+	srcFaceIdx0 := sharedEdges[edge][0][0]
+	srcFaceIdx1 := sharedEdges[edge][0][1]
+	if fi.m.faceArea(fi.src.faces[srcFaceIdx0]) < fi.m.faceArea(fi.src.faces[srcFaceIdx1]) {
+		srcFaceIdx0, srcFaceIdx1 = srcFaceIdx1, srcFaceIdx0
+	}
+	log.Printf("\n\ncheckCompleteOverlapOnEdge: srcFaceIdx0=%v area=%v, srcFaceIdx1=%v area=%v", srcFaceIdx0, fi.m.faceArea(fi.src.faces[srcFaceIdx0]), srcFaceIdx1, fi.m.faceArea(fi.src.faces[srcFaceIdx1]))
+
+	dstFaceIdx0 := sharedEdges[edge][1][0]
+	dstFaceIdx1 := sharedEdges[edge][1][1]
+	if fi.m.faceArea(fi.dst.faces[dstFaceIdx0]) > fi.m.faceArea(fi.dst.faces[dstFaceIdx1]) {
+		dstFaceIdx0, dstFaceIdx1 = dstFaceIdx1, dstFaceIdx0
+	}
+	log.Printf("checkCompleteOverlapOnEdge: dstFaceIdx0=%v area=%v, dstFaceIdx1=%v area=%v", dstFaceIdx0, fi.m.faceArea(fi.dst.faces[dstFaceIdx0]), dstFaceIdx1, fi.m.faceArea(fi.dst.faces[dstFaceIdx1]))
+
+	log.Printf("targeting smaller srcFaceIdx1=%v for deletion", srcFaceIdx1)
+	fi.src.facesTargetedForDeletion[srcFaceIdx1] = true
+
+	moveSrcEVs := fi.dst.makeEdgeVectors(edge, dstFaceIdx0)
+	log.Printf("moveSrcEVs[0]=%v", moveSrcEVs[0])
+	log.Printf("moveSrcEVs[1]=%v", moveSrcEVs[1])
+	moveDstEVs := fi.src.makeEdgeVectors(edge, srcFaceIdx1)
+	log.Printf("BEFORE: moveDstEVs[0]=%v", moveDstEVs[0])
+	log.Printf("BEFORE: moveDstEVs[1]=%v", moveDstEVs[1])
+
+	moveMap := fi.src.moveAllVertsOnDeletedFace(srcFaceIdx1, moveSrcEVs)
+	log.Printf("moveMap: %+v", moveMap)
+	moveDstEVs[0].fromVertIdx = moveMap[moveDstEVs[0].fromVertIdx]
+	moveDstEVs[0].toVertIdx = moveMap[moveDstEVs[0].toVertIdx]
+	moveDstEVs[1].fromVertIdx = moveMap[moveDstEVs[1].fromVertIdx]
+	moveDstEVs[1].toVertIdx = moveMap[moveDstEVs[1].toVertIdx]
+	log.Printf("AFTER: moveDstEVs[0]=%v", moveDstEVs[0])
+	log.Printf("AFTER: moveDstEVs[1]=%v", moveDstEVs[1])
+
+	dstOppositeEdge := makeEdge(moveSrcEVs[0].toVertIdx, moveSrcEVs[1].toVertIdx)
+	log.Printf("dstOppositeEdge=%v: %v %v", dstOppositeEdge, fi.m.Verts[dstOppositeEdge[0]], fi.m.Verts[dstOppositeEdge[1]])
+	dstFaceToResizeIdx, affectedDstEdge0, affectedDstEdge1 := fi.dst.otherFaceOnEdge(dstOppositeEdge, dstFaceIdx0)
+
+	fi.dst.resizeFace(nil, dstFaceToResizeIdx, affectedDstEdge0, affectedDstEdge1, moveDstEVs)
+}
+
+func (is *infoSetT) moveAllVertsOnDeletedFace(baseFaceIdx faceIndexT, evs [2]edgeVectorT) vToVMap {
+	baseFace := is.faces[baseFaceIdx]
+	moveMap := is.moveVerts(baseFace, evs[0].toSubFrom)
+
+	processedFaces := map[faceIndexT]bool{baseFaceIdx: true}
+	for oldIdx := range moveMap {
+		for _, faceIdx := range is.vertToFaces[oldIdx] {
+			if processedFaces[faceIdx] {
+				continue
+			}
+			processedFaces[faceIdx] = true
+			face := is.faces[faceIdx]
+			for i, vIdx := range face {
+				if newIdx, ok := moveMap[vIdx]; ok {
+					is.faces[faceIdx][i] = newIdx
+				}
+			}
+		}
+	}
+
+	return moveMap
 }

@@ -792,6 +792,19 @@ func (is *infoSetT) deleteFacesLastToFirst(facesToDeleteMap map[faceIndexT]bool)
 	}
 }
 
+func (is *infoSetT) otherFaceOnEdge(edge edgeT, otherFaceIdx faceIndexT) (faceIndexT, edgeT, edgeT) {
+	for _, faceIdx := range is.edgeToFaces[edge] {
+		if faceIdx == otherFaceIdx {
+			continue
+		}
+		v0 := is.otherVertexFrom(edge, edge[0], faceIdx)
+		v1 := is.otherVertexFrom(edge, edge[1], faceIdx)
+		return faceIdx, makeEdge(edge[0], v0), makeEdge(edge[1], v1)
+	}
+	log.Fatalf("otherFaceOnEdge: programming error")
+	return 0, edgeT{}, edgeT{}
+}
+
 // // edgeVector returns the vector representing this edge.
 // // Note that the edge order does _NOT_ represent the winding order!
 // // Therefore the original winding order needs to be found and preserved.
