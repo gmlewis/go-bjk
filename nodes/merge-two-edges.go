@@ -21,33 +21,34 @@ func (fi *faceInfoT) merge2manis2edgesSrcFewerThanDst(sharedEdges sharedEdgesMap
 	{
 		log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edges=%+v", edgeKeys)
 		for i, edge := range edgeKeys {
-			log.Printf("merge2manis2edgesSrcFewerThanDst: edge #%v of %v: %v, src faces: %+v, dst faces: %+v", i+1, len(edgeKeys), edge, sharedEdges[edge][0], sharedEdges[edge][1])
+			log.Printf("edge #%v of %v: %v, src faces: %+v, dst faces: %+v", i+1, len(edgeKeys), edge, sharedEdges[edge][0], sharedEdges[edge][1])
 		}
-		log.Printf("merge2manis2edgesSrcFewerThanDst: #srcFaceIndicesToEdges=%v, #dstFaceIndicesToEdges=%v", len(srcFaceIndicesToEdges), len(dstFaceIndicesToEdges))
+		log.Printf("#srcFaceIndicesToEdges=%v, #dstFaceIndicesToEdges=%v\n\n", len(srcFaceIndicesToEdges), len(dstFaceIndicesToEdges))
 		srcFaceIndices := maps.Keys(srcFaceIndicesToEdges)
 		sort.Slice(srcFaceIndices, func(a, b int) bool { return srcFaceIndices[a] < srcFaceIndices[b] })
 		for i, srcFaceIdx := range srcFaceIndices {
-			log.Printf("merge2manis2edgesSrcFewerThanDst: src face #%v of %v: %v", i+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+			log.Printf("src face #%v of %v: %v", i+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
 		}
+		log.Printf("\n")
 		dstFaceIndices := maps.Keys(dstFaceIndicesToEdges)
 		sort.Slice(dstFaceIndices, func(a, b int) bool { return dstFaceIndices[a] < dstFaceIndices[b] })
 		for i, dstFaceIdx := range dstFaceIndices {
-			log.Printf("merge2manis2edgesSrcFewerThanDst: dst face #%v of %v: %v", i+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+			log.Printf("dst face #%v of %v: %v", i+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
 		}
 	}
 
-	edgesToAbuttedFaces := fi.abuttedFaces(sharedEdges)
+	abutInfo := fi.abuttedFaces(sharedEdges)
 
 	for i, edge := range edgeKeys {
-		log.Printf("merge2manis2edgesSrcFewerThanDst: edge #%v of %v: %v, %v abutted faces:", i+1, len(edgeKeys), edge, len(edgesToAbuttedFaces[edge]))
-		for srcNormalKey, faceIndices := range edgesToAbuttedFaces[edge] {
+		log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edge #%v of %v: %v, %v abutted faces:", i+1, len(edgeKeys), edge, len(abutInfo.edgesToAbuttedFaces[edge]))
+		for srcNormalKey, faceIndices := range abutInfo.edgesToAbuttedFaces[edge] {
 			srcFaceIndices := faceIndices[0]
 			dstFaceIndices := faceIndices[1]
 			for j, srcFaceIdx := range srcFaceIndices {
-				log.Printf("merge2manis2edgesSrcFewerThanDst: edge %v (normal key %v) abutted src face #%v of %v: %v", edge, srcNormalKey, j+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+				log.Printf("edge %v (normal key %v) abutted src face #%v of %v: %v", edge, srcNormalKey, j+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
 			}
 			for j, dstFaceIdx := range dstFaceIndices {
-				log.Printf("merge2manis2edgesDstFewerThanDst: edge %v (normal key %v) abutted dst face #%v of %v: %v", edge, srcNormalKey, j+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+				log.Printf("edge %v (normal key %v) abutted dst face #%v of %v: %v", edge, srcNormalKey, j+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
 			}
 
 			if len(srcFaceIndices) != 1 || len(dstFaceIndices) != 1 {
@@ -56,12 +57,13 @@ func (fi *faceInfoT) merge2manis2edgesSrcFewerThanDst(sharedEdges sharedEdgesMap
 			}
 
 			srcFaceIdx, dstFaceIdx := srcFaceIndices[0], dstFaceIndices[0]
-			fi.mergeAbuttedFacesOnEdge(edge, srcFaceIdx, dstFaceIdx)
+			abutInfo.mergeAbuttedFacesOnEdge(edge, srcFaceIdx, dstFaceIdx)
 		}
 	}
 }
 
-func (fi *faceInfoT) mergeAbuttedFacesOnEdge(edge edgeT, srcFaceIdx, dstFaceIdx faceIndexT) {
+func (ai *abutInfoT) mergeAbuttedFacesOnEdge(edge edgeT, srcFaceIdx, dstFaceIdx faceIndexT) {
+	fi := ai.fi
 	if fi.src.facesTargetedForDeletion[srcFaceIdx] {
 		log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v already deleted - skipping", srcFaceIdx)
 		return
@@ -78,18 +80,21 @@ func (fi *faceInfoT) mergeAbuttedFacesOnEdge(edge edgeT, srcFaceIdx, dstFaceIdx 
 	log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v: EVs[0] = %v", dstFaceIdx, dstEVs[0])
 	log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v: EVs[1] = %v", dstFaceIdx, dstEVs[1])
 
+	// first pass: delete and resize faces
 	srcLength := (srcEVs[0].length + srcEVs[0].length) / 2
 	dstLength := (dstEVs[0].length + dstEVs[0].length) / 2
 	if srcLength < dstLength {
+		log.Printf("mergeAbuttedFacesOnEdge: marking src face for DELETION: %v", fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
 		fi.src.facesTargetedForDeletion[srcFaceIdx] = true
-		fi.dst.resizeFace(dstFaceIdx, dstEVs[0].edge, dstEVs[1].edge, srcEVs) // resize dst by shorter edge vectors
+		fi.dst.resizeFace(ai.dstFaces, dstFaceIdx, dstEVs[0].edge, dstEVs[1].edge, srcEVs) // resize dst by shorter edge vectors
 	} else {
+		log.Printf("mergeAbuttedFacesOnEdge: marking dst face for DELETION: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
 		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
-		fi.src.resizeFace(srcFaceIdx, srcEVs[0].edge, srcEVs[1].edge, dstEVs) // resize src by shorter edge vectors
+		fi.src.resizeFace(ai.srcFaces, srcFaceIdx, srcEVs[0].edge, srcEVs[1].edge, dstEVs) // resize src by shorter edge vectors
 	}
 }
 
-func (is *infoSetT) resizeFace(faceIdx faceIndexT, affectedEdge0, affectedEdge1 edgeT, evs [2]edgeVectorT) {
+func (is *infoSetT) resizeFace(abuttedFaces map[faceIndexT]bool, faceIdx faceIndexT, affectedEdge0, affectedEdge1 edgeT, evs [2]edgeVectorT) {
 	face := is.faces[faceIdx]
 	for i, vIdx := range face {
 		switch {
@@ -105,7 +110,7 @@ func (is *infoSetT) resizeFace(faceIdx faceIndexT, affectedEdge0, affectedEdge1 
 	// now handle all the affected edges
 	handle := func(edge edgeT) {
 		for _, fIdx := range is.edgeToFaces[edge] {
-			if fIdx == faceIdx || is.facesTargetedForDeletion[fIdx] {
+			if fIdx == faceIdx || is.facesTargetedForDeletion[fIdx] || abuttedFaces[fIdx] {
 				continue
 			}
 			is.insertVertOnEdge(fIdx, edge, evs)
@@ -144,25 +149,23 @@ func (is *infoSetT) insertVertOnEdge(faceIdx faceIndexT, edge edgeT, evs [2]edge
 	}
 }
 
+type abutInfoT struct {
+	fi                  *faceInfoT
+	edgesToAbuttedFaces abutMapT
+	srcFaces            map[faceIndexT]bool
+	dstFaces            map[faceIndexT]bool
+}
+
 type abutMapT map[edgeT]map[vertKeyT][2][]faceIndexT
 
 // abuttedFaces returns a map from edge to normal key to two slices (src,dst) of abutted face indices.
 // It sortes the indices to make testing easier.
-func (fi *faceInfoT) abuttedFaces(sharedEdges sharedEdgesMapT) abutMapT {
-	result := abutMapT{}
-	addResult := func(edge edgeT, srcNormalKey vertKeyT, srcFaces []faceIndexT, dstFaceIdx faceIndexT) {
-		nm, ok := result[edge]
-		if !ok {
-			nm = map[vertKeyT][2][]faceIndexT{}
-			result[edge] = nm
-		}
-		vs, ok := nm[srcNormalKey]
-		if !ok {
-			vs = [2][]faceIndexT{srcFaces, {dstFaceIdx}}
-			nm[srcNormalKey] = vs
-			return
-		}
-		vs[1] = append(vs[1], dstFaceIdx)
+func (fi *faceInfoT) abuttedFaces(sharedEdges sharedEdgesMapT) *abutInfoT {
+	ai := &abutInfoT{
+		fi:                  fi,
+		edgesToAbuttedFaces: abutMapT{},
+		srcFaces:            map[faceIndexT]bool{},
+		dstFaces:            map[faceIndexT]bool{},
 	}
 
 	for edge, v := range sharedEdges {
@@ -174,9 +177,29 @@ func (fi *faceInfoT) abuttedFaces(sharedEdges sharedEdgesMapT) abutMapT {
 		for _, dstFaceIdx := range v[1] {
 			key := fi.dst.faceNormals[dstFaceIdx].Negated().toKey() // flip the normal
 			if srcFaceIndices, ok := srcNormals[key]; ok {
-				addResult(edge, key, srcFaceIndices, dstFaceIdx)
+				ai.addResult(edge, key, srcFaceIndices, dstFaceIdx)
 			}
 		}
 	}
-	return result
+	return ai
+}
+
+func (ai *abutInfoT) addResult(edge edgeT, srcNormalKey vertKeyT, srcFaces []faceIndexT, dstFaceIdx faceIndexT) {
+	for _, srcFaceIdx := range srcFaces {
+		ai.srcFaces[srcFaceIdx] = true
+	}
+	ai.dstFaces[dstFaceIdx] = true
+
+	nm, ok := ai.edgesToAbuttedFaces[edge]
+	if !ok {
+		nm = map[vertKeyT][2][]faceIndexT{}
+		ai.edgesToAbuttedFaces[edge] = nm
+	}
+	vs, ok := nm[srcNormalKey]
+	if !ok {
+		vs = [2][]faceIndexT{srcFaces, {dstFaceIdx}}
+		nm[srcNormalKey] = vs
+		return
+	}
+	vs[1] = append(vs[1], dstFaceIdx)
 }
