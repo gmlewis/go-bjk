@@ -76,19 +76,6 @@ func (fi *faceInfoT) mergeExtrusion(sharedEdges sharedEdgesMapT, srcFaceIdx, dst
 	fi.src.deleteSideFaces(srcSideEVs)
 }
 
-func (fi *faceInfoT) truncateExtrusion(is *infoSetT, evsToTruncate, otherEVs []edgeVectorT) {
-	for i, ev := range evsToTruncate {
-		otherEV := otherEVs[i]
-		if ev.fromVertIdx != otherEV.fromVertIdx {
-			log.Fatalf("truncateExtrusion: programming error: ev=%+v, otherEV=%+v", ev, otherEV)
-		}
-		for _, faceIdx := range is.edgeToFaces[ev.edge] {
-			// log.Printf("truncateExtrusion: shortening edge %v on faceIdx=%v from vertIdx=%v to vertIdx=%v", ev.edge, faceIdx, ev.fromVertIdx, otherEV.toVertIdx)
-			is.replaceFaceVertIdx(faceIdx, ev.fromVertIdx, otherEV.toVertIdx)
-		}
-	}
-}
-
 func (is *infoSetT) deleteSideFaces(evs []edgeVectorT) {
 	for _, ev := range evs {
 		for _, faceIdx := range is.edgeToFaces[ev.edge] {

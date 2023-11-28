@@ -161,10 +161,8 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 		log.Printf("BAD MERGE: Writing file: %v", filename)
 		afterMergeFI.m.WriteObj(filename)
 
-		for edge, faceIdxes := range afterMergeFI.dst.badEdges {
-			for _, faceIdx := range faceIdxes {
-				log.Printf("NEW BAD EDGE: %v: %v", edge, dst.dumpFace(faceIdx, dst.Faces[faceIdx]))
-			}
+		for edge, faceIndices := range afterMergeFI.dst.badEdges {
+			log.Printf("NEW BAD EDGE %v on faces:\n%v", edge, dst.dumpFacesByIndices(faceIndices))
 		}
 
 		log.Fatalf("Merge: BAD MERGE STOP")

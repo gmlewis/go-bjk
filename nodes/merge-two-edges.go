@@ -207,17 +207,15 @@ func (ai *abutInfoT) addResult(edge edgeT, srcNormalKey vertKeyT, srcFaces []fac
 }
 
 func (fi *faceInfoT) checkCompleteOverlapOnEdge(edge edgeT, sharedEdges sharedEdgesMapT, srcFaceIndicesToEdges, dstFaceIndicesToEdges face2EdgesMapT) {
-	srcFaceIdx0 := sharedEdges[edge][0][0]
 	srcFaceIdx1 := sharedEdges[edge][0][1]
-	if fi.m.faceArea(fi.src.faces[srcFaceIdx0]) < fi.m.faceArea(fi.src.faces[srcFaceIdx1]) {
-		srcFaceIdx0, srcFaceIdx1 = srcFaceIdx1, srcFaceIdx0
+	if srcFaceIdx0 := sharedEdges[edge][0][0]; fi.m.faceArea(fi.src.faces[srcFaceIdx0]) < fi.m.faceArea(fi.src.faces[srcFaceIdx1]) {
+		srcFaceIdx1 = srcFaceIdx0
 	}
 	// log.Printf("\n\ncheckCompleteOverlapOnEdge: srcFaceIdx0=%v area=%v, srcFaceIdx1=%v area=%v", srcFaceIdx0, fi.m.faceArea(fi.src.faces[srcFaceIdx0]), srcFaceIdx1, fi.m.faceArea(fi.src.faces[srcFaceIdx1]))
 
 	dstFaceIdx0 := sharedEdges[edge][1][0]
-	dstFaceIdx1 := sharedEdges[edge][1][1]
-	if fi.m.faceArea(fi.dst.faces[dstFaceIdx0]) > fi.m.faceArea(fi.dst.faces[dstFaceIdx1]) {
-		dstFaceIdx0, dstFaceIdx1 = dstFaceIdx1, dstFaceIdx0
+	if dstFaceIdx1 := sharedEdges[edge][1][1]; fi.m.faceArea(fi.dst.faces[dstFaceIdx0]) > fi.m.faceArea(fi.dst.faces[dstFaceIdx1]) {
+		dstFaceIdx0 = dstFaceIdx1
 	}
 	// log.Printf("checkCompleteOverlapOnEdge: dstFaceIdx0=%v area=%v, dstFaceIdx1=%v area=%v", dstFaceIdx0, fi.m.faceArea(fi.dst.faces[dstFaceIdx0]), dstFaceIdx1, fi.m.faceArea(fi.dst.faces[dstFaceIdx1]))
 

@@ -4,7 +4,6 @@ package nodes
 
 import (
 	"log"
-	"slices"
 
 	"golang.org/x/exp/maps"
 )
@@ -110,25 +109,6 @@ func cmpEdges(e1, e2 edgeT) int {
 	}
 	return int(e1[0] - e2[0])
 }
-
-// firstPair always returns the next key in sorted order.
-func firstPair(pairs sharedEdgesMapT) (k edgeT, v [2][]faceIndexT) {
-	if len(pairs) == 0 {
-		return k, v
-	}
-	keys := maps.Keys(pairs)
-	slices.SortFunc(keys, cmpEdges)
-	return keys[0], pairs[keys[0]]
-}
-
-// func firstPair[K cmp.Ordered, V any](pairs map[K]V) (k K, v V) {
-// 	if len(pairs) == 0 {
-// 		return k, v
-// 	}
-// 	keys := maps.Keys(pairs)
-// 	slices.Sort(keys)
-// 	return keys[0], pairs[keys[0]]
-// }
 
 func (fi *faceInfoT) findMatchingFaceNormals(opts *twoSeparateCutsOpts) bool {
 	// log.Printf("merge2manisManyEdges: finding main src and dst faces")

@@ -132,7 +132,7 @@ func (m *Mesh) WriteObj(filename string) error {
 		for _, idx := range face {
 			indices = append(indices, fmt.Sprintf("%v", idx+1)) // 1-indexed
 		}
-		fmt.Fprintf(w, fmt.Sprintf("f %v\n", strings.Join(indices, " ")))
+		fmt.Fprintf(w, "f %v\n", strings.Join(indices, " "))
 	}
 
 	return w.Close()

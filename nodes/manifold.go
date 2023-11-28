@@ -87,14 +87,6 @@ func (m *Mesh) genFaceInfo(dstFaces, srcFaces []FaceT) *faceInfoT {
 	return fi
 }
 
-// regenerateFaceInfo regenerates the face info and returns a new struct.
-func regenerateFaceInfo(fi *faceInfoT) *faceInfoT {
-	newFI := fi.m.genFaceInfo(fi.dst.faces, fi.src.faces)
-	newFI.src.facesTargetedForDeletion = fi.src.facesTargetedForDeletion
-	newFI.dst.facesTargetedForDeletion = fi.dst.facesTargetedForDeletion
-	return newFI
-}
-
 func (fi *faceInfoT) genFaceInfoForSet(faces []FaceT) *infoSetT {
 	infoSet := &infoSetT{
 		faceInfo:         fi,
@@ -221,10 +213,6 @@ func (m *Mesh) makeEdgeVector(fromIdx, toIdx VertIndexT) edgeVectorT {
 // otherVertexFrom returns the other vertex connected to this edge starting at vertIdx on the given faceIdx.
 func (is *infoSetT) otherVertexFrom(edge edgeT, vertIdx VertIndexT, faceIdx faceIndexT) VertIndexT {
 	face := is.faces[faceIdx]
-	notVertIdx := edge[0]
-	if notVertIdx == vertIdx {
-		notVertIdx = edge[1]
-	}
 	for i, vIdx := range face {
 		nextIdx := face[(i+1)%len(face)]
 		if makeEdge(vIdx, nextIdx) == edge {
@@ -312,29 +300,6 @@ func (is *infoSetT) connectedEdgeVectorFromVertOnFace(vertIdx VertIndexT, edge e
 	return edgeVectorT{}
 }
 
-// This preserves the order of vertex indicies as they appear in the face definition.
-func (is *infoSetT) getEdgeVertsInWindingOrder(edge edgeT, faceIdx faceIndexT) [2]VertIndexT {
-	face := is.faces[faceIdx]
-	for i, pIdx := range face {
-		nextIdx := face[(i+1)%len(face)]
-		if edge[0] == pIdx && edge[1] == nextIdx {
-			return [2]VertIndexT{edge[0], edge[1]}
-		}
-		if edge[1] == pIdx && edge[0] == nextIdx {
-			return [2]VertIndexT{edge[1], edge[0]}
-		}
-	}
-
-	log.Fatalf("getEdgeVertsInWindingOrder: programming error: invalid edge %v for face %+v", edge, face)
-	return [2]VertIndexT{}
-}
-
-// edgeLength returns an edge's length.
-func (is *infoSetT) edgeLength(edge edgeT) float64 {
-	m := is.faceInfo.m
-	return m.Verts[edge[0]].Sub(m.Verts[edge[1]]).Length()
-}
-
 // moveVerts creates new (or reuses old) vertices and returns the mapping from the
 // old face's vertIndexes to the new vertices, without modifying the face.
 func (is *infoSetT) moveVerts(face FaceT, move Vec3) vToVMap {
@@ -351,7 +316,6 @@ func (is *infoSetT) moveVerts(face FaceT, move Vec3) vToVMap {
 }
 
 type vToVMap map[VertIndexT]VertIndexT
-type faceSetT map[faceIndexT]struct{}
 
 // getFaceSideEdgeVectors returns a slice of edge vectors that are connected to (but not on) this face.
 func (is *infoSetT) getFaceSideEdgeVectors(baseFaceIdx faceIndexT) []edgeVectorT {
@@ -375,17 +339,6 @@ func (is *infoSetT) getFaceSideEdgeVectors(baseFaceIdx faceIndexT) []edgeVectorT
 	return result
 }
 
-// replaceFaceVertIdx finds and replaces the vertIdx on a face.
-func (is *infoSetT) replaceFaceVertIdx(faceIdx faceIndexT, fromVertIdx, toVertIdx VertIndexT) {
-	face := is.faces[faceIdx]
-	for i, vertIdx := range face {
-		if vertIdx == fromVertIdx {
-			face[i] = toVertIdx
-			return
-		}
-	}
-}
-
 func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesToEdges, dstFaceIndicesToEdges face2EdgesMapT) {
 	srcFaceIndicesToEdges, dstFaceIndicesToEdges = face2EdgesMapT{}, face2EdgesMapT{}
 	for edge, v := range sharedEdges {
@@ -397,16 +350,6 @@ func reverseMapFaceIndicesToEdges(sharedEdges sharedEdgesMapT) (srcFaceIndicesTo
 		}
 	}
 	return srcFaceIndicesToEdges, dstFaceIndicesToEdges
-}
-
-func reverseMapBadEdges(badEdges edgeToFacesMapT) (faceIndicesToEdges face2EdgesMapT) {
-	faceIndicesToEdges = face2EdgesMapT{}
-	for edge, faceIndices := range badEdges {
-		for _, faceIdx := range faceIndices {
-			faceIndicesToEdges[faceIdx] = append(faceIndicesToEdges[faceIdx], edge)
-		}
-	}
-	return faceIndicesToEdges
 }
 
 // faceIndicesByEdgeCount returns a map of edge count to slice of faceIndices.
@@ -425,21 +368,6 @@ func faceIndicesByEdgeCount(inMap face2EdgesMapT) map[int][]faceIndexT {
 func (is *infoSetT) deleteFace(deleteFaceIdx faceIndexT) {
 	// log.Printf("\n\nDELETING FACE!!! %v", is.faceInfo.m.dumpFace(deleteFaceIdx, is.faces[deleteFaceIdx]))
 	is.faces = slices.Delete(is.faces, int(deleteFaceIdx), int(deleteFaceIdx+1)) // invalidates other faceInfoT maps - last step.
-}
-
-// faceHasEdge checks that the given face has the provided edge.
-func (is *infoSetT) faceHasEdge(faceIdx faceIndexT, edge edgeT) bool {
-	face := is.faces[faceIdx]
-	for i, vertIdx := range face {
-		nextIdx := face[(i+1)%len(face)]
-		if edge[0] == vertIdx && edge[1] == nextIdx {
-			return true
-		}
-		if edge[1] == vertIdx && edge[0] == nextIdx {
-			return true
-		}
-	}
-	return false
 }
 
 // deleteFacesLastToFirst deletes faces by sorting their indices, then deleting them highest to lowest.
@@ -493,19 +421,19 @@ func (m *Mesh) faceArea(face FaceT) float64 {
 	return math.Abs(0.5 * s)
 }
 
-func (m *Mesh) dumpFaces(faces []FaceT) string {
-	var lines []string
-	for i, face := range faces {
-		lines = append(lines, m.dumpFace(faceIndexT(i), face))
-	}
-	return strings.Join(lines, "\n")
-}
+// func (m *Mesh) dumpFaces(faces []FaceT) string {
+// 	var lines []string
+// 	for i, face := range faces {
+// 		lines = append(lines, m.dumpFace(faceIndexT(i), face))
+// 	}
+// 	return strings.Join(lines, "\n")
+// }
 
-func (is *infoSetT) dumpFaceIndices(faceIdxes []faceIndexT) string {
+func (m *Mesh) dumpFacesByIndices(faceIndices []faceIndexT) string {
 	var lines []string
-	for _, faceIdx := range faceIdxes {
-		face := is.faces[faceIdx]
-		lines = append(lines, is.faceInfo.m.dumpFace(faceIdx, face))
+	for _, faceIdx := range faceIndices {
+		face := m.Faces[faceIdx]
+		lines = append(lines, m.dumpFace(faceIdx, face))
 	}
 	return strings.Join(lines, "\n")
 }
