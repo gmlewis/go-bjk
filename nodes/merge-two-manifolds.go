@@ -23,6 +23,8 @@ func (fi *faceInfoT) merge2manifolds() {
 	case len(sharedFaces) == 1:
 		key := maps.Keys(sharedFaces)[0]
 		fi.merge2manisOneFace(sharedEdges, sharedFaces[key][0], sharedFaces[key][1])
+	case len(sharedEdges) == 2:
+		fi.merge2manis2edges(sharedEdges)
 	case len(sharedEdges) > 1:
 		fi.merge2manisManyEdges(sharedEdges)
 	case len(sharedEdges) == 1:
@@ -33,6 +35,18 @@ func (fi *faceInfoT) merge2manifolds() {
 	default:
 		log.Printf("WARNING: merge2manifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))
 	}
+}
+
+func (fi *faceInfoT) merge2manis2edges(sharedEdges sharedEdgesMapT) {
+	srcFaceIndicesToEdges, dstFaceIndicesToEdges := reverseMapFaceIndicesToEdges(sharedEdges)
+	if len(srcFaceIndicesToEdges) > len(dstFaceIndicesToEdges) {
+		fi.swapSrcAndDst(nil)
+		for edge, v := range sharedEdges {
+			sharedEdges[edge] = [2][]faceIndexT{v[1], v[0]}
+		}
+		srcFaceIndicesToEdges, dstFaceIndicesToEdges = dstFaceIndicesToEdges, srcFaceIndicesToEdges
+	}
+	fi.merge2manis2edgesSrcFewerThanDst(sharedEdges, srcFaceIndicesToEdges, dstFaceIndicesToEdges)
 }
 
 func (fi *faceInfoT) merge2manisOneEdge(edge edgeT, srcFaces, dstFaces []faceIndexT) {

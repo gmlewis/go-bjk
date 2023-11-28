@@ -1,3 +1,5 @@
+// -*- compile-command: "go test -v ./..."; -*-
+
 package nodes
 
 import (
@@ -155,7 +157,9 @@ func (dst *Mesh) manifoldMerge(dstFaces, srcFaces []FaceT) {
 		log.Printf("BAD MERGE: before: src badEdges=%v", len(fi.src.badEdges))
 		log.Printf("BAD MERGE: before: dst badEdges=%v", len(fi.dst.badEdges))
 		log.Printf("BAD MERGE: after: dst badEdges=%v", len(afterMergeFI.dst.badEdges))
-		afterMergeFI.m.WriteObj(fmt.Sprintf("after-merge-badDstEdges-%v-src.obj", len(afterMergeFI.dst.badEdges)))
+		filename := fmt.Sprintf("after-merge-badDstEdges-%v-src.obj", len(afterMergeFI.dst.badEdges))
+		log.Printf("BAD MERGE: Writing file: %v", filename)
+		afterMergeFI.m.WriteObj(filename)
 
 		for edge, faceIdxes := range afterMergeFI.dst.badEdges {
 			for _, faceIdx := range faceIdxes {

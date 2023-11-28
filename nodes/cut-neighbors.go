@@ -7,6 +7,11 @@ import (
 	"slices"
 )
 
+func (is *infoSetT) moveVertsAlongEdgeLoop(faceIdx faceIndexT, amount float64) (vToVMap, faceSetT) {
+	log.Printf("TEMPORARILY RETURNING NIL: moveVertsAlongEdgeLoop")
+	return nil, nil
+}
+
 func (is *infoSetT) cutNeighborsAndShortenAlongEdges(baseFaceIdx faceIndexT, e1EV, e2EV edgeVectorT) {
 	if e1EV.fromVertIdx == e2EV.fromVertIdx {
 		is.cutNeighborsAndShortenAlongTwoConnectedEdges(e1EV, e2EV)

@@ -175,6 +175,10 @@ type edgeVectorT struct {
 	length      float64
 }
 
+func (ev edgeVectorT) String() string {
+	return fmt.Sprintf("{from:%v to:%v %v length:%0.2f}", ev.fromVertIdx, ev.toVertIdx, ev.toSubFrom, ev.length)
+}
+
 // Note that this vector is pointing FROM vertIdx TOWARD the other connected vertex (not on `edge`)
 // and therefore is completely independent of the winding order of the face!
 // Both edges are found in the `badEdges` map.
@@ -211,6 +215,38 @@ func (m *Mesh) makeEdgeVector(fromIdx, toIdx VertIndexT) edgeVectorT {
 		toVertIdx:   toIdx,
 		toSubFrom:   toSubFrom,
 		length:      toSubFrom.Length(),
+	}
+}
+
+// otherVertexFrom returns the other vertex connected to this edge starting at vertIdx on the given faceIdx.
+func (is *infoSetT) otherVertexFrom(edge edgeT, vertIdx VertIndexT, faceIdx faceIndexT) VertIndexT {
+	face := is.faces[faceIdx]
+	notVertIdx := edge[0]
+	if notVertIdx == vertIdx {
+		notVertIdx = edge[1]
+	}
+	for i, vIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		if makeEdge(vIdx, nextIdx) == edge {
+			continue
+		}
+		if vIdx == vertIdx {
+			return nextIdx
+		}
+		if nextIdx == vertIdx {
+			return vIdx
+		}
+	}
+	log.Fatalf("otherVertexFrom: programming error for edge %v, vertIdx=%v, faceIdx=%v", edge, vertIdx, faceIdx)
+	return 0
+}
+
+// makeEdgeVectors returns two edgeVectorTs for the given faceIdx, one for the first vertex, and one for the second.
+func (is *infoSetT) makeEdgeVectors(edge edgeT, faceIdx faceIndexT) [2]edgeVectorT {
+	m := is.faceInfo.m
+	return [2]edgeVectorT{
+		m.makeEdgeVector(edge[0], is.otherVertexFrom(edge, edge[0], faceIdx)),
+		m.makeEdgeVector(edge[1], is.otherVertexFrom(edge, edge[1], faceIdx)),
 	}
 }
 
@@ -298,6 +334,8 @@ func (is *infoSetT) moveVerts(face FaceT, move Vec3) vToVMap {
 
 type vToVMap map[VertIndexT]VertIndexT
 type faceSetT map[faceIndexT]struct{}
+
+/*
 
 // moveVertsAlongEdgeLoop creates new (or reuses old) vertices and returns the mapping from the
 // old face's vertIndexes to the new vertices, without modifying the face. It moves the
@@ -631,8 +669,9 @@ func (is *infoSetT) moveEdge(ev edgeVectorT, amount float64, vertsOldToNew vToVM
 	// log.Printf("moveEdge: ev=%v, uv=%v, move=%v, oldVert[%v]=%v, newVert[%v]=%v",
 	// 	ev, uv, move, ev.fromVertIdx, m.Verts[ev.fromVertIdx], newVertIdx, m.Verts[newVertIdx])
 }
+*/
 
-// getFaceSideEdges returns a slice of edge vectors that are connected to (but not on) this face.
+// getFaceSideEdgeVectors returns a slice of edge vectors that are connected to (but not on) this face.
 func (is *infoSetT) getFaceSideEdgeVectors(baseFaceIdx faceIndexT) []edgeVectorT {
 	face := is.faces[baseFaceIdx]
 	result := make([]edgeVectorT, 0, len(face))

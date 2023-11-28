@@ -3,9 +3,9 @@
 package nodes
 
 import (
-	"fmt"
 	"log"
 	"slices"
+	"sort"
 
 	"golang.org/x/exp/maps"
 )
@@ -14,6 +14,21 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	// check if all src edges belong to a single face and if all dst edges belong to a single face.
 	numSharedEdges := len(sharedEdges)
 	srcFaceIndicesToEdges, dstFaceIndicesToEdges := reverseMapFaceIndicesToEdges(sharedEdges)
+
+	// debug
+	{
+		log.Printf("\n\nmerge2manisManyEdges: numSharedEdges=%v, #srcFaceIndicesToEdges=%v, #dstFaceIndicesToEdges=%v", numSharedEdges, len(srcFaceIndicesToEdges), len(dstFaceIndicesToEdges))
+		srcFaceIndices := maps.Keys(srcFaceIndicesToEdges)
+		sort.Slice(srcFaceIndices, func(a, b int) bool { return srcFaceIndices[a] < srcFaceIndices[b] })
+		for i, srcFaceIdx := range srcFaceIndices {
+			log.Printf("merge2manisManyEdges: src face #%v of %v: %v", i+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+		}
+		dstFaceIndices := maps.Keys(dstFaceIndicesToEdges)
+		sort.Slice(dstFaceIndices, func(a, b int) bool { return dstFaceIndices[a] < dstFaceIndices[b] })
+		for i, dstFaceIdx := range dstFaceIndices {
+			log.Printf("merge2manisManyEdges: dst face #%v of %v: %v", i+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+		}
+	}
 
 	srcEdgeCountToFaceIndices := faceIndicesByEdgeCount(srcFaceIndicesToEdges)
 	dstEdgeCountToFaceIndices := faceIndicesByEdgeCount(dstFaceIndicesToEdges)
@@ -25,6 +40,7 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 		srcEdgeCountToFaceIndices: srcEdgeCountToFaceIndices,
 		dstEdgeCountToFaceIndices: dstEdgeCountToFaceIndices,
 	}
+	log.Printf("merge2manisManyEdges: #srcEdgeCountToFaceIndices=%v, #dstEdgeCountToFaceIndices=%v", len(srcEdgeCountToFaceIndices), len(dstEdgeCountToFaceIndices))
 
 	if len(srcEdgeCountToFaceIndices[numSharedEdges]) == 1 && len(srcEdgeCountToFaceIndices[1]) == numSharedEdges &&
 		len(dstEdgeCountToFaceIndices[numSharedEdges]) == 1 && len(dstEdgeCountToFaceIndices[1]) == numSharedEdges {
@@ -69,37 +85,39 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 		}
 	}
 
-	// Run this loop at most n times to repair shared edges.
-	n := len(sharedEdges)
-	for i := 0; i < n; i++ {
-		edge, v := firstPair(sharedEdges)
-		log.Printf("\n\nRunning sharedEdges(=%v) loop #%v of %v: edge=%v, srcFaces=%+v, dstFaces=%+v", len(sharedEdges), i+1, n, edge, v[0], v[1])
-		log.Printf("merge-two-many-edges.go: srcFaces:\n%v", fi.src.dumpFaceIndices(v[0]))
-		log.Printf("merge-two-many-edges.go: dstFaces:\n%v\n\n", fi.dst.dumpFaceIndices(v[1]))
+	/*
+		// Run this loop at most n times to repair shared edges.
+		n := len(sharedEdges)
+		for i := 0; i < n; i++ {
+			edge, v := firstPair(sharedEdges)
+			log.Printf("\n\nRunning sharedEdges(=%v) loop #%v of %v: edge=%v, srcFaces=%+v, dstFaces=%+v", len(sharedEdges), i+1, n, edge, v[0], v[1])
+			log.Printf("merge-two-many-edges.go: srcFaces:\n%v", fi.src.dumpFaceIndices(v[0]))
+			log.Printf("merge-two-many-edges.go: dstFaces:\n%v\n\n", fi.dst.dumpFaceIndices(v[1]))
 
-		fi.merge2manisOneEdge(edge, v[0], v[1])
+			fi.merge2manisOneEdge(edge, v[0], v[1])
 
-		// delete faces from merge
-		fi.src.deleteFacesLastToFirst(fi.src.facesTargetedForDeletion)
-		fi.src.facesTargetedForDeletion = map[faceIndexT]bool{}
-		fi.dst.deleteFacesLastToFirst(fi.dst.facesTargetedForDeletion)
-		fi.dst.facesTargetedForDeletion = map[faceIndexT]bool{}
+			// delete faces from merge
+			fi.src.deleteFacesLastToFirst(fi.src.facesTargetedForDeletion)
+			fi.src.facesTargetedForDeletion = map[faceIndexT]bool{}
+			fi.dst.deleteFacesLastToFirst(fi.dst.facesTargetedForDeletion)
+			fi.dst.facesTargetedForDeletion = map[faceIndexT]bool{}
 
-		// debug: write out temporary results of this step
-		prefix := fmt.Sprintf("merge-edge-after-step-%v-of-%v", i+1, n)
-		debugSrc := NewMeshFromPolygons(fi.m.Verts, fi.src.faces)
-		log.Printf("Writing %v src faces to file: %v", len(fi.src.faces), prefix+"-src.obj")
-		debugSrc.WriteObj(prefix + "-src.obj")
-		debugDst := NewMeshFromPolygons(fi.m.Verts, fi.dst.faces)
-		log.Printf("Writing %v dst faces to file: %v", len(fi.dst.faces), prefix+"-dst.obj")
-		debugDst.WriteObj(prefix + "-dst.obj")
+			// debug: write out temporary results of this step
+			prefix := fmt.Sprintf("merge-edge-after-step-%v-of-%v", i+1, n)
+			debugSrc := NewMeshFromPolygons(fi.m.Verts, fi.src.faces)
+			log.Printf("Writing %v src faces to file: %v", len(fi.src.faces), prefix+"-src.obj")
+			debugSrc.WriteObj(prefix + "-src.obj")
+			debugDst := NewMeshFromPolygons(fi.m.Verts, fi.dst.faces)
+			log.Printf("Writing %v dst faces to file: %v", len(fi.dst.faces), prefix+"-dst.obj")
+			debugDst.WriteObj(prefix + "-dst.obj")
 
-		fi = regenerateFaceInfo(fi)
-		_, sharedEdges, _ = fi.findSharedVEFs()
-		if len(sharedEdges) == 0 {
-			return
+			fi = regenerateFaceInfo(fi)
+			_, sharedEdges, _ = fi.findSharedVEFs()
+			if len(sharedEdges) == 0 {
+				return
+			}
 		}
-	}
+	*/
 
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: numSharedEdges=%v", numSharedEdges)
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: sharedEdges keys=%v=%+v", len(sharedEdges), maps.Keys(sharedEdges))
