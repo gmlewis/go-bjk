@@ -10,101 +10,22 @@ import (
 // mergeNonManifoldSrc merges the non-manifold srcFaces mesh into the manifold dstFaces mesh,
 // creating a final manifold mesh (ideally, although it is possible that it is still non-manifold).
 func (fi *faceInfoT) mergeNonManifoldSrc() {
-	// 	// If there are N bad edges and N bad faces, chances are good that these are simply open
-	// 	// (unconnected) extrusions looking to join the dst mesh.
-	// 	if len(fi.src.badEdges) == len(fi.dst.badFaces) {
-	fi.connectOpenSrcExtrusionsToDst()
-	// 		return
-	// 	}
-
-	/*
-		// srcFaceIndicesToEdges := reverseMapBadEdges(fi.src.badEdges)
-		// debugFaces := make([]FaceT, 0, len(srcFaceIndicesToEdges))
-		// log.Printf("mergeNonManifoldSrc: srcFaceIndicesToEdges: %+v", srcFaceIndicesToEdges)
-		// for srcFaceIdx, badEdges := range srcFaceIndicesToEdges {
-		// 	debugFaces = append(debugFaces, fi.src.faces[srcFaceIdx])
-		// 	log.Printf("mergeNonManifoldSrc: src.faces[%v] has %v bad edges: %+v", srcFaceIdx, len(badEdges), badEdges)
-		// }
-		// fi.m.Faces = debugFaces
-		// fi.m.WriteSTL(fmt.Sprintf("debug-%v-%v-badFaces-%v.stl", len(fi.src.faces), len(fi.dst.faces), len(debugFaces)))
-
-		for edge, faceIdxes := range fi.src.badEdges {
-			switch len(faceIdxes) {
-			case 1:
-				log.Printf("WARNING: mergeNonManifoldSrc: skipping edge %v with one face", edge)
-			case 3:
-				// debugFileBaseName := fmt.Sprintf("debug-%v-%v-edge-%v-%v-", len(fi.src.faces), len(fi.dst.faces), edge[0], edge[1])
-				// log.Printf("debugFileBaseName=%v", debugFileBaseName)
-				// fi.m.Faces = fi.src.faces
-				// fi.m.WriteSTL(debugFileBaseName + "src.stl")
-				// fi.m.Faces = fi.dst.faces
-				// fi.m.WriteSTL(debugFileBaseName + "dst.stl")
-
-				fi.src.fixEdge3Faces(edge, faceIdxes)
-			default:
-				log.Printf("WARNING: mergeNonManifoldSrc: skipping edge %v with %v faces", edge, len(faceIdxes))
-			}
-		}
-	*/
-}
-
-func (is *infoSetT) fixEdge3Faces(edge edgeT, faceIdxes []faceIndexT) {
-	f0, f1, f2 := faceIdxes[0], faceIdxes[1], faceIdxes[2]
-	switch {
-	case is.faceNormals[f0].AboutEq(is.faceNormals[f1]):
-		is.fixEdge2OverlapingFaces(edge, f0, f1, f2)
-	case is.faceNormals[f1].AboutEq(is.faceNormals[f2]):
-		is.fixEdge2OverlapingFaces(edge, f1, f2, f0)
-	case is.faceNormals[f0].AboutEq(is.faceNormals[f2]):
-		is.fixEdge2OverlapingFaces(edge, f0, f2, f1)
-	default:
-		log.Printf("WARNING: fixEdge3Faces: unhandled case normals: %v %v %v", is.faceNormals[f0], is.faceNormals[f1], is.faceNormals[f2])
-	}
-}
-
-func (is *infoSetT) fixEdge2OverlapingFaces(edge edgeT, f0, f1, otherFaceIdx faceIndexT) {
-	// log.Printf("fixEdge2OverlapingFaces(edge=%v): normal=%v, f0=%v: %v", edge, f0, is.faceNormals[f0], is.faceInfo.m.dumpFace(f0, is.faces[f0]))
-	// log.Printf("fixEdge2OverlapingFaces(edge=%v): normal=%v, f1=%v: %v", edge, f1, is.faceNormals[f1], is.faceInfo.m.dumpFace(f1, is.faces[f1]))
-	// log.Printf("fixEdge2OverlapingFaces(edge=%v): normal=%v, otherFace=%v: %v", edge, otherFaceIdx, is.faceNormals[otherFaceIdx], is.faceInfo.m.dumpFace(otherFaceIdx, is.faces[otherFaceIdx]))
-	// log.Printf("fixEdge2OverlapingFaces(edge=%v): shared edge: %v - %v", edge, is.faceInfo.m.Verts[edge[0]], is.faceInfo.m.Verts[edge[1]])
-	//
-	// is.faceInfo.m.Faces = []FaceT{is.faces[f0]}
-	// is.faceInfo.m.WriteSTL(debugFileBaseName + "f0.stl")
-	// is.faceInfo.m.Faces = []FaceT{is.faces[f1]}
-	// is.faceInfo.m.WriteSTL(debugFileBaseName + "f1.stl")
-	// is.faceInfo.m.Faces = []FaceT{is.faces[otherFaceIdx]}
-	// is.faceInfo.m.WriteSTL(debugFileBaseName + "otherFaceIdx.stl")
-
-	log.Fatalf("fixEdge2OverlapingFaces: STOP")
-
-	// is.facesTargetedForDeletion[otherFaceIdx] = true
-
-	// f0VertKey := is.toVertKey(is.faces[f0])
-	// f1VertKey := is.toVertKey(is.faces[f1])
-	// if f0VertKey == f1VertKey {
-	// 	log.Printf("fixEdge2OverlapingFaces(edge=%v): faces are identical! f0VertKey=%v", edge, f0VertKey)
-	// } else {
-	// 	log.Printf("fixEdge2OverlapingFaces(edge=%v): faces DIFFER!\nf0VertKey=%v\nf1VertKey=%v", edge, f0VertKey, f1VertKey)
-	// }
-}
-
-func (fi *faceInfoT) connectOpenSrcExtrusionsToDst() {
 	edgeLoops := fi.src.badEdgesToConnectedEdgeLoops()
-	// log.Printf("connectOpenSrcExtrusionsToDst: src:\n%v", fi.m.dumpFaces(fi.src.faces))
-	// log.Printf("connectOpenSrcExtrusionsToDst: dst:\n%v", fi.m.dumpFaces(fi.dst.faces))
-	// log.Printf("connectOpenSrcExtrusionsToDst: edgeLoops: %+v", edgeLoops)
+	// log.Printf("mergeNonManifoldSrc: src:\n%v", fi.m.dumpFaces(fi.src.faces))
+	// log.Printf("mergeNonManifoldSrc: dst:\n%v", fi.m.dumpFaces(fi.dst.faces))
+	// log.Printf("mergeNonManifoldSrc: edgeLoops: %+v", edgeLoops)
 
 cutsMade:
 	for faceStr, edges := range edgeLoops {
 		if deleteFaceIdx, ok := fi.dst.faceStrToFaceIdx[faceStr]; ok {
-			// log.Printf("connectOpenSrcExtrusionsToDst: faceStr found in dst: %v, deleting face: %v", faceStr, deleteFaceIdx)
+			// log.Printf("mergeNonManifoldSrc: faceStr found in dst: %v, deleting face: %v", faceStr, deleteFaceIdx)
 			fi.dst.facesTargetedForDeletion[deleteFaceIdx] = true
 			continue
 		}
 
-		log.Printf("connectOpenSrcExtrusionsToDst: faceStr not found in dst: %v", faceStr)
-		log.Printf("connectOpenSrcExtrusionsToDst: src.badEdges: %+v", fi.src.badEdges)
-		log.Printf("connectOpenSrcExtrusionsToDst: dst.edgeToFaces: %+v", fi.dst.edgeToFaces)
+		// log.Printf("mergeNonManifoldSrc: faceStr not found in dst: %v", faceStr)
+		// log.Printf("mergeNonManifoldSrc: src.badEdges: %+v", fi.src.badEdges)
+		// log.Printf("mergeNonManifoldSrc: dst.edgeToFaces: %+v", fi.dst.edgeToFaces)
 
 		// Find a dst face that shares two (not joined) edge unit vectors with this srcFace,
 		// then resize it accordingly.
@@ -121,17 +42,17 @@ cutsMade:
 			srcE2EV := fi.src.connectedBadEdgeVectorFromVert(edge[1], edge)
 			srcE2UV := srcE2EV.toSubFrom.Normalized()
 
-			// log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE1EV=%+v", srcE1EV)
-			// log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE1UV=%+v", srcE1UV)
-			// log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE2EV=%+v", srcE2EV)
-			// log.Printf("connectOpenSrcExtrusionsToDst: single-cut srcE2UV=%+v", srcE2UV)
+			// log.Printf("mergeNonManifoldSrc: single-cut srcE1EV=%+v", srcE1EV)
+			// log.Printf("mergeNonManifoldSrc: single-cut srcE1UV=%+v", srcE1UV)
+			// log.Printf("mergeNonManifoldSrc: single-cut srcE2EV=%+v", srcE2EV)
+			// log.Printf("mergeNonManifoldSrc: single-cut srcE2UV=%+v", srcE2UV)
 
 			dstFaceIdx, dstEVs, ok := fi.dst.findFaceSharingTwoEdgeUVs(edge, srcE1UV, srcE2UV)
 			if !ok {
 				continue
 			}
 
-			// log.Printf("connectOpenSrcExtrusionsToDst: single cutting neighbors of dstFaceIdx: %v: %+v", dstFaceIdx, fi.dst.faces[dstFaceIdx])
+			// log.Printf("mergeNonManifoldSrc: single cutting neighbors of dstFaceIdx: %v: %+v", dstFaceIdx, fi.dst.faces[dstFaceIdx])
 			srcEVs := [2]edgeVectorT{srcE1EV, srcE2EV}
 			fi.dst.resizeFace(nil, dstFaceIdx, dstEVs[0].edge, dstEVs[1].edge, srcEVs) // resize dst by shorter edge vectors
 			continue cutsMade
@@ -141,30 +62,30 @@ cutsMade:
 		// the open edge loop. If so, insert a vertex into the enclosing face to walk around the src face.
 		corners := edgeLoopCorners(edges)
 		for vertIdx, otherVerts := range corners { // no srcFaceIdx because it is an open edge loop
-			log.Printf("connectOpenSrcExtrusionsToDst: double-cut looking at vertIdx=%v and otherVerts=%+v", vertIdx, otherVerts)
+			// log.Printf("mergeNonManifoldSrc: double-cut looking at vertIdx=%v and otherVerts=%+v", vertIdx, otherVerts)
 			srcE1EV := fi.m.makeEdgeVector(vertIdx, otherVerts[0])
 			srcE1UV := srcE1EV.toSubFrom.Normalized()
-			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE1EV=%+v", srcE1EV)
-			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE1UV=%+v", srcE1UV)
+			// log.Printf("mergeNonManifoldSrc: double-cut srcE1EV=%+v", srcE1EV)
+			// log.Printf("mergeNonManifoldSrc: double-cut srcE1UV=%+v", srcE1UV)
 
 			srcE2EV := fi.m.makeEdgeVector(vertIdx, otherVerts[1])
 			srcE2UV := srcE2EV.toSubFrom.Normalized()
-			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE2EV=%+v", srcE2EV)
-			log.Printf("connectOpenSrcExtrusionsToDst: double-cut srcE2UV=%+v", srcE2UV)
+			// log.Printf("mergeNonManifoldSrc: double-cut srcE2EV=%+v", srcE2EV)
+			// log.Printf("mergeNonManifoldSrc: double-cut srcE2UV=%+v", srcE2UV)
 
 			dstFaceIdx, dstEVs, ok := fi.dst.findFaceSharingTwoEdgeUVsFromVert(vertIdx, srcE1UV, srcE2UV)
 			if !ok {
 				continue
 			}
 
-			log.Printf("connectOpenSrcExtrusionsToDst: double-cut found dst face sharing two edges from vertIdx=%v: %v", vertIdx, fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
-			log.Printf("connectOpenSrcExtrusionsToDst: dstEVs[0]=%v", dstEVs[0])
-			log.Printf("connectOpenSrcExtrusionsToDst: dstEVs[1]=%v", dstEVs[1])
+			// log.Printf("mergeNonManifoldSrc: double-cut found dst face sharing two edges from vertIdx=%v: %v", vertIdx, fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+			// log.Printf("mergeNonManifoldSrc: dstEVs[0]=%v", dstEVs[0])
+			// log.Printf("mergeNonManifoldSrc: dstEVs[1]=%v", dstEVs[1])
 
 			cornerNormal := Vec3Cross(srcE1UV, srcE2UV)
-			log.Printf("connectOpenSrcExtrusionsToDst: corner normal: %v", cornerNormal)
+			// log.Printf("mergeNonManifoldSrc: corner normal: %v", cornerNormal)
 			dstFaceNormal := fi.dst.faceNormals[dstFaceIdx]
-			log.Printf("connectOpenDstExtrusionsToDst: dst face normal: %v", dstFaceNormal)
+			// log.Printf("mergeNonManifoldSrc: dst face normal: %v", dstFaceNormal)
 
 			// now replace the corner with two new vertices, then fill in the leftover src vertices between those two.
 			if !cornerNormal.AboutEq(dstFaceNormal) {
@@ -211,8 +132,8 @@ func (is *infoSetT) addVertToFaceEdge(faceIdx faceIndexT, edge edgeT, vertIdx Ve
 			continue
 		}
 		is.faces[faceIdx] = slices.Insert(face, nextI, vertIdx)
-		log.Printf("addVertToFaceEdge(faceIdx=%v, edge=%v): inserting vertIdx=%v at position %v", faceIdx, edge, vertIdx, nextI)
-		log.Printf("addVertToFaceEdge: result: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
+		// log.Printf("addVertToFaceEdge(faceIdx=%v, edge=%v): inserting vertIdx=%v at position %v", faceIdx, edge, vertIdx, nextI)
+		// log.Printf("addVertToFaceEdge: result: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
 	}
 }
 
@@ -349,7 +270,7 @@ func (is *infoSetT) findFaceSharingTwoEdgeUVsFromVert(vertIdx VertIndexT, e1UV, 
 
 		if (e1UV.AboutEq(uvs[0]) && e2UV.AboutEq(uvs[1])) ||
 			(e1UV.AboutEq(uvs[1]) && e2UV.AboutEq(uvs[0])) {
-			log.Printf("Found matching face: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
+			// log.Printf("Found matching face: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
 			return faceIdx, evs, true
 		}
 	}

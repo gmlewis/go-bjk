@@ -5,42 +5,39 @@ package nodes
 import (
 	"log"
 	"slices"
-	"sort"
 
 	"golang.org/x/exp/maps"
 )
 
 func (fi *faceInfoT) merge2manis2edgesSrcFewerThanDst(sharedEdges sharedEdgesMapT, srcFaceIndicesToEdges, dstFaceIndicesToEdges face2EdgesMapT) {
-	// if len(sharedEdges) != 2 {
-	// 	log.Fatalf("merge2manis2edgesSrcFewerThanDst: sharedEdges=%v, want 2", len(sharedEdges))
-	// }
 
-	// debug
 	edgeKeys := maps.Keys(sharedEdges)
 	slices.SortFunc(edgeKeys, cmpEdges) // helps with debugging
-	{
-		log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edges=%+v", edgeKeys)
-		for i, edge := range edgeKeys {
-			log.Printf("edge #%v of %v: %v, src faces: %+v, dst faces: %+v", i+1, len(edgeKeys), edge, sharedEdges[edge][0], sharedEdges[edge][1])
-		}
-		log.Printf("#srcFaceIndicesToEdges=%v, #dstFaceIndicesToEdges=%v\n\n", len(srcFaceIndicesToEdges), len(dstFaceIndicesToEdges))
-		srcFaceIndices := maps.Keys(srcFaceIndicesToEdges)
-		sort.Slice(srcFaceIndices, func(a, b int) bool { return srcFaceIndices[a] < srcFaceIndices[b] })
-		for i, srcFaceIdx := range srcFaceIndices {
-			log.Printf("src face #%v of %v: %v", i+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
-		}
-		log.Printf("\n")
-		dstFaceIndices := maps.Keys(dstFaceIndicesToEdges)
-		sort.Slice(dstFaceIndices, func(a, b int) bool { return dstFaceIndices[a] < dstFaceIndices[b] })
-		for i, dstFaceIdx := range dstFaceIndices {
-			log.Printf("dst face #%v of %v: %v", i+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
-		}
-	}
+
+	// // debug
+	// {
+	// 	log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edges=%+v", edgeKeys)
+	// 	for i, edge := range edgeKeys {
+	// 		log.Printf("edge #%v of %v: %v, src faces: %+v, dst faces: %+v", i+1, len(edgeKeys), edge, sharedEdges[edge][0], sharedEdges[edge][1])
+	// 	}
+	// 	log.Printf("#srcFaceIndicesToEdges=%v, #dstFaceIndicesToEdges=%v\n\n", len(srcFaceIndicesToEdges), len(dstFaceIndicesToEdges))
+	// 	srcFaceIndices := maps.Keys(srcFaceIndicesToEdges)
+	// 	sort.Slice(srcFaceIndices, func(a, b int) bool { return srcFaceIndices[a] < srcFaceIndices[b] })
+	// 	for i, srcFaceIdx := range srcFaceIndices {
+	// 		log.Printf("src face #%v of %v: %v", i+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+	// 	}
+	// 	log.Printf("\n")
+	// 	dstFaceIndices := maps.Keys(dstFaceIndicesToEdges)
+	// 	sort.Slice(dstFaceIndices, func(a, b int) bool { return dstFaceIndices[a] < dstFaceIndices[b] })
+	// 	for i, dstFaceIdx := range dstFaceIndices {
+	// 		log.Printf("dst face #%v of %v: %v", i+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+	// 	}
+	// }
 
 	abutInfo := fi.abuttedFaces(sharedEdges)
 
 	for i, edge := range edgeKeys {
-		log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edge #%v of %v: %v, %v abutted faces:", i+1, len(edgeKeys), edge, len(abutInfo.edgesToAbuttedFaces[edge]))
+		// log.Printf("\n\nmerge2manis2edgesSrcFewerThanDst: edge #%v of %v: %v, %v abutted faces:", i+1, len(edgeKeys), edge, len(abutInfo.edgesToAbuttedFaces[edge]))
 		if len(abutInfo.edgesToAbuttedFaces[edge]) == 0 {
 			fi.checkCompleteOverlapOnEdge(edge, sharedEdges, srcFaceIndicesToEdges, dstFaceIndicesToEdges)
 			continue
@@ -49,12 +46,12 @@ func (fi *faceInfoT) merge2manis2edgesSrcFewerThanDst(sharedEdges sharedEdgesMap
 		for srcNormalKey, faceIndices := range abutInfo.edgesToAbuttedFaces[edge] {
 			srcFaceIndices := faceIndices[0]
 			dstFaceIndices := faceIndices[1]
-			for j, srcFaceIdx := range srcFaceIndices {
-				log.Printf("edge %v (normal key %v) abutted src face #%v of %v: %v", edge, srcNormalKey, j+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
-			}
-			for j, dstFaceIdx := range dstFaceIndices {
-				log.Printf("edge %v (normal key %v) abutted dst face #%v of %v: %v", edge, srcNormalKey, j+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
-			}
+			// for j, srcFaceIdx := range srcFaceIndices {
+			// 	log.Printf("edge %v (normal key %v) abutted src face #%v of %v: %v", edge, srcNormalKey, j+1, len(srcFaceIndices), fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+			// }
+			// for j, dstFaceIdx := range dstFaceIndices {
+			// 	log.Printf("edge %v (normal key %v) abutted dst face #%v of %v: %v", edge, srcNormalKey, j+1, len(dstFaceIndices), fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+			// }
 
 			if len(srcFaceIndices) != 1 || len(dstFaceIndices) != 1 {
 				log.Printf("WARNING: merge2manis2edgesDstFewerThanDst: unhandled case: edge #%v of %v: %v (normal key %v) has %v src faces and %v dst faces (want 1 and 1)", i+1, len(edgeKeys), edge, srcNormalKey, len(srcFaceIndices), len(dstFaceIndices))
@@ -70,30 +67,30 @@ func (fi *faceInfoT) merge2manis2edgesSrcFewerThanDst(sharedEdges sharedEdgesMap
 func (ai *abutInfoT) mergeAbuttedFacesOnEdge(edge edgeT, srcFaceIdx, dstFaceIdx faceIndexT) {
 	fi := ai.fi
 	if fi.src.facesTargetedForDeletion[srcFaceIdx] {
-		log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v already deleted - skipping", srcFaceIdx)
+		// log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v already deleted - skipping", srcFaceIdx)
 		return
 	}
 	if fi.dst.facesTargetedForDeletion[dstFaceIdx] {
-		log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v already deleted - skipping", dstFaceIdx)
+		// log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v already deleted - skipping", dstFaceIdx)
 		return
 	}
 
 	srcEVs := fi.src.makeEdgeVectors(edge, srcFaceIdx)
 	dstEVs := fi.dst.makeEdgeVectors(edge, dstFaceIdx)
-	log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v: EVs[0] = %v", srcFaceIdx, srcEVs[0])
-	log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v: EVs[1] = %v", srcFaceIdx, srcEVs[1])
-	log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v: EVs[0] = %v", dstFaceIdx, dstEVs[0])
-	log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v: EVs[1] = %v", dstFaceIdx, dstEVs[1])
+	// log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v: EVs[0] = %v", srcFaceIdx, srcEVs[0])
+	// log.Printf("mergeAbuttedFacesOnEdge: srcFaceIdx=%v: EVs[1] = %v", srcFaceIdx, srcEVs[1])
+	// log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v: EVs[0] = %v", dstFaceIdx, dstEVs[0])
+	// log.Printf("mergeAbuttedFacesOnEdge: dstFaceIdx=%v: EVs[1] = %v", dstFaceIdx, dstEVs[1])
 
 	// first pass: delete and resize faces
 	srcLength := (srcEVs[0].length + srcEVs[0].length) / 2
 	dstLength := (dstEVs[0].length + dstEVs[0].length) / 2
 	if srcLength < dstLength {
-		log.Printf("mergeAbuttedFacesOnEdge: marking src face for DELETION: %v", fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
+		// log.Printf("mergeAbuttedFacesOnEdge: marking src face for DELETION: %v", fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
 		fi.src.facesTargetedForDeletion[srcFaceIdx] = true
 		fi.dst.resizeFace(ai.dstFaces, dstFaceIdx, dstEVs[0].edge, dstEVs[1].edge, srcEVs) // resize dst by shorter edge vectors
 	} else {
-		log.Printf("mergeAbuttedFacesOnEdge: marking dst face for DELETION: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
+		// log.Printf("mergeAbuttedFacesOnEdge: marking dst face for DELETION: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
 		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
 		fi.src.resizeFace(ai.srcFaces, srcFaceIdx, srcEVs[0].edge, srcEVs[1].edge, dstEVs) // resize src by shorter edge vectors
 	}
@@ -104,10 +101,10 @@ func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndex
 	for i, vIdx := range face {
 		switch {
 		case vIdx == evs[0].fromVertIdx:
-			log.Printf("resizeFace(faceIdx=%v) moving vertIdx %v to %v", faceIdx, vIdx, evs[0].toVertIdx)
+			// log.Printf("resizeFace(faceIdx=%v) moving vertIdx %v to %v", faceIdx, vIdx, evs[0].toVertIdx)
 			face[i] = evs[0].toVertIdx
 		case vIdx == evs[1].fromVertIdx:
-			log.Printf("resizeFace(faceIdx=%v) moving vertIdx %v to %v", faceIdx, vIdx, evs[1].toVertIdx)
+			// log.Printf("resizeFace(faceIdx=%v) moving vertIdx %v to %v", faceIdx, vIdx, evs[1].toVertIdx)
 			face[i] = evs[1].toVertIdx
 		}
 	}
@@ -135,8 +132,8 @@ func (is *infoSetT) insertVertOnEdge(faceIdx faceIndexT, edge edgeT, evs [2]edge
 		}
 		f := func(idx VertIndexT) {
 			is.faces[faceIdx] = slices.Insert(face, nextI, idx)
-			log.Printf("insertVertOnEdge(faceIdx=%v, edge=%v): inserting vertIdx=%v at position %v", faceIdx, edge, idx, nextI)
-			log.Printf("insertVertOnEdge: result: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
+			// log.Printf("insertVertOnEdge(faceIdx=%v, edge=%v): inserting vertIdx=%v at position %v", faceIdx, edge, idx, nextI)
+			// log.Printf("insertVertOnEdge: result: %v", is.faceInfo.m.dumpFace(faceIdx, is.faces[faceIdx]))
 		}
 		switch {
 		case evs[0].fromVertIdx == vIdx, evs[0].fromVertIdx == nextIdx:
@@ -215,36 +212,36 @@ func (fi *faceInfoT) checkCompleteOverlapOnEdge(edge edgeT, sharedEdges sharedEd
 	if fi.m.faceArea(fi.src.faces[srcFaceIdx0]) < fi.m.faceArea(fi.src.faces[srcFaceIdx1]) {
 		srcFaceIdx0, srcFaceIdx1 = srcFaceIdx1, srcFaceIdx0
 	}
-	log.Printf("\n\ncheckCompleteOverlapOnEdge: srcFaceIdx0=%v area=%v, srcFaceIdx1=%v area=%v", srcFaceIdx0, fi.m.faceArea(fi.src.faces[srcFaceIdx0]), srcFaceIdx1, fi.m.faceArea(fi.src.faces[srcFaceIdx1]))
+	// log.Printf("\n\ncheckCompleteOverlapOnEdge: srcFaceIdx0=%v area=%v, srcFaceIdx1=%v area=%v", srcFaceIdx0, fi.m.faceArea(fi.src.faces[srcFaceIdx0]), srcFaceIdx1, fi.m.faceArea(fi.src.faces[srcFaceIdx1]))
 
 	dstFaceIdx0 := sharedEdges[edge][1][0]
 	dstFaceIdx1 := sharedEdges[edge][1][1]
 	if fi.m.faceArea(fi.dst.faces[dstFaceIdx0]) > fi.m.faceArea(fi.dst.faces[dstFaceIdx1]) {
 		dstFaceIdx0, dstFaceIdx1 = dstFaceIdx1, dstFaceIdx0
 	}
-	log.Printf("checkCompleteOverlapOnEdge: dstFaceIdx0=%v area=%v, dstFaceIdx1=%v area=%v", dstFaceIdx0, fi.m.faceArea(fi.dst.faces[dstFaceIdx0]), dstFaceIdx1, fi.m.faceArea(fi.dst.faces[dstFaceIdx1]))
+	// log.Printf("checkCompleteOverlapOnEdge: dstFaceIdx0=%v area=%v, dstFaceIdx1=%v area=%v", dstFaceIdx0, fi.m.faceArea(fi.dst.faces[dstFaceIdx0]), dstFaceIdx1, fi.m.faceArea(fi.dst.faces[dstFaceIdx1]))
 
-	log.Printf("targeting smaller srcFaceIdx1=%v for deletion", srcFaceIdx1)
+	// log.Printf("targeting smaller srcFaceIdx1=%v for deletion", srcFaceIdx1)
 	fi.src.facesTargetedForDeletion[srcFaceIdx1] = true
 
 	moveSrcEVs := fi.dst.makeEdgeVectors(edge, dstFaceIdx0)
-	log.Printf("moveSrcEVs[0]=%v", moveSrcEVs[0])
-	log.Printf("moveSrcEVs[1]=%v", moveSrcEVs[1])
+	// log.Printf("moveSrcEVs[0]=%v", moveSrcEVs[0])
+	// log.Printf("moveSrcEVs[1]=%v", moveSrcEVs[1])
 	moveDstEVs := fi.src.makeEdgeVectors(edge, srcFaceIdx1)
-	log.Printf("BEFORE: moveDstEVs[0]=%v", moveDstEVs[0])
-	log.Printf("BEFORE: moveDstEVs[1]=%v", moveDstEVs[1])
+	// log.Printf("BEFORE: moveDstEVs[0]=%v", moveDstEVs[0])
+	// log.Printf("BEFORE: moveDstEVs[1]=%v", moveDstEVs[1])
 
 	moveMap := fi.src.moveAllVertsOnDeletedFace(srcFaceIdx1, moveSrcEVs)
-	log.Printf("moveMap: %+v", moveMap)
+	// log.Printf("moveMap: %+v", moveMap)
 	moveDstEVs[0].fromVertIdx = moveMap[moveDstEVs[0].fromVertIdx]
 	moveDstEVs[0].toVertIdx = moveMap[moveDstEVs[0].toVertIdx]
 	moveDstEVs[1].fromVertIdx = moveMap[moveDstEVs[1].fromVertIdx]
 	moveDstEVs[1].toVertIdx = moveMap[moveDstEVs[1].toVertIdx]
-	log.Printf("AFTER: moveDstEVs[0]=%v", moveDstEVs[0])
-	log.Printf("AFTER: moveDstEVs[1]=%v", moveDstEVs[1])
+	// log.Printf("AFTER: moveDstEVs[0]=%v", moveDstEVs[0])
+	// log.Printf("AFTER: moveDstEVs[1]=%v", moveDstEVs[1])
 
 	dstOppositeEdge := makeEdge(moveSrcEVs[0].toVertIdx, moveSrcEVs[1].toVertIdx)
-	log.Printf("dstOppositeEdge=%v: %v %v", dstOppositeEdge, fi.m.Verts[dstOppositeEdge[0]], fi.m.Verts[dstOppositeEdge[1]])
+	// log.Printf("dstOppositeEdge=%v: %v %v", dstOppositeEdge, fi.m.Verts[dstOppositeEdge[0]], fi.m.Verts[dstOppositeEdge[1]])
 	dstFaceToResizeIdx, affectedDstEdge0, affectedDstEdge1 := fi.dst.otherFaceOnEdge(dstOppositeEdge, dstFaceIdx0)
 
 	fi.dst.resizeFace(nil, dstFaceToResizeIdx, affectedDstEdge0, affectedDstEdge1, moveDstEVs)
