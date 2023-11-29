@@ -432,7 +432,7 @@ func (fi *faceInfoT) closestVertIOnFace(vertIdx VertIndexT, face FaceT) int {
 			bestDist = dist
 		}
 	}
-	log.Printf("closestVertIOnFace(%v)= [%v]=%v %v (dist=%v)", vertIdx, bestI, face[bestI], fi.m.Verts[face[bestI]], bestDist)
+	// log.Printf("closestVertIOnFace(%v)= [%v]=%v %v (dist=%v)", vertIdx, bestI, face[bestI], fi.m.Verts[face[bestI]], bestDist)
 	return bestI
 }
 
