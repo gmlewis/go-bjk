@@ -4,7 +4,7 @@ package nodes
 
 import (
 	"log"
-	"sort"
+	"slices"
 
 	"github.com/gmlewis/advent-of-code-2021/enum"
 )
@@ -82,20 +82,57 @@ func (fi *faceInfoT) cutIntersectingFaces(srcFaceIdx, dstFaceIdx faceIndexT) {
 		return
 	}
 
-	edgePairDist := map[edgeT]float64{}
+	fi.src.facesTargetedForDeletion[srcFaceIdx] = true
+
 	srcFace, dstFace := fi.src.faces[srcFaceIdx], fi.dst.faces[dstFaceIdx]
-	edgeKeys := make([]edgeT, 0, len(srcFace)*len(dstFace))
-	for _, srcVertIdx := range srcFace {
-		for _, dstVertIdx := range dstFace {
-			edge := makeEdge(srcVertIdx, dstVertIdx)
-			edgeKeys = append(edgeKeys, edge)
-			dist := fi.m.Verts[srcVertIdx].Sub(fi.m.Verts[dstVertIdx]).Length()
-			edgePairDist[edge] = dist
+	slices.Reverse(srcFace)
+	log.Printf("reversed src face:\n%v", fi.m.dumpFace(srcFaceIdx, srcFace))
+
+	// pick two random vertices from dstFace at opposite edges
+	dstI0, dstI1 := 0, len(dstFace)/2
+	dstVertIdx0, dstVertIdx1 := dstFace[dstI0], dstFace[dstI1]
+	srcI0, srcVertIdx0 := fi.closestVertOnFace(dstVertIdx0, srcFace)
+	srcI1, srcVertIdx1 := fi.closestVertOnFace(dstVertIdx1, srcFace)
+	log.Printf("making edge from dstVertIdx0=%v(@%v) to srcVertIdx0=%v(@%v)", dstVertIdx0, dstI0, srcVertIdx0, srcI0)
+	log.Printf("making edge from dstVertIdx1=%v(@%v) to srcVertIdx1=%v(@%v)", dstVertIdx1, dstI1, srcVertIdx1, srcI1)
+
+	newDstFace0 := FaceT{dstVertIdx0}
+	for i := range srcFace {
+		vIdx := srcFace[(i+srcI0)%len(srcFace)]
+		newDstFace0 = append(newDstFace0, vIdx)
+		if vIdx == srcVertIdx1 {
+			break
 		}
 	}
-	sort.Slice(edgeKeys, func(i, j int) bool { return edgePairDist[edgeKeys[i]] < edgePairDist[edgeKeys[j]] })
+	newDstFace0 = append(newDstFace0, dstFace[1:dstI1+1]...)
+	log.Printf("newDstFace0=%+v", newDstFace0)
+	fi.dst.faces[dstFaceIdx] = newDstFace0
 
-	for i, edge := range edgeKeys {
-		log.Printf("edge #%v of %v: %v: dist=%0.2f", i+1, len(edgeKeys), edge, edgePairDist[edge])
+	newDstFace1 := FaceT{dstVertIdx0, dstVertIdx1}
+	for i := range srcFace {
+		vIdx := srcFace[(i+srcI1)%len(srcFace)]
+		newDstFace1 = append(newDstFace1, vIdx)
+		if vIdx == srcVertIdx0 {
+			break
+		}
 	}
+	newDstFace1 = append(newDstFace1, dstFace[dstI1+1:]...)
+	log.Printf("newDstFace1=%+v", newDstFace1)
+	fi.dst.faces = append(fi.dst.faces, newDstFace1)
 }
+
+/*
+face[0]={[870 881 880 879 878 877 876 875 874 873 872 871]}: {{14.81 49.50 1.95} {14.88 49.50 2.20} {14.81 49.50 2.45} {14.63 49.50 2.63} {14.38 49.50 2.70} {14.13 49.50 2.63} {13.95 49.50 2.45} {13.88 49.50 2.20} {13.95 49.50 1.95} {14.13 49.50 1.76} {14.38 49.50 1.70} {14.63 49.50 1.76}}
+2023/11/28 22:08:59 shared normal 0.000 -1.000 0.000 dst (1) faces:
+face[6]={[6 7 8 9 10 11]}: {{18.00 49.50 0.00} {17.82 49.50 2.57} {17.27 49.50 5.08} {18.31 49.50 5.42} {18.90 49.50 2.74} {19.10 49.50 0.00}}
+2023/11/28 22:35:47 cutting intersecting faces: srcFaceIdx=0, dstFaceIdx=6
+2023/11/28 22:35:47 reversed src face:
+face[0]={[871 872 873 874 875 876 877 878 879 880 881 870]}: {{14.63 49.50 1.76} {14.38 49.50 1.70} {14.13 49.50 1.76} {13.95 49.50 1.95} {13.88 49.50 2.20} {13.95 49.50 2.45} {14.13 49.50 2.63} {14.38 49.50 2.70} {14.63 49.50 2.63} {14.81 49.50 2.45} {14.88 49.50 2.20} {14.81 49.50 1.95}}
+2023/11/28 22:35:47 making edge from dstVertIdx0=6(@0) to srcVertIdx0=870(@11)
+2023/11/28 22:35:47 making edge from dstVertIdx1=9(@3) to srcVertIdx1=880(@9)
+2023/11/28 22:46:20 newDstFace0=[6 870 871 872 873 874 875 876 877 878 879 880 7 8 9]
+2023/11/28 22:48:24 newDstFace1=[6 9 880 881 870 10 11]
+
+6 870 871 872 873 874 875 876 877 878 879 880 7 8 9
+9 880 881 870 10 11 6
+*/

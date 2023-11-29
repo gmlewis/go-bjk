@@ -421,6 +421,22 @@ func (m *Mesh) faceArea(face FaceT) float64 {
 	return math.Abs(0.5 * s)
 }
 
+func (fi *faceInfoT) closestVertOnFace(vertIdx VertIndexT, face FaceT) (int, VertIndexT) {
+	var bestVertIdx VertIndexT
+	var bestDist float64
+	var bestI int
+	refVert := fi.m.Verts[vertIdx]
+	for i, vIdx := range face {
+		dist := fi.m.Verts[vIdx].Sub(refVert).Length()
+		if i == 0 || dist < bestDist {
+			bestI = i
+			bestDist = dist
+			bestVertIdx = vIdx
+		}
+	}
+	return bestI, bestVertIdx
+}
+
 // func (m *Mesh) dumpFaces(faces []FaceT) string {
 // 	var lines []string
 // 	for i, face := range faces {
