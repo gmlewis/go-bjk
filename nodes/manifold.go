@@ -438,6 +438,15 @@ func (m *Mesh) dumpFacesByIndices(faceIndices []faceIndexT) string {
 	return strings.Join(lines, "\n")
 }
 
+func (is *infoSetT) dumpFacesByIndices(faceIndices []faceIndexT) string {
+	var lines []string
+	for _, faceIdx := range faceIndices {
+		face := is.faces[faceIdx]
+		lines = append(lines, is.faceInfo.m.dumpFace(faceIdx, face))
+	}
+	return strings.Join(lines, "\n")
+}
+
 func (m *Mesh) dumpFace(faceIdx faceIndexT, face FaceT) string {
 	verts := make([]string, 0, len(face))
 	for _, vertIdx := range face {

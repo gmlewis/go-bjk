@@ -10,6 +10,8 @@ github.com/fogleman/simplify v0.0.0-20170216171241-d32f302d5046 h1:n3RPbpwXSFT0G
 github.com/fogleman/simplify v0.0.0-20170216171241-d32f302d5046/go.mod h1:KDwyDqFmVUxUmo7tmqXtyaaJMdGon06y8BD2jmh84CQ=
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/frankban/quicktest v1.14.3/go.mod h1:mgiwOwqx65TmIk1wJ6Q7wvnVMocbUorkibMOrVTHZps=
+github.com/gmlewis/advent-of-code-2021 v0.37.0 h1:/FmqHjKbe2c3MMb0pKEv6cHwHBoQGUtkjOvLzB9t6CI=
+github.com/gmlewis/advent-of-code-2021 v0.37.0/go.mod h1:dIRljAs8YNaW5S+vwYQaF2T8NPxCfnUhGXAhLMgKVjk=
 github.com/gmlewis/go3d v0.0.4 h1:2ymApzgFXKZJ0nFgItUAAXt2z8n5tPOz5Wtu/SGZ1As=
 github.com/gmlewis/go3d v0.0.4/go.mod h1:kmNbdpGuKWLQCUigppF9tBmoHDLrsymSy6se+eBUOVk=
 github.com/gmlewis/irmf-slicer/v3 v3.5.0 h1:h+KamvyzOVYjduDrQHGgyj2TfJgjxVjafVh/t9nwDpY=

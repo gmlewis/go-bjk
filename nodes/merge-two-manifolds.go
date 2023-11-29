@@ -30,6 +30,7 @@ func (fi *faceInfoT) merge2manifolds() {
 	case len(sharedEdges) == 1:
 		fi.merge2manis2edges(sharedEdges) // experiment
 	case len(sharedVerts) == 0 && len(sharedEdges) == 0 && len(sharedFaces) == 0: // simple concatenation - no sharing
+		fi.checkForIntersectFaces()
 	default:
 		log.Printf("WARNING: merge2manifolds - unhandled shares: #verts=%v, #edges=%v, #faces=%v", len(sharedVerts), len(sharedEdges), len(sharedFaces))
 	}
