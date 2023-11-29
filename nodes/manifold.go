@@ -421,8 +421,7 @@ func (m *Mesh) faceArea(face FaceT) float64 {
 	return math.Abs(0.5 * s)
 }
 
-func (fi *faceInfoT) closestVertOnFace(vertIdx VertIndexT, face FaceT) (int, VertIndexT) {
-	var bestVertIdx VertIndexT
+func (fi *faceInfoT) closestVertIOnFace(vertIdx VertIndexT, face FaceT) int {
 	var bestDist float64
 	var bestI int
 	refVert := fi.m.Verts[vertIdx]
@@ -431,10 +430,18 @@ func (fi *faceInfoT) closestVertOnFace(vertIdx VertIndexT, face FaceT) (int, Ver
 		if i == 0 || dist < bestDist {
 			bestI = i
 			bestDist = dist
-			bestVertIdx = vIdx
 		}
 	}
-	return bestI, bestVertIdx
+	log.Printf("closestVertIOnFace(%v)= [%v]=%v %v (dist=%v)", vertIdx, bestI, face[bestI], fi.m.Verts[face[bestI]], bestDist)
+	return bestI
+}
+
+func (m *Mesh) faceCenter(face FaceT) Vec3 {
+	var sum Vec3
+	for _, vertIdx := range face {
+		sum = Vec3Add(sum, m.Verts[vertIdx])
+	}
+	return sum.MulScalar(1 / float64(len(face)))
 }
 
 // func (m *Mesh) dumpFaces(faces []FaceT) string {
