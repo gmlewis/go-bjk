@@ -21,6 +21,11 @@ type Mesh struct {
 	Normals  []Vec3  // optional - per-vert normals
 	Tangents []Vec3  // optional - per-vert tangents
 	Faces    []FaceT // optional - when used, Normals and Tangents are unused.
+
+	// these values are used by LerpAlongCurve to speed up future calculations
+	segLengths  []float64
+	totalLength float64
+	tVals       []float64
 }
 
 // copyVertsFaces performs a deep copy of only the Verts and Faces.
@@ -325,4 +330,60 @@ func (m *Mesh) CalcFaceNormal(face FaceT) Vec3 {
 	}
 
 	return sum.Normalized()
+}
+
+// LerpAlongCurve returns a Vec3 representing the percentage t (0 to 1) along a
+// curve (the points in the mesh). It caches the length of the curve segments
+// upon first use for later speedup.
+func (m *Mesh) LerpAlongCurve(t float64) *Vec3 {
+	if len(m.Verts) == 0 {
+		return &Vec3{}
+	}
+
+	if len(m.segLengths) == 0 {
+		m.segLengths = make([]float64, 0, len(m.Verts)-1)
+		for i, vert := range m.Verts[:len(m.Verts)-1] {
+			length := m.Verts[i+1].Sub(vert).Length()
+			m.totalLength += length
+			m.segLengths = append(m.segLengths, length)
+		}
+		m.tVals = make([]float64, 0, len(m.Verts))
+		var length float64
+		for i := range m.Verts[:len(m.Verts)] {
+			if i == 0 {
+				m.tVals = append(m.tVals, 0)
+				continue
+			}
+			length += m.segLengths[i-1]
+			m.tVals = append(m.tVals, length/m.totalLength)
+		}
+	}
+
+	if t <= 0 {
+		return &m.Verts[0]
+	}
+	if t >= 1 {
+		return &m.Verts[len(m.Verts)-1]
+	}
+
+	for i, tVal := range m.tVals {
+		if AboutEq(tVal, t) {
+			return &m.Verts[i]
+		}
+		if tVal < t {
+			continue
+		}
+		lastT := m.tVals[i-1]
+		diff := tVal - lastT
+		if diff == 0 {
+			continue
+		}
+		frac := (t - lastT) / diff
+		lastV := m.Verts[i-1]
+		thisV := m.Verts[i]
+		v := lastV.Add(thisV.Sub(lastV).MulScalar(frac))
+		return &v
+	}
+
+	return &m.Verts[len(m.Verts)-1]
 }

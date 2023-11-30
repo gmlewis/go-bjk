@@ -12,6 +12,7 @@ const luaOpsTypeName = "Ops"
 var opsFuncs = map[string]lua.LGFunction{
 	"extrude_along_curve": extrudeAlongCurve,
 	"extrude_with_caps":   extrudeWithCaps,
+	"lerp_along_curve":    lerpAlongCurve,
 	"merge":               mergeMeshes,
 }
 
@@ -21,6 +22,17 @@ func registerOpsType(ls *lua.LState) {
 	for name, fn := range opsFuncs {
 		mt.RawSetString(name, ls.NewFunction(fn))
 	}
+}
+
+func lerpAlongCurve(ls *lua.LState) int {
+	t := ls.CheckNumber(1)
+	curve := checkMesh(ls, 2)
+
+	vec3 := curve.LerpAlongCurve(float64(t))
+
+	ud := newVec3LValue(ls, vec3)
+	ls.Push(ud)
+	return 1
 }
 
 func extrudeAlongCurve(ls *lua.LState) int {
