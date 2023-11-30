@@ -22,6 +22,7 @@ import (
 var (
 	debug   = flag.Bool("debug", false, "Turn on debugging info")
 	repoDir = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
+	outFile = flag.String("o", "", "Override output filename")
 )
 
 func main() {
@@ -54,6 +55,9 @@ func (c *clientT) processFile(arg string) {
 	design, err := ast.Parser.ParseString("", string(buf), opts...)
 	must(err)
 	outFilename := strings.Replace(arg, ".bjk", ".obj", -1)
+	if *outFile != "" {
+		outFilename = *outFile
+	}
 	log.Printf("Writing Wavefront obj file: %v", outFilename)
 	must(c.c.ToObj(design, outFilename))
 }

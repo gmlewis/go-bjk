@@ -70,23 +70,79 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 	}
 	targetNode.EvalOutputs = map[string]lua.LValue{}
 
-	inputsTable := c.ls.NewTable()
+	expr := fmt.Sprintf("return require('node_library'):getNode('%v').inputs", targetNode.OpName)
+	if err := c.ls.DoString(expr); err != nil {
+		return err
+	}
+	inputsTable := c.ls.CheckTable(1)
+	if inputsTable == nil {
+		return fmt.Errorf("runNode: expected outputs table, got type %v: %v", c.ls.Get(1).Type(), c.ls.Get(1).String())
+	}
+	if c.debug {
+		log.Printf("lua execution returned inputs table: %#v", *inputsTable)
+	}
+	c.ls.Pop(1) // remove returned table from lua stack
+
+	nameToKey := make(map[string]string, inputsTable.Len())
+	keyToDefaultLVals := make(map[string]lua.LValue, inputsTable.Len())
+	inputsTable.ForEach(func(k, v lua.LValue) {
+		if t, ok := v.(*lua.LTable); ok {
+			t.ForEach(func(k2, v2 lua.LValue) {
+				if k2.String() == "name" {
+					nameToKey[v2.String()] = k.String()
+				} else if k2.String() == "default" {
+					keyToDefaultLVals[k.String()] = v2
+				}
+				if c.debug {
+					log.Printf("inputsTable[%q][%q] = %T: %v", k, k2, v2, v2)
+				}
+			})
+		}
+	})
+	if c.debug {
+		log.Printf("nameToKey map: %+v", nameToKey)
+	}
+	// set default values in case this BJK is out-of-date with the actual BJK Node.
+	for name, key := range nameToKey {
+		if defLVal, ok := keyToDefaultLVals[key]; ok {
+			if c.debug {
+				log.Printf("Setting node %q input %q to default value %v", targetNode.OpName, name, defLVal)
+			}
+			inputsTable.RawSet(lua.LString(name), defLVal)
+		}
+	}
 
 	for _, input := range targetNode.Inputs {
+		if input.Props == nil {
+			input.Props = map[string]lua.LValue{}
+		}
+
 		if input.Kind.External != nil {
 			ve, ok := c.extParamsLookup[genKey(targetNodeIdx, input.Name)]
 			if !ok {
-				return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find exteral param %q", targetNodeIdx, input.Name)
+				if input.DataType != "BJK_MESH" {
+					return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find external param %q", targetNodeIdx, input.Name)
+				}
+				input.Props[input.Name] = lua.LNil
+				inputsTable.RawSet(lua.LString(input.Name), lua.LNil)
+				if c.debug {
+					log.Printf("Setting node %q input %q to nil", targetNode.OpName, input.Name)
+				}
+				continue
 			}
 			if c.debug {
 				log.Printf("runNode: external ValueEnum=%#v", *ve)
 			}
 			lval := valueEnumToLValue(c.ls, ve)
-			if input.Props == nil {
-				input.Props = map[string]lua.LValue{}
-			}
 			input.Props[input.Name] = lval
 			inputsTable.RawSet(lua.LString(input.Name), lval)
+			if c.debug {
+				log.Printf("Setting node %q input %q to %v", targetNode.OpName, input.Name, lval)
+			}
+			// TODO: honor properties like min, max, soft_max, default, num_decimals, etc?
+			if _, ok := nameToKey[input.Name]; !ok {
+				log.Printf("WARNING! setting lua input %q on node %q but it is no longer declared as one of its inputs!", input.Name, targetNode.OpName)
+			}
 			continue
 		}
 		if conn := input.Kind.Connection; conn != nil {
@@ -101,6 +157,13 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 				return fmt.Errorf("runNode(targetNodeIdx=%v), cannot find node[%v]('%v') output param %q, choices are: %+v", targetNodeIdx, conn.NodeIdx, nodes[conn.NodeIdx].OpName, conn.ParamName, maps.Keys(nodes[conn.NodeIdx].EvalOutputs))
 			}
 			inputsTable.RawSet(lua.LString(input.Name), lVal)
+			if c.debug {
+				log.Printf("Setting node %q input %q to %v", targetNode.OpName, input.Name, lVal)
+			}
+			// TODO: honor properties like min, max, soft_max, default, num_decimals, etc?
+			if _, ok := nameToKey[input.Name]; !ok {
+				log.Printf("WARNING! setting lua input %q on node %q but it is no longer declared as one of its inputs!", input.Name, targetNode.OpName)
+			}
 			continue
 		}
 		// At this point, this input node has neither an extern parameter setting nor a connection - get the default value.
@@ -139,13 +202,20 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			return fmt.Errorf("programming error: lVal remains unset for input %#v", *input)
 		}
 		inputsTable.RawSet(lua.LString(input.Name), lVal)
+		if c.debug {
+			log.Printf("Setting node %q input %q to %v", targetNode.OpName, input.Name, lVal)
+		}
+		// TODO: honor properties like min, max, soft_max, default, num_decimals, etc?
+		if _, ok := nameToKey[input.Name]; !ok {
+			log.Printf("WARNING! setting lua input %q on node %q but it is no longer declared as one of its inputs!", input.Name, targetNode.OpName)
+		}
 	}
 
 	if c.debug {
 		log.Printf("runNode: ALL INPUTS ARE RESOLVED - executing function %v.op(inputs)", targetNode.OpName)
 	}
 
-	expr := fmt.Sprintf("return require('node_library'):getNode('%v').op", targetNode.OpName)
+	expr = fmt.Sprintf("return require('node_library'):getNode('%v').op", targetNode.OpName)
 	if err := c.ls.DoString(expr); err != nil {
 		return err
 	}
