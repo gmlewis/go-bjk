@@ -59,7 +59,7 @@ func New(blackjackRepoPath string, debug bool) (*Client, error) {
 	registerSelectionExpressionType(ls)
 	registerVec3Type(ls)
 	if err := ls.DoString("vector = Vec3.new"); err != nil {
-		log.Fatal(err)
+		log.Fatalf("lua.DoString('vector = Vec3.new'): %v", err)
 	}
 
 	pkg := ls.GetGlobal("package")

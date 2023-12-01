@@ -3,6 +3,9 @@
 package ast
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 	lua "github.com/yuin/gopher-lua"
@@ -25,8 +28,44 @@ var Lexer = lexer.MustSimple([]lexer.SimpleRule{
 var Parser = participle.MustBuild[BJK](
 	participle.Lexer(Lexer),
 	participle.Elide("Whitespace"),
-	participle.Unquote("String"),
+	// We cannot use Unquote when parsing Rust-generated strings because
+	// it quotes them incorrectly. For example: "reconcil\'d"
+	// participle.Unquote("String"),
+	rustUnquoteOption("String"),
 )
+
+func rustUnquoteOption(types ...string) participle.Option {
+	if len(types) == 0 {
+		types = []string{"String"}
+	}
+	return participle.Map(func(t lexer.Token) (lexer.Token, error) {
+		value, err := rustUnquote(t.Value)
+		if err != nil {
+			t.Value = strings.Replace(t.Value, `\'`, "'", -1)
+			value, err = rustUnquote(t.Value)
+			if err != nil {
+				return t, participle.Errorf(t.Pos, "invalid quoted string '%v': %s", t.Value, err.Error())
+			}
+		}
+		t.Value = value
+		return t, nil
+	}, types...)
+}
+
+func rustUnquote(s string) (string, error) {
+	quote := s[0]
+	s = s[1 : len(s)-1]
+	out := ""
+	for s != "" {
+		value, _, tail, err := strconv.UnquoteChar(s, quote)
+		if err != nil {
+			return "", err
+		}
+		s = tail
+		out += string(value)
+	}
+	return out, nil
+}
 
 // New returns a new BJK ast, ready to be populated.
 func New() *BJK {

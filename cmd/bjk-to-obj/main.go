@@ -53,7 +53,9 @@ func (c *clientT) processFile(arg string) {
 		opts = append(opts, participle.Trace(os.Stderr))
 	}
 	design, err := ast.Parser.ParseString("", string(buf), opts...)
-	must(err)
+	if err != nil {
+		log.Fatalf("ERROR: ast.Parser.ParseString: %v", err)
+	}
 	outFilename := strings.Replace(arg, ".bjk", ".obj", -1)
 	if *outFile != "" {
 		outFilename = *outFile
