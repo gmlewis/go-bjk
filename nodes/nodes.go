@@ -107,6 +107,7 @@ func (c *Client) Close() {
 }
 
 var blackjackSubdirs = []string{
+	"blackjack_lua/fonts",
 	"blackjack_lua/run",
 }
 

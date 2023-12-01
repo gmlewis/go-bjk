@@ -103,7 +103,7 @@ func (m *Mesh) AddFace(verts []Vec3) FaceT {
 	face := make([]VertIndexT, 0, len(verts))
 	for i, vert := range verts {
 		vertIdx := m.AddVert(vert)
-		if i > 0 && vertIdx == face[i-1] {
+		if i > 0 && vertIdx == face[len(face)-1] {
 			continue // prevent two identical consecutive vert indices.
 		}
 		face = append(face, vertIdx)

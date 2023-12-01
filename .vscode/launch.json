@@ -11,7 +11,6 @@
       "mode": "auto",
       "program": "${fileDirname}",
       "args": [
-        "-debug",
         "-o",
         "out.obj",
         "../../Untitled.bjk"

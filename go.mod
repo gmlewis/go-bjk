@@ -22,3 +22,5 @@ require (
 	golang.org/x/tools v0.14.0 // indirect
 	mvdan.cc/gofumpt v0.4.0 // indirect
 )
+
+replace github.com/yuin/gopher-lua v1.1.0 => github.com/gmlewis/gopher-lua v0.0.1
