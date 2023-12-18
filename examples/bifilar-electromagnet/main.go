@@ -19,6 +19,7 @@ import (
 )
 
 var (
+	addSupport      = flag.Bool("as", false, "Add inner support shaft")
 	debug           = flag.Bool("debug", false, "Turn on debugging info")
 	golden          = flag.Bool("golden", false, "Generate golden test files")
 	innerDiam       = flag.Float64("id", 6.0, "Inner diameter of first coil in millimeters")
@@ -144,11 +145,17 @@ func main() {
 		lastSizeOut = sizeMathNode + ".out"
 	}
 
+	var addInnerSupport int
+	if *addSupport {
+		addInnerSupport = 1
+	}
+
 	b = b.
 		AddNode("BFEMCage.cage",
 			set("num_pairs", *numPairs),
 			set("back_thickness", *backThickness),
 			set("front_thickness", *frontThickness),
+			set("add_inner_support", addInnerSupport),
 		).
 		Connect(lastSizeOut, "BFEMCage.cage.size").
 		Connect("SizedQuad.wire-outline.wire-width", "BFEMCage.cage.wire_width").

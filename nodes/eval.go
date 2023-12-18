@@ -70,46 +70,11 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 	}
 	targetNode.EvalOutputs = map[string]lua.LValue{}
 
-	expr := fmt.Sprintf("return require('node_library'):getNode('%v').inputs", targetNode.OpName)
-	if err := c.ls.DoString(expr); err != nil {
-		return err
-	}
-	inputsTable := c.ls.CheckTable(1)
-	if inputsTable == nil {
-		return fmt.Errorf("runNode: expected outputs table, got type %v: %v", c.ls.Get(1).Type(), c.ls.Get(1).String())
-	}
-	if c.debug {
-		log.Printf("lua execution returned inputs table: %#v", *inputsTable)
-	}
-	c.ls.Pop(1) // remove returned table from lua stack
+	inputsTable := c.ls.NewTable()
 
-	nameToKey := make(map[string]string, inputsTable.Len())
-	keyToDefaultLVals := make(map[string]lua.LValue, inputsTable.Len())
-	inputsTable.ForEach(func(k, v lua.LValue) {
-		if t, ok := v.(*lua.LTable); ok {
-			t.ForEach(func(k2, v2 lua.LValue) {
-				if k2.String() == "name" {
-					nameToKey[v2.String()] = k.String()
-				} else if k2.String() == "default" {
-					keyToDefaultLVals[k.String()] = v2
-				}
-				if c.debug {
-					log.Printf("inputsTable[%q][%q] = %T: %v", k, k2, v2, v2)
-				}
-			})
-		}
-	})
-	if c.debug {
-		log.Printf("nameToKey map: %+v", nameToKey)
-	}
-	// set default values in case this BJK is out-of-date with the actual BJK Node.
-	for name, key := range nameToKey {
-		if defLVal, ok := keyToDefaultLVals[key]; ok {
-			if c.debug {
-				log.Printf("Setting node %q input %q to default value %v", targetNode.OpName, name, defLVal)
-			}
-			inputsTable.RawSet(lua.LString(name), defLVal)
-		}
+	nameToKey, err := c.genNumToKeyMap(targetNode)
+	if err != nil {
+		return fmt.Errorf("genNumToKeyMap: %w", err)
 	}
 
 	for _, input := range targetNode.Inputs {
@@ -215,7 +180,7 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 		log.Printf("runNode: ALL INPUTS ARE RESOLVED - executing function %v.op(inputs)", targetNode.OpName)
 	}
 
-	expr = fmt.Sprintf("return require('node_library'):getNode('%v').op", targetNode.OpName)
+	expr := fmt.Sprintf("return require('node_library'):getNode('%v').op", targetNode.OpName)
 	if err := c.ls.DoString(expr); err != nil {
 		return err
 	}
@@ -263,4 +228,51 @@ func valueEnumToLValue(ls *lua.LState, ve *ast.ValueEnum) lua.LValue {
 		log.Fatalf("programming error: eval.go: valueEnumToLValue: unhandled ValueEnum: %#v", *ve)
 	}
 	return lua.LNumber(0)
+}
+
+func (c *Client) genNumToKeyMap(targetNode *ast.Node) (map[string]string, error) {
+	expr := fmt.Sprintf("return require('node_library'):getNode('%v').inputs", targetNode.OpName)
+	if err := c.ls.DoString(expr); err != nil {
+		return nil, err
+	}
+	defer c.ls.Pop(1) // remove returned table from lua stack
+
+	inputsTable := c.ls.CheckTable(1)
+	if inputsTable == nil {
+		return nil, fmt.Errorf("runNode: expected outputs table, got type %v: %v", c.ls.Get(1).Type(), c.ls.Get(1).String())
+	}
+	if c.debug {
+		log.Printf("lua execution returned inputs table: %#v", *inputsTable)
+	}
+
+	nameToKey := make(map[string]string, inputsTable.Len())
+	keyToDefaultLVals := make(map[string]lua.LValue, inputsTable.Len())
+	inputsTable.ForEach(func(k, v lua.LValue) {
+		if t, ok := v.(*lua.LTable); ok {
+			t.ForEach(func(k2, v2 lua.LValue) {
+				if k2.String() == "name" {
+					nameToKey[v2.String()] = k.String()
+				} else if k2.String() == "default" {
+					keyToDefaultLVals[k.String()] = v2
+				}
+				if c.debug {
+					log.Printf("inputsTable[%q][%q] = %T: %v", k, k2, v2, v2)
+				}
+			})
+		}
+	})
+	if c.debug {
+		log.Printf("nameToKey map: %+v", nameToKey)
+	}
+	// set default values in case this BJK is out-of-date with the actual BJK Node.
+	for name, key := range nameToKey {
+		if defLVal, ok := keyToDefaultLVals[key]; ok {
+			if c.debug {
+				log.Printf("Setting node %q input %q to default value %v", targetNode.OpName, name, defLVal)
+			}
+			inputsTable.RawSet(lua.LString(name), defLVal)
+		}
+	}
+
+	return nameToKey, nil
 }
