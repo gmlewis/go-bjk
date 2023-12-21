@@ -785,7 +785,8 @@ func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 	case "selection", "lua_string":
 		return getSelectionValue(t, input)
 	case "mesh":
-		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)
+		log.Printf("getValueEnum: WARNING: unconnected input '%v' of type 'mesh'", input.Name)
+		return &ast.ValueEnum{}, nil // TODO
 	default:
 		return nil, fmt.Errorf("getValueEnum: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}

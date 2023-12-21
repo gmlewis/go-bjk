@@ -88,16 +88,17 @@ func (ai *abutInfoT) mergeAbuttedFacesOnEdge(edge edgeT, srcFaceIdx, dstFaceIdx 
 	if srcLength < dstLength {
 		// log.Printf("mergeAbuttedFacesOnEdge: marking src face for DELETION: %v", fi.m.dumpFace(srcFaceIdx, fi.src.faces[srcFaceIdx]))
 		fi.src.facesTargetedForDeletion[srcFaceIdx] = true
-		fi.dst.resizeFace(ai.dstFaces, dstFaceIdx, dstEVs[0].edge, dstEVs[1].edge, srcEVs) // resize dst by shorter edge vectors
+		fi.dst.resizeFace(ai.dstFaces, dstFaceIdx, []edgeT{dstEVs[0].edge, dstEVs[1].edge}, srcEVs) // resize dst by shorter edge vectors
 	} else {
 		// log.Printf("mergeAbuttedFacesOnEdge: marking dst face for DELETION: %v", fi.m.dumpFace(dstFaceIdx, fi.dst.faces[dstFaceIdx]))
 		fi.dst.facesTargetedForDeletion[dstFaceIdx] = true
-		fi.src.resizeFace(ai.srcFaces, srcFaceIdx, srcEVs[0].edge, srcEVs[1].edge, dstEVs) // resize src by shorter edge vectors
+		fi.src.resizeFace(ai.srcFaces, srcFaceIdx, []edgeT{srcEVs[0].edge, srcEVs[1].edge}, dstEVs) // resize src by shorter edge vectors
 	}
 }
 
-func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndexT, affectedEdge0, affectedEdge1 edgeT, evs [2]edgeVectorT) {
+func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndexT, affectedEdges []edgeT, evs [2]edgeVectorT) {
 	face := is.faces[faceIdx]
+	// first pass - move verts
 	for i, vIdx := range face {
 		switch {
 		case vIdx == evs[0].fromVertIdx:
@@ -108,9 +109,19 @@ func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndex
 			face[i] = evs[1].toVertIdx
 		}
 	}
+	// second pass - simplify face if any verts are duped
+	newFace := make(FaceT, 0, len(face))
+	for i, vIdx := range face {
+		nextIdx := face[(i+1)%len(face)]
+		if vIdx == nextIdx {
+			continue
+		}
+		newFace = append(newFace, vIdx)
+	}
+	is.faces[faceIdx] = newFace
 
-	// now handle both affected edges
-	handle := func(edge edgeT) {
+	// now handle affected edges
+	for _, edge := range affectedEdges {
 		for _, fIdx := range is.edgeToFaces[edge] {
 			if fIdx == faceIdx || is.facesTargetedForDeletion[fIdx] || (avoidFaces != nil && avoidFaces[fIdx]) {
 				continue
@@ -118,8 +129,6 @@ func (is *infoSetT) resizeFace(avoidFaces map[faceIndexT]bool, faceIdx faceIndex
 			is.insertVertOnEdge(fIdx, edge, evs)
 		}
 	}
-	handle(affectedEdge0)
-	handle(affectedEdge1)
 }
 
 func (is *infoSetT) insertVertOnEdge(faceIdx faceIndexT, edge edgeT, evs [2]edgeVectorT) {
@@ -161,7 +170,7 @@ type abutInfoT struct {
 type abutMapT map[edgeT]map[vertKeyT][2][]faceIndexT
 
 // abuttedFaces returns a map from edge to normal key to two slices (src,dst) of abutted face indices.
-// It sortes the indices to make testing easier.
+// It sorts the indices to make testing easier.
 func (fi *faceInfoT) abuttedFaces(sharedEdges sharedEdgesMapT) *abutInfoT {
 	ai := &abutInfoT{
 		fi:                  fi,
@@ -242,7 +251,7 @@ func (fi *faceInfoT) checkCompleteOverlapOnEdge(edge edgeT, sharedEdges sharedEd
 	// log.Printf("dstOppositeEdge=%v: %v %v", dstOppositeEdge, fi.m.Verts[dstOppositeEdge[0]], fi.m.Verts[dstOppositeEdge[1]])
 	dstFaceToResizeIdx, affectedDstEdge0, affectedDstEdge1 := fi.dst.otherFaceOnEdge(dstOppositeEdge, dstFaceIdx0)
 
-	fi.dst.resizeFace(nil, dstFaceToResizeIdx, affectedDstEdge0, affectedDstEdge1, moveDstEVs)
+	fi.dst.resizeFace(nil, dstFaceToResizeIdx, []edgeT{affectedDstEdge0, affectedDstEdge1}, moveDstEVs)
 }
 
 func (is *infoSetT) moveAllVertsOnDeletedFace(baseFaceIdx faceIndexT, evs [2]edgeVectorT) vToVMap {

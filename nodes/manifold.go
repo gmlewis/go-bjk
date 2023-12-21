@@ -393,7 +393,7 @@ func (is *infoSetT) otherFaceOnEdge(edge edgeT, otherFaceIdx faceIndexT) (faceIn
 		v1 := is.otherVertexFrom(edge, edge[1], faceIdx)
 		return faceIdx, makeEdge(edge[0], v0), makeEdge(edge[1], v1)
 	}
-	log.Fatalf("otherFaceOnEdge: programming error")
+	log.Fatalf("otherFaceOnEdge(edge=%v, otherFaceIdx=%v): programming error: is.edgeToFaces[%v]=%v", edge, otherFaceIdx, edge, is.edgeToFaces[edge])
 	return 0, edgeT{}, edgeT{}
 }
 

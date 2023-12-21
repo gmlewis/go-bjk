@@ -54,7 +54,7 @@ cutsMade:
 
 			// log.Printf("mergeNonManifoldSrc: single cutting neighbors of dstFaceIdx: %v: %+v", dstFaceIdx, fi.dst.faces[dstFaceIdx])
 			srcEVs := [2]edgeVectorT{srcE1EV, srcE2EV}
-			fi.dst.resizeFace(nil, dstFaceIdx, dstEVs[0].edge, dstEVs[1].edge, srcEVs) // resize dst by shorter edge vectors
+			fi.dst.resizeFace(nil, dstFaceIdx, []edgeT{dstEVs[0].edge, dstEVs[1].edge}, srcEVs) // resize dst by shorter edge vectors
 			continue cutsMade
 		}
 
