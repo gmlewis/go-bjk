@@ -68,7 +68,7 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	}
 
 	if len(srcEdgeCountToFaceIndices[1]) == numSharedEdges-1 && len(dstEdgeCountToFaceIndices[1]) == numSharedEdges {
-		if fi.findMatchingFaceNormals(&opts) {
+		if fi.findMatchingFaceNormals(&opts, false) {
 			fi.twoSeparateCuts(opts)
 			return
 		}
@@ -77,10 +77,25 @@ func (fi *faceInfoT) merge2manisManyEdges(sharedEdges sharedEdgesMapT) {
 	// This is the mirror swapped dst<=>src case of the case above.
 	if len(dstEdgeCountToFaceIndices[1]) == numSharedEdges-1 && len(srcEdgeCountToFaceIndices[1]) == numSharedEdges {
 		fi.swapSrcAndDst(&opts)
-		if fi.findMatchingFaceNormals(&opts) {
+		if fi.findMatchingFaceNormals(&opts, false) {
 			fi.twoSeparateCuts(opts)
 			return
 		}
+	}
+
+	if len(srcFaceIndicesToEdges) > len(dstFaceIndicesToEdges) {
+		fi.swapSrcAndDst(&opts)
+	}
+
+	if fi.findMatchingFaceNormals(&opts, true) {
+		fi.src.facesTargetedForDeletion[opts.srcMainFaceIdx] = true
+		fi.dst.facesTargetedForDeletion[opts.dstMainFaceIdx] = true
+		opts.deleteSharedEdges(opts.srcFaceIndicesToEdges[opts.srcMainFaceIdx])
+		// log.Printf("merge2manisManyEdges: findNegatedFaceNormals=true, opts.sharedEdges=%#v", opts.sharedEdges)
+		for edge, faceIndices := range opts.sharedEdges {
+			fi.cutAndShortenEdge(edge, faceIndices[0], faceIndices[1])
+		}
+		return
 	}
 
 	log.Printf("WARNING: merge2manisManyEdges: not implemented yet: numSharedEdges=%v", numSharedEdges)
@@ -110,16 +125,20 @@ func cmpEdges(e1, e2 edgeT) int {
 	return int(e1[0] - e2[0])
 }
 
-func (fi *faceInfoT) findMatchingFaceNormals(opts *twoSeparateCutsOpts) bool {
-	// log.Printf("merge2manisManyEdges: finding main src and dst faces")
+func (fi *faceInfoT) findMatchingFaceNormals(opts *twoSeparateCutsOpts, negated bool) bool {
+	// log.Printf("findMatchingFaceNormals(negated=%v): finding main src and dst faces", negated)
 	srcFaceNormals := map[faceIndexT]Vec3{}
 	for _, faceIndices := range opts.srcEdgeCountToFaceIndices {
 		if len(faceIndices) != 1 {
 			continue
 		}
 		faceIdx := faceIndices[0]
-		srcFaceNormals[faceIdx] = fi.src.faceNormals[faceIdx]
-		// log.Printf("merge2manisManyEdges: src face[%v] normal: %v", faceIdx, srcFaceNormals[faceIdx])
+		normal := fi.src.faceNormals[faceIdx]
+		if negated {
+			normal = normal.Negated()
+		}
+		srcFaceNormals[faceIdx] = normal
+		// log.Printf("findMatchingFaceNormals: src face[%v] normal: %v", faceIdx, srcFaceNormals[faceIdx])
 	}
 
 	var foundMatchingNormals bool
@@ -130,7 +149,7 @@ dstLoop:
 		}
 		faceIdx := faceIndices[0]
 		dstFaceNormal := fi.dst.faceNormals[faceIdx]
-		// log.Printf("merge2manisManyEdges: dst face[%v] normal: %v", faceIdx, dstFaceNormal)
+		// log.Printf("findMatchingFaceNormals: dst face[%v] normal: %v", faceIdx, dstFaceNormal)
 		for srcFaceIdx, n := range srcFaceNormals {
 			if n.AboutEq(dstFaceNormal) {
 				opts.srcMainFaceIdx = srcFaceIdx
@@ -165,6 +184,19 @@ type twoSeparateCutsOpts struct {
 	dstEdgeCountToFaceIndices map[int][]faceIndexT
 	srcMainFaceIdx            faceIndexT
 	dstMainFaceIdx            faceIndexT
+}
+
+func (opts *twoSeparateCutsOpts) deleteSharedEdges(edges []edgeT) {
+	// log.Printf("deleteSharedEdges(edges=%+v)", edges)
+	// log.Printf("deleteSharedEdges - before:\n%#v", *opts)
+	for _, edge := range edges {
+		delete(opts.sharedEdges, edge)
+	}
+	// opts.numSharedEdges = len(opts.sharedEdges)
+	// opts.srcFaceIndicesToEdges, opts.dstFaceIndicesToEdges = reverseMapFaceIndicesToEdges(opts.sharedEdges)
+	// opts.srcEdgeCountToFaceIndices = faceIndicesByEdgeCount(opts.srcFaceIndicesToEdges)
+	// opts.dstEdgeCountToFaceIndices = faceIndicesByEdgeCount(opts.dstFaceIndicesToEdges)
+	// log.Printf("deleteSharedEdges - after:\n%#v", *opts)
 }
 
 func (fi *faceInfoT) twoSeparateCuts(opts twoSeparateCutsOpts) {

@@ -734,9 +734,9 @@ func (b *Builder) Build() (*ast.BJK, error) {
 			lastYOffset = node.NodePosition.Y
 		}
 
-		// For each unconnected input, add an ExternalParameters value.
+		// For each unconnected input, add an ExternalParameters value (except meshes).
 		for _, input := range node.Inputs {
-			if input.Kind.Connection != nil {
+			if input.Kind.Connection != nil || input.DataType == "mesh" {
 				continue
 			}
 
@@ -777,15 +777,16 @@ func getValueEnum(input *ast.Input) (*ast.ValueEnum, error) {
 		return getScalarValue(t, input)
 	case "enum":
 		return getEnumValue(t, input)
-	case "string":
+	case "string", "lua_string":
 		return getStringValue(t, input)
 	case "file":
 		log.Printf("getValueEnum: WARNING: value of type '%v' not supported yet.", t)
 		return &ast.ValueEnum{StrVal: &ast.StringValue{S: "TODO"}}, nil
-	case "selection", "lua_string":
+	case "selection":
 		return getSelectionValue(t, input)
 	case "mesh":
-		return nil, fmt.Errorf("unconnected input '%v' of type 'mesh'", input.Name)
+		log.Printf("getValueEnum: WARNING: unconnected input '%v' of type 'mesh'", input.Name)
+		return &ast.ValueEnum{}, nil // TODO
 	default:
 		return nil, fmt.Errorf("getValueEnum: unknown t=%v, input.Name='%v', props=%#v", t, input.Name, input.Props)
 	}
