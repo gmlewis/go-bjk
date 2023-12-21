@@ -157,6 +157,8 @@ func (c *Client) runNode(nodes []*ast.Node, targetNodeIdx int) error {
 			if c.debug {
 				log.Printf("values.RawGet=(%v,%v), values=%#v", lVal.String(), lVal.Type(), values)
 			}
+		case "mesh":
+			lVal = lua.LNil
 		default:
 			if lVal, ok = input.Props["default"]; !ok {
 				return fmt.Errorf("runNode: input.Props['default'] could not be found: %#v", input.Props)
