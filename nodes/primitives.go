@@ -32,6 +32,7 @@ var primitivesMethods = map[string]lua.LGFunction{
 	"line":              line,
 	"line_from_points":  lineFromPoints,
 	"line_with_normals": lineWithNormals,
+	"mesh_from_faces":   meshFromFaces,
 	"polygon":           polygon,
 	"quad":              quad,
 }
@@ -146,11 +147,11 @@ func lineFromPoints(ls *lua.LState) int {
 func getVec3(tbl *lua.LTable, index int) *Vec3 {
 	ud, ok := tbl.RawGetInt(index).(*lua.LUserData)
 	if !ok {
-		log.Fatalf("lineWithNormals: tbl[i=%v], want vec3, got %T", index, tbl.RawGetInt(index))
+		log.Fatalf("getVec3: tbl[i=%v], want vec3, got %T", index, tbl.RawGetInt(index))
 	}
 	v, ok := ud.Value.(*Vec3)
 	if !ok {
-		log.Fatalf("lineWithNormals: tbl[i=%v], want vec3, got %T", index, ud.Value)
+		log.Fatalf("getVec3: tbl[i=%v], want vec3, got %T", index, ud.Value)
 	}
 	return v
 }
@@ -232,6 +233,36 @@ func quad(ls *lua.LState) int {
 
 	ud := ls.NewUserData()
 	ud.Value = polygon
+	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
+	ls.Push(ud)
+	return 1
+}
+
+func meshFromFaces(ls *lua.LState) int {
+	facesTbl := ls.CheckTable(1)
+	numFaces := facesTbl.Len()
+	faces := make([]FaceT, 0, numFaces)
+
+	var points []Vec3
+	for i := 1; i <= numFaces; i++ {
+		faceTbl, ok := facesTbl.RawGetInt(i).(*lua.LTable)
+		if !ok {
+			log.Fatalf("meshFromFaces: tbl[i=%v], want tbl, got %T", i, facesTbl.RawGetInt(i))
+		}
+
+		face := make(FaceT, 0, faceTbl.Len())
+		for j := 1; j <= faceTbl.Len(); j++ {
+			v := getVec3(faceTbl, j)
+			face = append(face, VertIndexT(len(points)))
+			points = append(points, *v)
+		}
+		faces = append(faces, face)
+	}
+
+	mesh := NewMeshFromPolygons(points, faces)
+
+	ud := ls.NewUserData()
+	ud.Value = mesh
 	ls.SetMetatable(ud, ls.GetTypeMetatable(luaMeshTypeName))
 	ls.Push(ud)
 	return 1
