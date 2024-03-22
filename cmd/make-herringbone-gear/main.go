@@ -21,6 +21,7 @@ var (
 	numTeeth   = flag.Int("nt", 13, "Number of teeth")
 	objOut     = flag.String("obj", "make-herringbone-gear.obj", "Output filename for Wavefront obj file")
 	outBJK     = flag.String("o", "make-herringbone-gear.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
+	pivot      = flag.String("pivot", "PitchRadius", "Sets the gear pivot point to one of: 'Center', 'RootRadius', 'BaseRadius', 'PitchRadius', or 'OuterRadius'.")
 	repoDir    = flag.String("repo", "src/github.com/gmlewis/blackjack", "Path to Blackjack repo (relative to home dir or absolute path)")
 	resolution = flag.Int("res", 9, "Resolution for number of points in curved sections")
 	stlOut     = flag.String("stl", "make-herringbone-gear.stl", "Output filename for binary STL file")
@@ -41,6 +42,7 @@ func main() {
 		set("hole_type", *holeType),
 		set("module", *module),
 		set("num_teeth", *numTeeth),
+		set("pivot", *pivot),
 		set("resolution", *resolution),
 	).Build()
 	must(err)
