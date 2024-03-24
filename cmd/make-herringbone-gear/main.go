@@ -18,6 +18,7 @@ var (
 	holeRadius = flag.Float64("hr", 10, "Hole minimum radius")
 	holeType   = flag.String("ht", "None", "Hole type (one of: 'None', 'Hollow', 'Squared', 'Hexagonal', 'Octagonal', 'Circular')")
 	module     = flag.Float64("mod", 3, "Gear module - see https://www.stlgears.com/theory#module")
+	numElbows  = flag.Int("ne", 1, "Number of elbows")
 	numTeeth   = flag.Int("nt", 13, "Number of teeth")
 	objOut     = flag.String("obj", "make-herringbone-gear.obj", "Output filename for Wavefront obj file")
 	outBJK     = flag.String("o", "make-herringbone-gear.bjk", "Output filename for BJK file ('-' for stdout, '' for none)")
@@ -41,6 +42,7 @@ func main() {
 		set("hole_radius", *holeRadius),
 		set("hole_type", *holeType),
 		set("module", *module),
+		set("num_elbows", *numElbows),
 		set("num_teeth", *numTeeth),
 		set("pivot", *pivot),
 		set("resolution", *resolution),
