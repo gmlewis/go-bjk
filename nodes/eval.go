@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gmlewis/go-bjk/ast"
 	lua "github.com/yuin/gopher-lua"
@@ -277,4 +278,35 @@ func (c *Client) genNumToKeyMap(targetNode *ast.Node) (map[string]string, error)
 	}
 
 	return nameToKey, nil
+}
+
+// GetScalar gets the value of a scalar from a design and returns it.
+func (c *Client) GetScalar(design *ast.BJK, nodeName string) (float64, error) {
+	if design == nil || design.Graph == nil {
+		return 0, errors.New("design missing graph")
+	}
+
+	if c.cachedMesh == nil {
+		mesh, err := c.Eval(design)
+		if err != nil {
+			return 0, err
+		}
+		c.cachedMesh = mesh
+	}
+
+	parts := strings.Split(nodeName, ".")
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("GetScalar - want nodeName in 2 parts, got: %+v", parts)
+	}
+	opName, outputName := parts[0], parts[1]
+	for _, n := range design.Graph.Nodes {
+		if n.OpName == opName {
+			v, ok := n.EvalOutputs[outputName]
+			if ok {
+				return float64(lua.LVAsNumber(v)), nil
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("output node '%v' not found", nodeName)
 }

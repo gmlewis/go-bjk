@@ -14,6 +14,7 @@ import (
 
 var (
 	debug      = flag.Bool("debug", false, "Turn on debugging info")
+	gearLength = flag.Float64("gl", 30, "Gear length")
 	helixAngle = flag.Float64("ha", 30, "Helix angle")
 	holeRadius = flag.Float64("hr", 10, "Hole minimum radius")
 	holeType   = flag.String("ht", "None", "Hole type (one of: 'None', 'Hollow', 'Squared', 'Hexagonal', 'Octagonal', 'Circular')")
@@ -38,6 +39,7 @@ func main() {
 
 	design, err := c.NewBuilder().AddNode(
 		"HerringboneGear",
+		set("gear_length", *gearLength),
 		set("helix_angle", *helixAngle),
 		set("hole_radius", *holeRadius),
 		set("hole_type", *holeType),
@@ -62,6 +64,19 @@ func main() {
 	if *stlOut != "" {
 		must(c.ToSTL(design, *stlOut, *swapYZ))
 	}
+
+	br, err := c.GetScalar(design, "HerringboneGear.base_radius")
+	must(err)
+	fmt.Printf("base_radius: %v\n", br)
+	pr, err := c.GetScalar(design, "HerringboneGear.pitch_radius")
+	must(err)
+	fmt.Printf("pitch_radius: %v\n", pr)
+	or, err := c.GetScalar(design, "HerringboneGear.outer_radius")
+	must(err)
+	fmt.Printf("outer_radius: %v\n", or)
+	rr, err := c.GetScalar(design, "HerringboneGear.root_radius")
+	must(err)
+	fmt.Printf("root_radius: %v\n", rr)
 
 	log.Printf("Done.")
 }
