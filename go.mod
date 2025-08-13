@@ -1,6 +1,6 @@
 module github.com/gmlewis/go-bjk
 
-go 1.21.3
+go 1.25.0
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.0
@@ -12,15 +12,15 @@ require (
 	github.com/hexops/valast v1.4.4
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/yuin/gopher-lua v1.1.0
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6
 )
 
 require (
 	github.com/fogleman/simplify v0.0.0-20170216171241-d32f302d5046 // indirect
-	golang.org/x/mod v0.13.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	mvdan.cc/gofumpt v0.4.0 // indirect
 )
 
-replace github.com/yuin/gopher-lua v1.1.0 => github.com/gmlewis/gopher-lua v0.0.1
+replace github.com/yuin/gopher-lua v1.1.0 => github.com/gmlewis/gopher-lua v0.0.2

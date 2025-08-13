@@ -17,6 +17,7 @@ var (
 )
 
 func main() {
+	log.SetFlags(0)
 	flag.Parse()
 
 	done := map[int]bool{}
@@ -36,6 +37,8 @@ func main() {
 			done[t2] = true
 		}
 	}
+
+	log.Printf("Done.")
 }
 
 func makeGear(teeth int) {
@@ -43,8 +46,8 @@ func makeGear(teeth int) {
 	log.Printf("Generating '%v'...", stlName)
 	args := []string{"./herringbone-gear.sh", "-nt", fmt.Sprintf("%v", teeth), "-gl", "20", "-stl", stlName}
 	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
-	must(err)
 	fmt.Printf("%s\n", out)
+	must(err)
 }
 
 func must(err error) {
