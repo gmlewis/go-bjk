@@ -15,7 +15,7 @@ and outputs, and finally writing out a Blackjack-compatible `*.bjk`
 file, ready for parsing.
 
 This package also includes an AST generator using
-[Participle](github.com/alecthomas/participle) that parses arbitrary
+[Participle](https://github.com/alecthomas/participle) that parses arbitrary
 Blackjack `*.bjk` files into Go structs.
 
 ## Examples
