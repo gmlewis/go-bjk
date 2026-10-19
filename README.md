@@ -46,4 +46,4 @@ cargo build --release --bin blackjack_ui
 This program will generate a file called "bifilar-electromagnet.bjk" which,
 when opened with `blackjack_ui`, will look something like this:
 
-![blackjack_ui](./bifilar-electromagnet.png)
+![blackjack_ui](./assets/bifilar-electromagnet.png)
