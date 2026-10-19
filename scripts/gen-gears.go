@@ -12,8 +12,10 @@ import (
 )
 
 var (
-	minTeeth = flag.Int("min", 6, "Minimum number of teeth")
-	maxTeeth = flag.Int("max", 9, "Maximum number of teeth")
+	gearLength = flag.Float64("gl", 20, "Gear length")
+	minTeeth   = flag.Int("min", 6, "Minimum number of teeth")
+	maxTeeth   = flag.Int("max", 9, "Maximum number of teeth")
+	numElbows  = flag.Int("ne", 3, "Number of elbows")
 )
 
 func main() {
@@ -42,9 +44,15 @@ func main() {
 }
 
 func makeGear(teeth int) {
-	stlName := fmt.Sprintf("gear%v-20.stl", teeth)
+	stlName := fmt.Sprintf("gear-nt%v-gl%v-ne%v.stl", teeth, *gearLength, *numElbows)
 	log.Printf("Generating '%v'...", stlName)
-	args := []string{"./herringbone-gear.sh", "-nt", fmt.Sprintf("%v", teeth), "-gl", "20", "-stl", stlName}
+	args := []string{
+		"./herringbone-gear.sh",
+		"-nt", fmt.Sprintf("%v", teeth),
+		"-ne", fmt.Sprintf("%v", *numElbows),
+		"-gl", fmt.Sprintf("%v", *gearLength),
+		"-stl", stlName,
+	}
 	out, err := exec.Command(args[0], args[1:]...).CombinedOutput()
 	fmt.Printf("%s\n", out)
 	must(err)
