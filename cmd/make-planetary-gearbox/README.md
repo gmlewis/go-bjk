@@ -234,10 +234,10 @@ it down to roughly **121 mm**, at the cost of finer teeth.
 - `-ne 4` is the default; the number of herringbone elbows does not change the
   ratio.
 - `-tol 0.25` is the target clearance. The measured minimum over the
-  herringbone face width is about 0.16 mm at the default tessellation because
-  the radial clearance offset is less effective at the ring tooth tips. If you
-  want a guaranteed 0.25 mm minimum, use `-tol 0.4`; for a typical
-  print-in-place toy, `-tol 0.25` is usually sufficient.
+  herringbone face width is about 0.21 mm for the 6:1 15/30/75 set (and about
+  0.15 mm for the compact 12/12/36 set) because the radial clearance offset is
+  less effective at the ring tooth tips. If you want a guaranteed 0.25 mm
+  minimum, use `-tol 0.35`–`0.4`; `-tol 0.3` is a good compromise.
 - The ring's `-outerThickness` is measured from the deepest notch to the outer
   smooth surface. For a 6:1 ring, keep it at least 6–8 mm for stiffness; 10 mm
   is safer for FDM.
