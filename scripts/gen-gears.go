@@ -13,7 +13,7 @@ import (
 
 var (
 	minTeeth = flag.Int("min", 6, "Minimum number of teeth")
-	maxTeeth = flag.Int("max", 9, "Minimum number of teeth")
+	maxTeeth = flag.Int("max", 9, "Maximum number of teeth")
 )
 
 func main() {
