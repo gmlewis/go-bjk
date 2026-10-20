@@ -291,7 +291,7 @@ func computeConfig() (config, error) {
 	// to the ring node, whose envelope is generated at that distance.
 	cfg.centerDelta = 0
 	if *tolerance > 0 {
-		cfg.centerDelta = *tolerance / math.Sin(pa)
+		cfg.centerDelta = *tolerance * 2
 	}
 	cfg.centerDistance = cfg.sun.pitchRadius + cfg.planet.pitchRadius + cfg.centerDelta
 
